@@ -20,7 +20,11 @@ export class UpdateMatchStatusController implements Controller {
       }
       const result = await this.update.updateStatus({ id, ...parsed.data });
       return { statusCode: 200, body: result };
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'internal_error';
+      if (message === 'not_found') return { statusCode: 404, body: { error: 'not_found' } };
+      if (message === 'invalid_transition')
+        return { statusCode: 400, body: { error: 'invalid_transition' } };
       return { statusCode: 500, body: { error: 'internal_error' } };
     }
   }

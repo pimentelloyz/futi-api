@@ -221,6 +221,8 @@ export const openapi: OpenAPIObject = {
           { name: 'teamId', in: 'query', schema: { type: 'string' } },
           { name: 'from', in: 'query', schema: { type: 'string', format: 'date-time' } },
           { name: 'to', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100 } },
         ],
         responses: {
           '200': {
@@ -228,18 +230,26 @@ export const openapi: OpenAPIObject = {
             content: {
               'application/json': {
                 schema: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      id: { type: 'string' },
-                      homeTeamId: { type: 'string' },
-                      awayTeamId: { type: 'string' },
-                      scheduledAt: { type: 'string', format: 'date-time' },
-                      status: { type: 'string' },
-                      homeScore: { type: 'integer' },
-                      awayScore: { type: 'integer' },
+                  type: 'object',
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          homeTeamId: { type: 'string' },
+                          awayTeamId: { type: 'string' },
+                          scheduledAt: { type: 'string', format: 'date-time' },
+                          status: { type: 'string' },
+                          homeScore: { type: 'integer' },
+                          awayScore: { type: 'integer' },
+                        },
+                      },
                     },
+                    page: { type: 'integer' },
+                    limit: { type: 'integer' },
+                    total: { type: 'integer' },
                   },
                 },
               },

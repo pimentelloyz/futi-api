@@ -16,6 +16,16 @@ const querySchema = z.object({
     .datetime()
     .optional()
     .transform((v) => (v ? new Date(v) : undefined)),
+  page: z
+    .string()
+    .regex(/^\d+$/)
+    .optional()
+    .transform((v) => (v ? parseInt(v, 10) : undefined)),
+  limit: z
+    .string()
+    .regex(/^\d+$/)
+    .optional()
+    .transform((v) => (v ? parseInt(v, 10) : undefined)),
 });
 
 export class ListMatchesController implements Controller {

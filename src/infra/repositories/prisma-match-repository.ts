@@ -22,11 +22,12 @@ export class PrismaMatchRepository implements MatchRepository {
     teamId?: string;
     from?: Date;
     to?: Date;
+    page?: number;
+    limit?: number;
   }) {
     const where: Record<string, unknown> = {};
     if (params.status) where.status = params.status;
     if (params.teamId) {
-      // matches where team participates as home or away
       where.OR = [{ homeTeamId: params.teamId }, { awayTeamId: params.teamId }];
     }
     if (params.from || params.to) {
@@ -35,20 +36,28 @@ export class PrismaMatchRepository implements MatchRepository {
         ...(params.to ? { lte: params.to } : {}),
       };
     }
-    const rows = await prisma.match.findMany({
-      where,
-      orderBy: { scheduledAt: 'asc' },
-      select: {
-        id: true,
-        homeTeamId: true,
-        awayTeamId: true,
-        scheduledAt: true,
-        status: true,
-        homeScore: true,
-        awayScore: true,
-      },
-    });
-    return rows;
+    const page = params.page && params.page > 0 ? params.page : 1;
+    const limit = params.limit && params.limit > 0 ? Math.min(params.limit, 100) : 20;
+    const skip = (page - 1) * limit;
+    const [total, rows] = await Promise.all([
+      prisma.match.count({ where }),
+      prisma.match.findMany({
+        where,
+        orderBy: { scheduledAt: 'asc' },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          homeTeamId: true,
+          awayTeamId: true,
+          scheduledAt: true,
+          status: true,
+          homeScore: true,
+          awayScore: true,
+        },
+      }),
+    ]);
+    return { items: rows, page, limit, total };
   }
 
   async updateScore(id: string, homeScore: number, awayScore: number): Promise<{ id: string }> {
@@ -66,6 +75,15 @@ export class PrismaMatchRepository implements MatchRepository {
     return prisma.match.update({
       where: { id },
       data: { status },
+      select: { id: true, status: true },
+    });
+  }
+
+  async getById(
+    id: string,
+  ): Promise<{ id: string; status: 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELED' } | null> {
+    return prisma.match.findUnique({
+      where: { id },
       select: { id: true, status: true },
     });
   }

@@ -7,8 +7,10 @@ export interface MatchRepository {
     teamId?: string;
     from?: Date;
     to?: Date;
-  }): Promise<
-    Array<{
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    items: Array<{
       id: string;
       homeTeamId: string;
       awayTeamId: string;
@@ -16,11 +18,17 @@ export interface MatchRepository {
       status: 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELED';
       homeScore: number;
       awayScore: number;
-    }>
-  >;
+    }>;
+    page: number;
+    limit: number;
+    total: number;
+  }>;
   updateScore(id: string, homeScore: number, awayScore: number): Promise<{ id: string }>;
   updateStatus(
     id: string,
     status: 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELED',
   ): Promise<{ id: string; status: 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELED' }>;
+  getById(
+    id: string,
+  ): Promise<{ id: string; status: 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELED' } | null>;
 }

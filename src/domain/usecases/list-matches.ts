@@ -6,8 +6,8 @@ export type ListMatchesParams = {
 };
 
 export interface ListMatches {
-  list(params: ListMatchesParams): Promise<
-    Array<{
+  list(params: ListMatchesParams): Promise<{
+    items: Array<{
       id: string;
       homeTeamId: string;
       awayTeamId: string;
@@ -15,6 +15,9 @@ export interface ListMatches {
       status: 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELED';
       homeScore: number;
       awayScore: number;
-    }>
-  >;
+    }>;
+    page: number;
+    limit: number;
+    total: number;
+  }>;
 }
