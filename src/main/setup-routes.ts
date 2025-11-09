@@ -3,6 +3,7 @@ import swaggerUi from 'swagger-ui-express';
 
 import { teamsRouter } from '../presentation/routes/teams-router.js';
 import { playersRouter } from '../presentation/routes/players-router.js';
+import { matchesRouter } from '../presentation/routes/matches-router.js';
 
 import { makeExchangeFirebaseTokenController } from './factories/make-exchange-firebase-token-controller.js';
 import { openapi } from './docs/openapi.js';
@@ -10,6 +11,7 @@ import { openapi } from './docs/openapi.js';
 export function setupRoutes(app: Express) {
   app.use('/api/teams', teamsRouter);
   app.use('/api/players', playersRouter);
+  app.use('/api/matches', matchesRouter);
   app.post('/api/auth/firebase/exchange', async (req, res) => {
     const controller = makeExchangeFirebaseTokenController();
     const response = await controller.handle({ body: req.body });

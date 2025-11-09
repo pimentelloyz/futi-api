@@ -1,0 +1,37 @@
+import { Router } from 'express';
+
+import { makeAddMatchController } from '../../main/factories/make-add-match-controller.js';
+import { makeListMatchesController } from '../../main/factories/make-list-matches-controller.js';
+import { makeUpdateMatchScoreController } from '../../main/factories/make-update-match-score-controller.js';
+import { makeUpdateMatchStatusController } from '../../main/factories/make-update-match-status-controller.js';
+import { jwtAuth } from '../middlewares/jwt-auth.js';
+
+export const matchesRouter = Router();
+
+matchesRouter.use(jwtAuth);
+
+matchesRouter.post('/', async (req, res) => {
+  const controller = makeAddMatchController();
+  const response = await controller.handle({ body: req.body });
+  res.status(response.statusCode).json(response.body);
+});
+
+matchesRouter.get('/', async (req, res) => {
+  const controller = makeListMatchesController();
+  const response = await controller.handle({
+    query: req.query as unknown as Record<string, unknown>,
+  });
+  res.status(response.statusCode).json(response.body);
+});
+
+matchesRouter.patch('/:id/score', async (req, res) => {
+  const controller = makeUpdateMatchScoreController();
+  const response = await controller.handle({ params: req.params, body: req.body });
+  res.status(response.statusCode).json(response.body);
+});
+
+matchesRouter.patch('/:id/status', async (req, res) => {
+  const controller = makeUpdateMatchStatusController();
+  const response = await controller.handle({ params: req.params, body: req.body });
+  res.status(response.statusCode).json(response.body);
+});

@@ -166,6 +166,164 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/matches': {
+      post: {
+        summary: 'Create a match',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  homeTeamId: { type: 'string' },
+                  awayTeamId: { type: 'string' },
+                  scheduledAt: { type: 'string', format: 'date-time' },
+                  status: {
+                    type: 'string',
+                    enum: ['SCHEDULED', 'IN_PROGRESS', 'FINISHED', 'CANCELED'],
+                  },
+                  homeScore: { type: 'integer', minimum: 0 },
+                  awayScore: { type: 'integer', minimum: 0 },
+                },
+                required: ['homeTeamId', 'awayTeamId', 'scheduledAt'],
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Created',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { id: { type: 'string' } },
+                },
+              },
+            },
+          },
+          '400': { description: 'Bad Request' },
+          '401': { description: 'Unauthorized' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+      get: {
+        summary: 'List matches',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'status',
+            in: 'query',
+            schema: { type: 'string', enum: ['SCHEDULED', 'IN_PROGRESS', 'FINISHED', 'CANCELED'] },
+          },
+          { name: 'teamId', in: 'query', schema: { type: 'string' } },
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date-time' } },
+        ],
+        responses: {
+          '200': {
+            description: 'List of matches',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      homeTeamId: { type: 'string' },
+                      awayTeamId: { type: 'string' },
+                      scheduledAt: { type: 'string', format: 'date-time' },
+                      status: { type: 'string' },
+                      homeScore: { type: 'integer' },
+                      awayScore: { type: 'integer' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
+    '/api/matches/{id}/score': {
+      patch: {
+        summary: 'Update match score',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  homeScore: { type: 'integer', minimum: 0 },
+                  awayScore: { type: 'integer', minimum: 0 },
+                },
+                required: ['homeScore', 'awayScore'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Score updated',
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { id: { type: 'string' } } },
+              },
+            },
+          },
+          '400': { description: 'Bad Request' },
+          '401': { description: 'Unauthorized' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+    },
+    '/api/matches/{id}/status': {
+      patch: {
+        summary: 'Update match status',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: {
+                    type: 'string',
+                    enum: ['SCHEDULED', 'IN_PROGRESS', 'FINISHED', 'CANCELED'],
+                  },
+                },
+                required: ['status'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Status updated',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { id: { type: 'string' }, status: { type: 'string' } },
+                },
+              },
+            },
+          },
+          '400': { description: 'Bad Request' },
+          '401': { description: 'Unauthorized' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+    },
   },
   components: {
     securitySchemes: {
