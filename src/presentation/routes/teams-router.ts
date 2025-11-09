@@ -1,12 +1,13 @@
 import { Router } from 'express';
 
 import { makeAddTeamController } from '../../main/factories/make-add-team-controller.js';
+import { jwtAuth } from '../middlewares/jwt-auth.js';
 // import { firebaseAuth } from '../middlewares/firebase-auth.js';
 
 export const teamsRouter = Router();
 
-// Para exigir autenticação, descomente a linha abaixo:
-// teamsRouter.use(firebaseAuth);
+// Proteger todas as rotas de teams com JWT interno
+teamsRouter.use(jwtAuth);
 
 teamsRouter.post('/', async (req, res) => {
   const controller = makeAddTeamController();

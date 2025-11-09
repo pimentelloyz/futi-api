@@ -55,6 +55,7 @@ export const openapi: OpenAPIObject = {
     '/api/teams': {
       post: {
         summary: 'Create a team',
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -89,6 +90,46 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/auth/firebase/exchange': {
+      post: {
+        summary: 'Exchange Firebase idToken for internal JWT',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { idToken: { type: 'string' } },
+                required: ['idToken'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Successful exchange',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { accessToken: { type: 'string' } },
+                },
+              },
+            },
+          },
+          '400': { description: 'Invalid request' },
+          '401': { description: 'Invalid token' },
+        },
+      },
+    },
   },
-  components: {},
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+    },
+  },
 };
