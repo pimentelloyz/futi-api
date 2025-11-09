@@ -1,12 +1,17 @@
 import admin from 'firebase-admin';
 
+import { getEnv } from '../../main/config/env.js';
+
 let app: admin.app.App | null = null;
 
 export function getFirebaseApp() {
   if (app) return app;
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  const {
+    FIREBASE_PROJECT_ID: projectId,
+    FIREBASE_CLIENT_EMAIL: clientEmail,
+    FIREBASE_PRIVATE_KEY,
+  } = getEnv();
+  let privateKey = FIREBASE_PRIVATE_KEY;
   if (privateKey && privateKey.startsWith('-----')) {
     // OK
   } else if (privateKey) {
@@ -14,9 +19,7 @@ export function getFirebaseApp() {
     privateKey = privateKey.replace(/\\n/g, '\n');
   }
 
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error('Missing Firebase Admin credentials in environment variables');
-  }
+  // All required env validated in getEnv(); no need for extra check here.
 
   app = admin.initializeApp({
     credential: admin.credential.cert({
