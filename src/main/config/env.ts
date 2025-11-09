@@ -9,6 +9,9 @@ const envSchema = z.object({
   FIREBASE_CLIENT_EMAIL: z.string().email(),
   FIREBASE_PRIVATE_KEY: z.string().min(20),
 
+  // JWT
+  JWT_SECRET: z.string().min(10),
+
   // Optional Firebase client vars (not required on backend)
   NEXT_PUBLIC_FIREBASE_API_KEY: z.string().optional(),
   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: z.string().optional(),
