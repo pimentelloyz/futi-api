@@ -90,6 +90,50 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/players': {
+      post: {
+        summary: 'Create a player',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  position: { type: 'string', nullable: true },
+                  number: { type: 'integer', nullable: true },
+                  isActive: { type: 'boolean' },
+                  teamIds: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Optional list of team IDs to associate',
+                  },
+                },
+                required: ['name'],
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Created',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { id: { type: 'string' } },
+                },
+              },
+            },
+          },
+          '400': { description: 'Bad Request' },
+          '401': { description: 'Unauthorized' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+    },
     '/api/auth/firebase/exchange': {
       post: {
         summary: 'Exchange Firebase idToken for internal JWT',
