@@ -17,4 +17,26 @@ export class PrismaPlayerRepository implements PlayerRepository {
     });
     return created;
   }
+
+  async addForUser(userId: string, data: AddPlayerInput): Promise<{ id: string }> {
+    const connectTeams = (data.teamIds ?? []).map((id) => ({ id }));
+    return prisma.player.create({
+      data: {
+        name: data.name,
+        position: data.position ?? null,
+        number: data.number ?? null,
+        isActive: data.isActive ?? true,
+        userId,
+        teams: connectTeams.length ? { connect: connectTeams } : undefined,
+      },
+      select: { id: true },
+    });
+  }
+
+  async findByUserId(userId: string) {
+    return prisma.player.findUnique({
+      where: { userId },
+      select: { id: true, name: true, position: true, number: true, isActive: true },
+    });
+  }
 }

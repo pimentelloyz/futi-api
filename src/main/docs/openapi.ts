@@ -134,6 +134,66 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/players/me': {
+      get: {
+        summary: 'Get my player profile',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Player profile',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' },
+                    position: { type: 'string', nullable: true },
+                    number: { type: 'integer', nullable: true },
+                    isActive: { type: 'boolean' },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Player not found' },
+        },
+      },
+      post: {
+        summary: 'Create my player if missing (idempotent)',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  position: { type: 'string', nullable: true },
+                  number: { type: 'integer', nullable: true },
+                  teamIds: { type: 'array', items: { type: 'string' } },
+                },
+                required: ['name'],
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Created or already existed',
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { id: { type: 'string' } } },
+              },
+            },
+          },
+          '400': { description: 'Bad Request' },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
     '/api/auth/firebase/exchange': {
       post: {
         summary: 'Exchange Firebase idToken for internal JWT',
