@@ -19,6 +19,7 @@ interface OpenAPIObject {
   servers?: OpenAPIServer[];
   paths: Record<string, OpenAPIPathItem>;
   components?: Record<string, unknown>;
+  tags?: Array<{ name: string; description?: string }>;
 }
 
 // OpenAPI 3.1 basic doc for futi-api
@@ -30,10 +31,20 @@ export const openapi: OpenAPIObject = {
     description: 'Football matches control API',
   },
   servers: [{ url: 'http://localhost:3000' }],
+  tags: [
+    { name: 'Health', description: 'Verificação de status da API' },
+    { name: 'Auth', description: 'Fluxos de autenticação e tokens' },
+    { name: 'Users', description: 'Gestão de usuários' },
+    { name: 'Players', description: 'Jogadores e perfil do jogador' },
+    { name: 'Teams', description: 'Times e composição' },
+    { name: 'Matches', description: 'Partidas e placares' },
+    { name: 'Access', description: 'Controle de acesso e roles' },
+  ],
   paths: {
     '/health': {
       get: {
         summary: 'Health check',
+        tags: ['Health'],
         responses: {
           '200': {
             description: 'OK',
@@ -55,6 +66,7 @@ export const openapi: OpenAPIObject = {
     '/api/teams': {
       post: {
         summary: 'Create a team',
+        tags: ['Teams'],
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -93,6 +105,7 @@ export const openapi: OpenAPIObject = {
     '/api/players': {
       post: {
         summary: 'Create a player',
+        tags: ['Players'],
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -137,6 +150,7 @@ export const openapi: OpenAPIObject = {
     '/api/players/me': {
       get: {
         summary: 'Get my player profile',
+        tags: ['Players'],
         security: [{ bearerAuth: [] }],
         responses: {
           '200': {
@@ -162,6 +176,9 @@ export const openapi: OpenAPIObject = {
       },
       post: {
         summary: 'Create my player if missing (idempotent)',
+        tags: ['Players'],
+        description:
+          'Cria o perfil de jogador para o usuário autenticado caso ainda não exista. Alternativamente, o perfil pode ser criado automaticamente via /api/auth/firebase/exchange com role=PLAYER ou via /api/users/init com role=PLAYER.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -197,8 +214,9 @@ export const openapi: OpenAPIObject = {
     '/api/auth/firebase/exchange': {
       post: {
         summary: 'Exchange Firebase idToken for internal JWT',
+        tags: ['Auth'],
         description:
-          'Retorna accessToken e refreshToken; também define cookie HttpOnly refreshToken. Opcionalmente aceita role=PLAYER para criar automaticamente perfil de jogador vinculado.',
+          'Troca idToken do Firebase por accessToken/refreshToken internos (cookie HttpOnly incluído). Se role=PLAYER for enviado, garante a criação automática do perfil de jogador vinculado ao usuário.',
         requestBody: {
           required: true,
           content: {
@@ -234,8 +252,9 @@ export const openapi: OpenAPIObject = {
     '/api/users/init': {
       post: {
         summary: 'Inicializa usuário a partir de Firebase idToken (sem emitir tokens)',
+        tags: ['Users'],
         description:
-          'Cria (ou assegura) um usuário com base no idToken do Firebase e opcionalmente cria perfil de jogador se role=PLAYER for enviado. Não gera access/refresh tokens; apenas retorna dados do usuário (e playerId se criado). Útil para fluxo inicial antes de autenticação completa.',
+          'Cria (ou assegura) um usuário com base no idToken do Firebase e, opcionalmente, cria o perfil de jogador se role=PLAYER for enviado. Não gera tokens; retorna os dados do usuário e playerId quando aplicável. Útil para provisionamento na primeira abertura do app.',
         requestBody: {
           required: true,
           content: {
@@ -281,6 +300,7 @@ export const openapi: OpenAPIObject = {
     '/api/auth/refresh': {
       post: {
         summary: 'Refresh access token (rotates refresh token)',
+        tags: ['Auth'],
         description:
           'Aceita refreshToken no body ou via cookie HttpOnly. Gera novo accessToken e substitui o refreshToken (rotação).',
         requestBody: {
@@ -315,6 +335,7 @@ export const openapi: OpenAPIObject = {
     '/api/auth/logout': {
       post: {
         summary: 'Logout (revoga refresh token atual)',
+        tags: ['Auth'],
         description:
           'Aceita refreshToken no body ou usa cookie HttpOnly para revogar o token atual.',
         responses: {
@@ -326,6 +347,7 @@ export const openapi: OpenAPIObject = {
     '/api/auth/logout-all': {
       post: {
         summary: 'Logout de todos dispositivos',
+        tags: ['Auth'],
         security: [{ bearerAuth: [] }],
         responses: {
           '200': { description: 'OK' },
@@ -336,6 +358,7 @@ export const openapi: OpenAPIObject = {
     '/api/access/grant': {
       post: {
         summary: 'Grant access role',
+        tags: ['Access'],
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -371,6 +394,7 @@ export const openapi: OpenAPIObject = {
     '/api/access/revoke': {
       post: {
         summary: 'Revoke access role',
+        tags: ['Access'],
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -399,6 +423,7 @@ export const openapi: OpenAPIObject = {
     '/api/access/me': {
       get: {
         summary: 'List my access memberships',
+        tags: ['Access'],
         security: [{ bearerAuth: [] }],
         responses: {
           '200': { description: 'OK' },
@@ -409,6 +434,7 @@ export const openapi: OpenAPIObject = {
     '/api/users/me': {
       get: {
         summary: 'Get my user profile',
+        tags: ['Users'],
         security: [{ bearerAuth: [] }],
         responses: {
           '200': {
@@ -436,6 +462,7 @@ export const openapi: OpenAPIObject = {
     '/api/matches': {
       post: {
         summary: 'Create a match',
+        tags: ['Matches'],
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -478,6 +505,7 @@ export const openapi: OpenAPIObject = {
       },
       get: {
         summary: 'List matches',
+        tags: ['Matches'],
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -529,6 +557,7 @@ export const openapi: OpenAPIObject = {
     '/api/matches/{id}/score': {
       patch: {
         summary: 'Update match score',
+        tags: ['Matches'],
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
         requestBody: {
@@ -564,6 +593,7 @@ export const openapi: OpenAPIObject = {
     '/api/matches/{id}/status': {
       patch: {
         summary: 'Update match status',
+        tags: ['Matches'],
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
         requestBody: {
