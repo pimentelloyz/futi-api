@@ -283,6 +283,79 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/access/grant': {
+      post: {
+        summary: 'Grant access role',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  userId: { type: 'string' },
+                  role: { type: 'string', enum: ['ADMIN', 'MANAGER', 'ASSISTANT', 'PLAYER'] },
+                  teamId: { type: 'string', nullable: true },
+                },
+                required: ['userId', 'role'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Granted',
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { membership: { type: 'object' } } },
+              },
+            },
+          },
+          '400': { description: 'Invalid request' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden (admin only)' },
+        },
+      },
+    },
+    '/api/access/revoke': {
+      post: {
+        summary: 'Revoke access role',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  userId: { type: 'string' },
+                  role: { type: 'string', enum: ['ADMIN', 'MANAGER', 'ASSISTANT', 'PLAYER'] },
+                  teamId: { type: 'string', nullable: true },
+                },
+                required: ['userId', 'role'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Revoked' },
+          '400': { description: 'Invalid request' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden (admin only)' },
+        },
+      },
+    },
+    '/api/access/me': {
+      get: {
+        summary: 'List my access memberships',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'OK' },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
     '/api/users/me': {
       get: {
         summary: 'Get my user profile',
