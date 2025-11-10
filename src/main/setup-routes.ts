@@ -11,6 +11,9 @@ import {
   LogoutAllController,
   LogoutController,
 } from '../presentation/controllers/logout-controller.js';
+import { GrantAccessController } from '../presentation/controllers/grant-access-controller.js';
+import { RevokeAccessController } from '../presentation/controllers/revoke-access-controller.js';
+import { ListMyAccessController } from '../presentation/controllers/list-my-access-controller.js';
 
 import { makeExchangeFirebaseTokenController } from './factories/make-exchange-firebase-token-controller.js';
 import { openapi } from './docs/openapi.js';
@@ -61,6 +64,34 @@ export function setupRoutes(app: Express) {
   });
   app.get('/api/users/me', jwtAuth, async (req, res) => {
     const controller = new GetMyUserController();
+    const request: import('../presentation/protocols/http.js').HttpRequest & {
+      user?: { id: string };
+    } = {};
+    request.user = req.user as { id: string } | undefined;
+    const response = await controller.handle(request);
+    res.status(response.statusCode).json(response.body);
+  });
+  // Access control routes
+  app.post('/api/access/grant', jwtAuth, async (req, res) => {
+    const controller = new GrantAccessController();
+    const request: import('../presentation/protocols/http.js').HttpRequest & {
+      user?: { id: string };
+    } = { body: req.body };
+    request.user = req.user as { id: string } | undefined;
+    const response = await controller.handle(request);
+    res.status(response.statusCode).json(response.body);
+  });
+  app.post('/api/access/revoke', jwtAuth, async (req, res) => {
+    const controller = new RevokeAccessController();
+    const request: import('../presentation/protocols/http.js').HttpRequest & {
+      user?: { id: string };
+    } = { body: req.body };
+    request.user = req.user as { id: string } | undefined;
+    const response = await controller.handle(request);
+    res.status(response.statusCode).json(response.body);
+  });
+  app.get('/api/access/me', jwtAuth, async (req, res) => {
+    const controller = new ListMyAccessController();
     const request: import('../presentation/protocols/http.js').HttpRequest & {
       user?: { id: string };
     } = {};
