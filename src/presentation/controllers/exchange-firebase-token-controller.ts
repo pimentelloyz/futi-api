@@ -72,6 +72,17 @@ export class ExchangeFirebaseTokenController implements Controller {
       if (message === 'firebase_verify_failed') {
         return { statusCode: 401, body: { error: 'invalid_token' } };
       }
+      // Log detalhado para diagnosticar problemas de configuração do Firebase
+      // Possíveis causas: variáveis de ambiente faltando, chave privada mal formatada, projectId incorreto
+      console.error('[firebase_exchange_error]', {
+        errorMessage: message,
+        stack: (e as Error).stack,
+        env: {
+          FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID?.slice(0, 20),
+          FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL?.slice(0, 30),
+          FIREBASE_PRIVATE_KEY_PRESENT: Boolean(process.env.FIREBASE_PRIVATE_KEY),
+        },
+      });
       return { statusCode: 500, body: { error: 'firebase_config_error' } };
     }
   }
