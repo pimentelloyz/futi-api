@@ -7,7 +7,7 @@ import { IssueTokensUseCase } from '../../data/usecases/issue-tokens.js';
 import { PrismaRefreshTokenRepository } from '../../infra/repositories/prisma-refresh-token-repository.js';
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
 
-const schema = z.object({ idToken: z.string().min(10) });
+const schema = z.object({ idToken: z.string().min(10), role: z.enum(['PLAYER']).optional() });
 
 export class ExchangeFirebaseTokenController implements Controller {
   async handle(request: HttpRequest): Promise<HttpResponse> {
@@ -20,13 +20,28 @@ export class ExchangeFirebaseTokenController implements Controller {
       if (!decoded || !decoded.uid) {
         return { statusCode: 401, body: { error: 'invalid_token' } };
       }
-      const repo = new PrismaUserRepository();
-      const ensureUser = new DbEnsureUser(repo);
+      const userRepo = new PrismaUserRepository();
+      const ensureUser = new DbEnsureUser(userRepo);
       const user = await ensureUser.ensure({
         firebaseUid: decoded.uid,
         email: decoded.email ?? null,
         displayName: decoded.name ?? null,
       });
+      // Se role=PLAYER, garantir criação do Player vinculado caso não exista
+      if (parsed.data.role === 'PLAYER') {
+        const { PrismaPlayerRepository } = await import(
+          '../../infra/repositories/prisma-player-repository.js'
+        );
+        const { DbEnsurePlayerForUser } = await import(
+          '../../data/usecases/db-ensure-player-for-user.js'
+        );
+        const playerRepo = new PrismaPlayerRepository();
+        const ensurePlayer = new DbEnsurePlayerForUser(playerRepo);
+        // Nome default: displayName/email/localpart; sem times inicialmente
+        const defaultName =
+          decoded.name || (decoded.email ? decoded.email.split('@')[0] : 'Player');
+        await ensurePlayer.ensure({ userId: user.id, name: defaultName });
+      }
       // Issue access + refresh
       const refreshRepo = new PrismaRefreshTokenRepository();
       const issueTokens = new IssueTokensUseCase(refreshRepo);
@@ -52,8 +67,12 @@ export class ExchangeFirebaseTokenController implements Controller {
         },
       };
       return resp;
-    } catch {
-      return { statusCode: 401, body: { error: 'invalid_token' } };
+    } catch (e: unknown) {
+      const message = (e as Error).message;
+      if (message === 'firebase_verify_failed') {
+        return { statusCode: 401, body: { error: 'invalid_token' } };
+      }
+      return { statusCode: 500, body: { error: 'firebase_config_error' } };
     }
   }
 }

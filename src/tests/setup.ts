@@ -41,6 +41,28 @@ const mem = {
     string,
     { id: string; firebaseUid: string; email?: string | null; displayName?: string | null }
   >(),
+  playersById: new Map<
+    string,
+    {
+      id: string;
+      userId: string | null;
+      name: string;
+      position: string | null;
+      number: number | null;
+      isActive: boolean;
+    }
+  >(),
+  playersByUserId: new Map<
+    string,
+    {
+      id: string;
+      userId: string | null;
+      name: string;
+      position: string | null;
+      number: number | null;
+      isActive: boolean;
+    }
+  >(),
   refresh: new Map<
     string,
     {
@@ -55,6 +77,7 @@ const mem = {
 };
 let userSeq = 0;
 let tokenSeq = 0;
+let playerSeq = 0;
 
 vi.mock('../infra/repositories/prisma-user-repository.js', async () => {
   class PrismaUserRepository {
@@ -120,6 +143,67 @@ vi.mock('../infra/prisma/client.js', async () => {
       findUnique: async ({ where }: { where: { id?: string; firebaseUid?: string } }) => {
         if (where.id) return mem.usersById.get(where.id) ?? null;
         if (where.firebaseUid) return mem.usersByUid.get(where.firebaseUid) ?? null;
+        return null;
+      },
+    },
+    player: {
+      create: async ({
+        data,
+        select,
+      }: {
+        data: {
+          name: string;
+          position?: string | null;
+          number?: number | null;
+          isActive?: boolean;
+          userId?: string;
+          teams?: unknown;
+        };
+        select?: { id: boolean };
+      }): Promise<
+        | { id: string }
+        | {
+            id: string;
+            userId: string | null;
+            name: string;
+            position: string | null;
+            number: number | null;
+            isActive: boolean;
+          }
+      > => {
+        const id = `player_${++playerSeq}`;
+        const rec: {
+          id: string;
+          userId: string | null;
+          name: string;
+          position: string | null;
+          number: number | null;
+          isActive: boolean;
+        } = {
+          id,
+          userId: data.userId ?? null,
+          name: data.name,
+          position: data.position ?? null,
+          number: data.number ?? null,
+          isActive: data.isActive ?? true,
+        };
+        mem.playersById.set(id, rec);
+        if (rec.userId) mem.playersByUserId.set(rec.userId, rec);
+        return select && select.id ? { id } : rec;
+      },
+      findUnique: async ({
+        where,
+      }: {
+        where: { userId?: string };
+      }): Promise<{
+        id: string;
+        userId: string | null;
+        name: string;
+        position: string | null;
+        number: number | null;
+        isActive: boolean;
+      } | null> => {
+        if (where.userId) return mem.playersByUserId.get(where.userId) ?? null;
         return null;
       },
     },

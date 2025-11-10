@@ -14,6 +14,7 @@ import {
 import { GrantAccessController } from '../presentation/controllers/grant-access-controller.js';
 import { RevokeAccessController } from '../presentation/controllers/revoke-access-controller.js';
 import { ListMyAccessController } from '../presentation/controllers/list-my-access-controller.js';
+import { InitUserController } from '../presentation/controllers/init-user-controller.js';
 
 import { makeExchangeFirebaseTokenController } from './factories/make-exchange-firebase-token-controller.js';
 import { openapi } from './docs/openapi.js';
@@ -60,6 +61,12 @@ export function setupRoutes(app: Express) {
       const { name, options } = response.clearCookie;
       res.clearCookie(name, options);
     }
+    res.status(response.statusCode).json(response.body);
+  });
+  // Init user (separate flow from exchange) - creates user (and optional player) using Firebase idToken
+  app.post('/api/users/init', async (req, res) => {
+    const controller = new InitUserController();
+    const response = await controller.handle({ body: req.body });
     res.status(response.statusCode).json(response.body);
   });
   app.get('/api/users/me', jwtAuth, async (req, res) => {

@@ -198,14 +198,17 @@ export const openapi: OpenAPIObject = {
       post: {
         summary: 'Exchange Firebase idToken for internal JWT',
         description:
-          'Retorna accessToken e refreshToken; também define cookie HttpOnly refreshToken.',
+          'Retorna accessToken e refreshToken; também define cookie HttpOnly refreshToken. Opcionalmente aceita role=PLAYER para criar automaticamente perfil de jogador vinculado.',
         requestBody: {
           required: true,
           content: {
             'application/json': {
               schema: {
                 type: 'object',
-                properties: { idToken: { type: 'string' } },
+                properties: {
+                  idToken: { type: 'string' },
+                  role: { type: 'string', enum: ['PLAYER'] },
+                },
                 required: ['idToken'],
               },
             },
@@ -219,6 +222,53 @@ export const openapi: OpenAPIObject = {
                 schema: {
                   type: 'object',
                   properties: { accessToken: { type: 'string' }, refreshToken: { type: 'string' } },
+                },
+              },
+            },
+          },
+          '400': { description: 'Invalid request' },
+          '401': { description: 'Invalid token' },
+        },
+      },
+    },
+    '/api/users/init': {
+      post: {
+        summary: 'Inicializa usuário a partir de Firebase idToken (sem emitir tokens)',
+        description:
+          'Cria (ou assegura) um usuário com base no idToken do Firebase e opcionalmente cria perfil de jogador se role=PLAYER for enviado. Não gera access/refresh tokens; apenas retorna dados do usuário (e playerId se criado). Útil para fluxo inicial antes de autenticação completa.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  idToken: { type: 'string' },
+                  role: {
+                    type: 'string',
+                    enum: ['PLAYER'],
+                    description: 'Se PLAYER, cria perfil de jogador vinculado.',
+                  },
+                },
+                required: ['idToken'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Usuário inicializado',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    firebaseUid: { type: 'string' },
+                    email: { type: 'string', nullable: true },
+                    displayName: { type: 'string', nullable: true },
+                    playerId: { type: 'string', nullable: true },
+                  },
                 },
               },
             },
