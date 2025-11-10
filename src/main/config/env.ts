@@ -20,6 +20,7 @@ const envSchema = z.object({
   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: z.string().optional(),
   NEXT_PUBLIC_FIREBASE_APP_ID: z.string().optional(),
   NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: z.string().optional(),
+  REFRESH_TOKEN_TTL_DAYS: z.string().optional(),
 });
 
 let cached: z.infer<typeof envSchema> | null = null;

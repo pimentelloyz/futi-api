@@ -197,6 +197,8 @@ export const openapi: OpenAPIObject = {
     '/api/auth/firebase/exchange': {
       post: {
         summary: 'Exchange Firebase idToken for internal JWT',
+        description:
+          'Retorna accessToken e refreshToken; também define cookie HttpOnly refreshToken.',
         requestBody: {
           required: true,
           content: {
@@ -216,13 +218,95 @@ export const openapi: OpenAPIObject = {
               'application/json': {
                 schema: {
                   type: 'object',
-                  properties: { accessToken: { type: 'string' } },
+                  properties: { accessToken: { type: 'string' }, refreshToken: { type: 'string' } },
                 },
               },
             },
           },
           '400': { description: 'Invalid request' },
           '401': { description: 'Invalid token' },
+        },
+      },
+    },
+    '/api/auth/refresh': {
+      post: {
+        summary: 'Refresh access token (rotates refresh token)',
+        description:
+          'Aceita refreshToken no body ou via cookie HttpOnly. Gera novo accessToken e substitui o refreshToken (rotação).',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { refreshToken: { type: 'string' } },
+                required: ['refreshToken'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Tokens refreshed',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { accessToken: { type: 'string' }, refreshToken: { type: 'string' } },
+                },
+              },
+            },
+          },
+          '400': { description: 'Invalid request' },
+          '401': { description: 'Invalid refresh token' },
+        },
+      },
+    },
+    '/api/auth/logout': {
+      post: {
+        summary: 'Logout (revoga refresh token atual)',
+        description:
+          'Aceita refreshToken no body ou usa cookie HttpOnly para revogar o token atual.',
+        responses: {
+          '200': { description: 'OK' },
+          '400': { description: 'Invalid request' },
+        },
+      },
+    },
+    '/api/auth/logout-all': {
+      post: {
+        summary: 'Logout de todos dispositivos',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'OK' },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
+    '/api/users/me': {
+      get: {
+        summary: 'Get my user profile',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'User profile',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    firebaseUid: { type: 'string' },
+                    email: { type: 'string', nullable: true },
+                    displayName: { type: 'string', nullable: true },
+                    playerId: { type: 'string', nullable: true },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'User not found' },
         },
       },
     },

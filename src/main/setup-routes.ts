@@ -4,6 +4,13 @@ import swaggerUi from 'swagger-ui-express';
 import { teamsRouter } from '../presentation/routes/teams-router.js';
 import { playersRouter } from '../presentation/routes/players-router.js';
 import { matchesRouter } from '../presentation/routes/matches-router.js';
+import { jwtAuth } from '../presentation/middlewares/jwt-auth.js';
+import { GetMyUserController } from '../presentation/controllers/get-my-user-controller.js';
+import { RefreshAccessTokenController } from '../presentation/controllers/refresh-access-token-controller.js';
+import {
+  LogoutAllController,
+  LogoutController,
+} from '../presentation/controllers/logout-controller.js';
 
 import { makeExchangeFirebaseTokenController } from './factories/make-exchange-firebase-token-controller.js';
 import { openapi } from './docs/openapi.js';
@@ -15,6 +22,50 @@ export function setupRoutes(app: Express) {
   app.post('/api/auth/firebase/exchange', async (req, res) => {
     const controller = makeExchangeFirebaseTokenController();
     const response = await controller.handle({ body: req.body });
+    if (response.setCookie) {
+      const { name, value, options } = response.setCookie;
+      res.cookie(name, value, options);
+    }
+    res.status(response.statusCode).json(response.body);
+  });
+  app.post('/api/auth/refresh', async (req, res) => {
+    const controller = new RefreshAccessTokenController();
+    const response = await controller.handle({ body: req.body, cookies: req.cookies });
+    if (response.setCookie) {
+      const { name, value, options } = response.setCookie;
+      res.cookie(name, value, options);
+    }
+    res.status(response.statusCode).json(response.body);
+  });
+  app.post('/api/auth/logout', async (req, res) => {
+    const controller = new LogoutController();
+    const response = await controller.handle({ body: req.body, cookies: req.cookies });
+    if (response.clearCookie) {
+      const { name, options } = response.clearCookie;
+      res.clearCookie(name, options);
+    }
+    res.status(response.statusCode).json(response.body);
+  });
+  app.post('/api/auth/logout-all', jwtAuth, async (req, res) => {
+    const controller = new LogoutAllController();
+    const request: import('../presentation/protocols/http.js').HttpRequest & {
+      user?: { id: string };
+    } = { cookies: req.cookies };
+    request.user = req.user as { id: string } | undefined;
+    const response = await controller.handle(request);
+    if (response.clearCookie) {
+      const { name, options } = response.clearCookie;
+      res.clearCookie(name, options);
+    }
+    res.status(response.statusCode).json(response.body);
+  });
+  app.get('/api/users/me', jwtAuth, async (req, res) => {
+    const controller = new GetMyUserController();
+    const request: import('../presentation/protocols/http.js').HttpRequest & {
+      user?: { id: string };
+    } = {};
+    request.user = req.user as { id: string } | undefined;
+    const response = await controller.handle(request);
     res.status(response.statusCode).json(response.body);
   });
   app.get('/health', (_req, res) =>
