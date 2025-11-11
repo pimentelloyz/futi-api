@@ -225,6 +225,65 @@ vi.mock('../infra/prisma/client.js', async () => {
         mem.teamsById.set(id, rec);
         return select && select.id ? { id } : rec;
       },
+      findUnique: async ({
+        where,
+        select,
+      }: {
+        where: { id: string };
+        select?: {
+          id?: boolean;
+          name?: boolean;
+          players?: {
+            select: {
+              id?: boolean;
+              name?: boolean;
+              position?: boolean;
+              number?: boolean;
+              isActive?: boolean;
+            };
+          };
+        };
+      }) => {
+        const team = mem.teamsById.get(where.id) ?? null;
+        if (!team) return null;
+        const out: {
+          id?: string;
+          name?: string;
+          players?: Array<{
+            id: string;
+            name: string;
+            position: string | null;
+            number: number | null;
+            isActive: boolean;
+          }>;
+        } = {};
+        if (select?.players) {
+          const items: Array<{
+            id: string;
+            name: string;
+            position: string | null;
+            number: number | null;
+            isActive: boolean;
+          }> = [];
+          for (const p of mem.playersById.values()) {
+            const tids = mem.playerTeamsByPlayerId.get(p.id) ?? [];
+            if (tids.includes(where.id)) {
+              items.push({
+                id: p.id,
+                name: p.name,
+                position: p.position,
+                number: p.number,
+                isActive: p.isActive,
+              });
+            }
+          }
+          out.players = items;
+        }
+        if (select?.id) out.id = team.id;
+        if (select?.name) out.name = team.name;
+        if (Object.keys(out).length > 0) return out;
+        return team;
+      },
     },
     user: {
       findUnique: async ({ where }: { where: { id?: string; firebaseUid?: string } }) => {

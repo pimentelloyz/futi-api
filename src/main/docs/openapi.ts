@@ -102,6 +102,130 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/teams/{id}/players': {
+      get: {
+        summary: 'Listar jogadores de um time por ID',
+        tags: ['Teams'],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+          {
+            name: 'page',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1 },
+            description: 'Página (default: 1)',
+          },
+          {
+            name: 'limit',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 100 },
+            description: 'Itens por página (default: 20, max: 100)',
+          },
+          {
+            name: 'sort',
+            in: 'query',
+            schema: { type: 'string', enum: ['name', 'number', 'position', 'isActive'] },
+            description: 'Campo de ordenação (default: name)',
+          },
+          {
+            name: 'order',
+            in: 'query',
+            schema: { type: 'string', enum: ['asc', 'desc'] },
+            description: 'Direção (default: asc)',
+          },
+          {
+            name: 'includeTeam',
+            in: 'query',
+            schema: { type: 'string', enum: ['true', 'false'] },
+            description: 'Incluir objeto do time na resposta (default: false)',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Lista paginada de jogadores',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          name: { type: 'string' },
+                          position: { type: 'string', nullable: true },
+                          number: { type: 'integer', nullable: true },
+                          isActive: { type: 'boolean' },
+                        },
+                        required: ['id', 'name', 'isActive'],
+                      },
+                    },
+                    page: { type: 'integer' },
+                    limit: { type: 'integer' },
+                    total: { type: 'integer' },
+                    team: {
+                      type: 'object',
+                      nullable: true,
+                      properties: { id: { type: 'string' }, name: { type: 'string' } },
+                    },
+                  },
+                  required: ['items', 'page', 'limit', 'total'],
+                },
+                example: {
+                  items: [
+                    {
+                      id: 'player_10',
+                      name: 'Jogador Exemplo',
+                      position: 'MID',
+                      number: 8,
+                      isActive: true,
+                    },
+                  ],
+                  page: 1,
+                  limit: 20,
+                  total: 2,
+                  team: { id: 'team_1', name: 'Team List Test' },
+                },
+              },
+            },
+          },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Time não encontrado' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+      post: {
+        summary: 'Vincular jogador a um time',
+        tags: ['Teams'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  playerId: { type: 'string' },
+                },
+                required: ['playerId'],
+              },
+              example: { playerId: 'player_123' },
+            },
+          },
+        },
+        responses: {
+          '204': { description: 'Vinculado com sucesso' },
+          '400': { description: 'Parâmetros inválidos' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Time ou jogador não encontrado' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+    },
     '/api/players': {
       post: {
         summary: 'Create a player',
