@@ -83,6 +83,18 @@ export const openapi: OpenAPIObject = {
                 required: ['name'],
               },
             },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  file: { type: 'string', format: 'binary' },
+                  description: { type: 'string' },
+                  isActive: { type: 'string', enum: ['true', 'false'] },
+                },
+                required: ['name'],
+              },
+            },
           },
         },
         responses: {
@@ -99,6 +111,105 @@ export const openapi: OpenAPIObject = {
           },
           '400': { description: 'Bad Request' },
           '500': { description: 'Internal Error' },
+        },
+      },
+    },
+    '/api/teams/{id}': {
+      patch: {
+        summary: 'Editar time (parcial)',
+        tags: ['Teams'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  icon: { type: 'string', nullable: true },
+                  description: { type: 'string', nullable: true },
+                  isActive: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Atualizado',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' },
+                    icon: { type: 'string', nullable: true },
+                    description: { type: 'string', nullable: true },
+                    isActive: { type: 'boolean' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Time não encontrado' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+      delete: {
+        summary: 'Soft delete do time (isActive=false)',
+        tags: ['Teams'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '204': { description: 'Removido (soft) com sucesso' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Time não encontrado' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+    },
+    '/api/teams/{id}/icon': {
+      post: {
+        summary: 'Upload de ícone do time (multipart/form-data)',
+        tags: ['Teams'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  file: { type: 'string', format: 'binary' },
+                },
+                required: ['file'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Upload concluído',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { iconUrl: { type: 'string' } },
+                },
+              },
+            },
+          },
+          '400': { description: 'Arquivo ausente' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Time não encontrado' },
+          '415': { description: 'Tipo de mídia não suportado' },
+          '500': { description: 'Erro interno' },
         },
       },
     },
@@ -1099,6 +1210,62 @@ export const openapi: OpenAPIObject = {
           '400': { description: 'Bad Request' },
           '401': { description: 'Unauthorized' },
           '500': { description: 'Internal Error' },
+        },
+      },
+    },
+    '/api/matches/{id}/lineup': {
+      post: {
+        summary: 'Definir lineup (home/away) de uma partida',
+        tags: ['Matches'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  home: { type: 'array', items: { type: 'string' } },
+                  away: { type: 'array', items: { type: 'string' } },
+                },
+                required: ['home', 'away'],
+              },
+            },
+          },
+        },
+        responses: {
+          '204': { description: 'Lineup definida' },
+          '400': { description: 'Body inválido' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Partida não encontrada' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+      get: {
+        summary: 'Obter lineup (home/away) de uma partida',
+        tags: ['Matches'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': {
+            description: 'Lineup atual',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    home: { type: 'array', items: { type: 'string' } },
+                    away: { type: 'array', items: { type: 'string' } },
+                  },
+                  required: ['home', 'away'],
+                },
+              },
+            },
+          },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Partida não encontrada' },
+          '500': { description: 'Erro interno' },
         },
       },
     },
