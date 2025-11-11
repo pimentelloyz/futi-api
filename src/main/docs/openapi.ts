@@ -229,6 +229,16 @@ export const openapi: OpenAPIObject = {
                 },
                 required: ['idToken'],
               },
+              examples: {
+                basic: {
+                  summary: 'Apenas troca de token',
+                  value: { idToken: 'eyJhbGciOiJSUzI1NiIsInR5cCI...' },
+                },
+                withPlayer: {
+                  summary: 'Troca + cria perfil de jogador',
+                  value: { idToken: 'eyJhbGciOiJSUzI1NiIsInR5cCI...', role: 'PLAYER' },
+                },
+              },
             },
           },
         },
@@ -241,11 +251,70 @@ export const openapi: OpenAPIObject = {
                   type: 'object',
                   properties: { accessToken: { type: 'string' }, refreshToken: { type: 'string' } },
                 },
+                examples: {
+                  success: {
+                    value: {
+                      accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                      refreshToken: 'futi_rt_9f0c4e9a-3a52-4f1c-a1ef-3f4b...',
+                    },
+                  },
+                },
               },
             },
           },
           '400': { description: 'Invalid request' },
           '401': { description: 'Invalid token' },
+        },
+      },
+    },
+    '/api/auth/firebase/exchange-admin': {
+      post: {
+        summary: 'Exchange (painel admin) - requer ADMIN/MANAGER/ASSISTANT',
+        tags: ['Auth'],
+        description:
+          'Troca idToken do Firebase por tokens internos APENAS se o usuário possuir uma role administrativa (ADMIN, MANAGER ou ASSISTANT). Não cria perfil de jogador.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  idToken: { type: 'string' },
+                },
+                required: ['idToken'],
+              },
+              examples: {
+                adminPanel: {
+                  value: { idToken: 'eyJhbGciOiJSUzI1NiIsInR5cCI...' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Successful exchange (admin panel)',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { accessToken: { type: 'string' }, refreshToken: { type: 'string' } },
+                },
+                examples: {
+                  success: {
+                    value: {
+                      accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                      refreshToken: 'futi_rt_3b6a1c1d-4d8b-4c35-99fc-2e88...',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Invalid request' },
+          '401': { description: 'Invalid token' },
+          '403': { description: 'Not authorized (requires admin/manager/assistant)' },
         },
       },
     },
@@ -312,6 +381,12 @@ export const openapi: OpenAPIObject = {
                 properties: { refreshToken: { type: 'string' } },
                 required: ['refreshToken'],
               },
+              examples: {
+                body: {
+                  summary: 'Via body',
+                  value: { refreshToken: 'futi_rt_9f0c4e9a-3a52-4f1c-a1ef-3f4b...' },
+                },
+              },
             },
           },
         },
@@ -323,6 +398,14 @@ export const openapi: OpenAPIObject = {
                 schema: {
                   type: 'object',
                   properties: { accessToken: { type: 'string' }, refreshToken: { type: 'string' } },
+                },
+                examples: {
+                  success: {
+                    value: {
+                      accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                      refreshToken: 'futi_rt_7aa1cdae-5b5f-4e9c-81f1-6a33...',
+                    },
+                  },
                 },
               },
             },
@@ -338,6 +421,22 @@ export const openapi: OpenAPIObject = {
         tags: ['Auth'],
         description:
           'Aceita refreshToken no body ou usa cookie HttpOnly para revogar o token atual.',
+        requestBody: {
+          required: false,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { refreshToken: { type: 'string' } },
+              },
+              examples: {
+                body: {
+                  value: { refreshToken: 'futi_rt_c8b2b6f1-2f4a-46f3-b2f7-1d22...' },
+                },
+              },
+            },
+          },
+        },
         responses: {
           '200': { description: 'OK' },
           '400': { description: 'Invalid request' },
