@@ -211,6 +211,127 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/players/me/skills': {
+      post: {
+        summary: 'Upsert my player skills (graph metrics)',
+        tags: ['Players'],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  preferredFoot: { type: 'string', enum: ['LEFT', 'RIGHT', 'BOTH'] },
+                  attack: { type: 'integer', minimum: 0, maximum: 100 },
+                  defense: { type: 'integer', minimum: 0, maximum: 100 },
+                  shooting: { type: 'integer', minimum: 0, maximum: 100 },
+                  ballControl: { type: 'integer', minimum: 0, maximum: 100 },
+                  pace: { type: 'integer', minimum: 0, maximum: 100 },
+                  passing: { type: 'integer', minimum: 0, maximum: 100 },
+                  dribbling: { type: 'integer', minimum: 0, maximum: 100 },
+                  physical: { type: 'integer', minimum: 0, maximum: 100 },
+                },
+                required: ['preferredFoot', 'attack', 'defense', 'shooting', 'ballControl', 'pace'],
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Created/Updated' },
+          '400': { description: 'Invalid' },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Player not found' },
+        },
+      },
+    },
+    '/api/players/me/graph': {
+      get: {
+        summary: 'Get my player graph data',
+        tags: ['Players'],
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Graph metrics',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    preferredFoot: { type: 'string' },
+                    attack: { type: 'integer' },
+                    defense: { type: 'integer' },
+                    shooting: { type: 'integer' },
+                    ballControl: { type: 'integer' },
+                    pace: { type: 'integer' },
+                    passing: { type: 'integer' },
+                    dribbling: { type: 'integer' },
+                    physical: { type: 'integer' },
+                    updatedAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Player/skills not found' },
+        },
+      },
+    },
+    '/api/players/me/team/overview': {
+      get: {
+        summary: 'Overview of my team: recent matches and next game',
+        tags: ['Players'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'teamId', in: 'query', schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'OK' },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Player not found / No team' },
+        },
+      },
+    },
+    '/api/matches/{id}/events': {
+      get: {
+        summary: 'List events for a match',
+        tags: ['Matches'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'OK' }, '401': { description: 'Unauthorized' } },
+      },
+      post: {
+        summary: 'Add an event to a match',
+        tags: ['Matches'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  type: {
+                    type: 'string',
+                    enum: ['GOAL', 'FOUL', 'YELLOW_CARD', 'RED_CARD', 'OWN_GOAL'],
+                  },
+                  minute: { type: 'integer' },
+                  teamId: { type: 'string' },
+                  playerId: { type: 'string' },
+                },
+                required: ['type'],
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Created' },
+          '400': { description: 'Invalid' },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
     '/api/auth/firebase/exchange': {
       post: {
         summary: 'Exchange Firebase idToken for internal JWT',

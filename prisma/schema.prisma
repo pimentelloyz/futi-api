@@ -20,6 +20,7 @@ model Team {
   homeMatches Match[]  @relation("HomeTeam")
   awayMatches Match[]  @relation("AwayTeam")
   accessMemberships AccessMembership[]
+  matchEvents MatchEvent[]
 }
 
 model User {
@@ -45,6 +46,8 @@ model Player {
   teams     Team[]
   user      User?    @relation(fields: [userId], references: [id])
   userId    String?  @unique
+  events    MatchEvent[]
+  skill     PlayerSkill?
 }
 
 enum MatchStatus {
@@ -61,11 +64,13 @@ model Match {
   awayTeam    Team         @relation("AwayTeam", fields: [awayTeamId], references: [id])
   awayTeamId  String
   scheduledAt DateTime
+  venue       String?      @db.VarChar(191)
   status      MatchStatus  @default(SCHEDULED)
   homeScore   Int          @default(0)
   awayScore   Int          @default(0)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+  events      MatchEvent[]
 }
 
 model RefreshToken {
@@ -97,4 +102,51 @@ model AccessMembership {
   @@index([userId, role])
   @@index([teamId])
   @@unique([userId, teamId])
+}
+
+enum MatchEventType {
+  GOAL
+  FOUL
+  YELLOW_CARD
+  RED_CARD
+  OWN_GOAL
+}
+
+model MatchEvent {
+  id        String         @id @default(uuid())
+  match     Match          @relation(fields: [matchId], references: [id])
+  matchId   String
+  team      Team?          @relation(fields: [teamId], references: [id])
+  teamId    String?
+  player    Player?        @relation(fields: [playerId], references: [id])
+  playerId  String?
+  minute    Int?
+  type      MatchEventType
+  createdAt DateTime       @default(now())
+
+  @@index([matchId])
+  @@index([playerId])
+}
+
+enum PreferredFoot {
+  LEFT
+  RIGHT
+  BOTH
+}
+
+model PlayerSkill {
+  id           String        @id @default(uuid())
+  player       Player        @relation(fields: [playerId], references: [id])
+  playerId     String        @unique
+  preferredFoot PreferredFoot
+  attack       Int           @default(50)
+  defense      Int           @default(50)
+  shooting     Int           @default(50)
+  ballControl  Int           @default(50)
+  pace         Int           @default(50)
+  passing      Int           @default(50)
+  dribbling    Int           @default(50)
+  physical     Int           @default(50)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }

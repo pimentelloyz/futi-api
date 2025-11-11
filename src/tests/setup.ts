@@ -74,10 +74,29 @@ const mem = {
       createdAt: Date;
     }
   >(),
+  playerSkillsByPlayerId: new Map<
+    string,
+    {
+      id: string;
+      playerId: string;
+      preferredFoot: 'LEFT' | 'RIGHT' | 'BOTH';
+      attack: number;
+      defense: number;
+      shooting: number;
+      ballControl: number;
+      pace: number;
+      passing: number;
+      dribbling: number;
+      physical: number;
+      createdAt: Date;
+      updatedAt: Date;
+    }
+  >(),
 };
 let userSeq = 0;
 let tokenSeq = 0;
 let playerSeq = 0;
+let skillSeq = 0;
 
 vi.mock('../infra/repositories/prisma-user-repository.js', async () => {
   class PrismaUserRepository {
@@ -205,6 +224,72 @@ vi.mock('../infra/prisma/client.js', async () => {
       } | null> => {
         if (where.userId) return mem.playersByUserId.get(where.userId) ?? null;
         return null;
+      },
+    },
+    playerSkill: {
+      upsert: async ({
+        where,
+        create,
+        update,
+      }: {
+        where: { playerId: string };
+        create: {
+          playerId: string;
+          preferredFoot: 'LEFT' | 'RIGHT' | 'BOTH';
+          attack: number;
+          defense: number;
+          shooting: number;
+          ballControl: number;
+          pace: number;
+          passing: number;
+          dribbling: number;
+          physical: number;
+        };
+        update: {
+          preferredFoot: 'LEFT' | 'RIGHT' | 'BOTH';
+          attack: number;
+          defense: number;
+          shooting: number;
+          ballControl: number;
+          pace: number;
+          passing: number;
+          dribbling: number;
+          physical: number;
+        };
+      }) => {
+        const existing = mem.playerSkillsByPlayerId.get(where.playerId);
+        const now = new Date();
+        if (existing) {
+          const rec = {
+            ...existing,
+            ...update,
+            updatedAt: now,
+          };
+          mem.playerSkillsByPlayerId.set(where.playerId, rec);
+          return rec;
+        } else {
+          const id = `skill_${++skillSeq}`;
+          const rec = {
+            id,
+            playerId: create.playerId,
+            preferredFoot: create.preferredFoot,
+            attack: create.attack,
+            defense: create.defense,
+            shooting: create.shooting,
+            ballControl: create.ballControl,
+            pace: create.pace,
+            passing: create.passing,
+            dribbling: create.dribbling,
+            physical: create.physical,
+            createdAt: now,
+            updatedAt: now,
+          };
+          mem.playerSkillsByPlayerId.set(where.playerId, rec);
+          return rec;
+        }
+      },
+      findUnique: async ({ where }: { where: { playerId: string } }) => {
+        return mem.playerSkillsByPlayerId.get(where.playerId) ?? null;
       },
     },
   };
