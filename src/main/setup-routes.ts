@@ -4,6 +4,7 @@ import swaggerUi from 'swagger-ui-express';
 import { teamsRouter } from '../presentation/routes/teams-router.js';
 import { playersRouter } from '../presentation/routes/players-router.js';
 import { matchesRouter } from '../presentation/routes/matches-router.js';
+import { evaluationsRouter } from '../presentation/routes/evaluations-router.js';
 import { usersRouter } from '../presentation/routes/users-router.js';
 import { authRouter } from '../presentation/routes/auth-router.js';
 import { accessRouter } from '../presentation/routes/access-router.js';
@@ -14,6 +15,7 @@ export function setupRoutes(app: Express) {
   app.use('/api/teams', teamsRouter);
   app.use('/api/players', playersRouter);
   app.use('/api/matches', matchesRouter);
+  app.use('/api/evaluations', evaluationsRouter);
   app.use('/api/users', usersRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/access', accessRouter);

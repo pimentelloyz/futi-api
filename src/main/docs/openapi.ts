@@ -1102,6 +1102,83 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/evaluations/pending': {
+      get: {
+        summary: 'List pending player evaluation assignments for current player',
+        tags: ['Matches'],
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'List of pending assignments',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          matchId: { type: 'string' },
+                          targetPlayerId: { type: 'string' },
+                          targetName: { type: 'string', nullable: true },
+                          createdAt: { type: 'string', format: 'date-time' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Player not found' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+    },
+    '/api/evaluations/{assignmentId}': {
+      post: {
+        summary: 'Submit evaluation for an assignment',
+        tags: ['Matches'],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'assignmentId', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  rating: { type: 'integer', minimum: 0, maximum: 10 },
+                  comment: { type: 'string', nullable: true },
+                },
+                required: ['rating'],
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Evaluation submitted',
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { id: { type: 'string' } } },
+              },
+            },
+          },
+          '400': { description: 'Invalid request / already completed' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden (not evaluator)' },
+          '404': { description: 'Assignment or player not found' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+    },
   },
   components: {
     securitySchemes: {
