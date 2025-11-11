@@ -1,4 +1,5 @@
 import admin from 'firebase-admin';
+import 'firebase-admin/storage';
 
 import { getEnv } from '../../main/config/env.js';
 
@@ -10,6 +11,7 @@ export function getFirebaseApp() {
     FIREBASE_PROJECT_ID: projectId,
     FIREBASE_CLIENT_EMAIL: clientEmail,
     FIREBASE_PRIVATE_KEY,
+    FIREBASE_STORAGE_BUCKET,
   } = getEnv();
   let privateKey = FIREBASE_PRIVATE_KEY;
   if (privateKey && privateKey.startsWith('-----')) {
@@ -27,6 +29,7 @@ export function getFirebaseApp() {
       clientEmail,
       privateKey,
     } as admin.ServiceAccount),
+    storageBucket: FIREBASE_STORAGE_BUCKET || `${projectId}.appspot.com`,
   });
   return app;
 }
@@ -44,4 +47,9 @@ export async function sendNotification(token: string, title: string, body: strin
     notification: { title, body },
   };
   return firebase.messaging().send(message);
+}
+
+export function getDefaultBucket() {
+  const firebase = getFirebaseApp();
+  return firebase.storage().bucket();
 }

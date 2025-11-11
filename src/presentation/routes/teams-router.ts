@@ -1,4 +1,7 @@
+import path from 'node:path';
+
 import { Router } from 'express';
+import multer from 'multer';
 
 import { makeAddTeamController } from '../../main/factories/make-add-team-controller.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
@@ -9,10 +12,69 @@ export const teamsRouter = Router();
 // Proteger todas as rotas de teams com JWT interno
 teamsRouter.use(jwtAuth);
 
+// Multer para uploads em memória (até 2MB por arquivo)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+});
+
 teamsRouter.post('/', async (req, res) => {
   const controller = makeAddTeamController();
   const response = await controller.handle({ body: req.body });
   res.status(response.statusCode).json(response.body);
+});
+
+// Upload de ícone do time (multipart/form-data: field "file")
+teamsRouter.post('/:id/icon', upload.single('file'), async (req, res) => {
+  const teamId = req.params.id;
+  if (!teamId) return res.status(400).json({ error: 'invalid_team_id' });
+  try {
+    const prisma = (await import('../../infra/prisma/client.js')).prisma;
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+      select: { id: true, isActive: true },
+    });
+    if (!team || team.isActive === false) return res.status(404).json({ error: 'team_not_found' });
+
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'file_required' });
+    const allowed = new Set(['image/png', 'image/jpeg', 'image/webp']);
+    if (!allowed.has(file.mimetype))
+      return res.status(415).json({ error: 'unsupported_media_type' });
+
+    const ext =
+      file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
+    // Evitar cache agressivo no cliente: incluir hash simples pelo mtime
+    const stamp = Date.now();
+    const objectPath = path.posix.join('teams', teamId, `icon_${stamp}.${ext}`);
+
+    const { getDefaultBucket } = await import('../../infra/firebase/admin.js');
+    const bucket = getDefaultBucket();
+    const gcsFile = bucket.file(objectPath);
+
+    // Tipos do @google-cloud/storage não expõem 'public' diretamente em SaveOptions.
+    // Para manter type-safety, fazemos duas chamadas: save + tornar público.
+    await gcsFile.save(file.buffer, {
+      contentType: file.mimetype,
+      resumable: false,
+      metadata: { cacheControl: 'public,max-age=3600' },
+    });
+    // Tornar o objeto público (se o bucket permitir)
+    try {
+      await gcsFile.makePublic();
+    } catch {
+      // Se o bucket estiver com Uniform Bucket-Level Access, ignoramos e seguimos com URL autenticada caso necessário
+    }
+
+    // URL pública
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${objectPath}`;
+
+    await prisma.team.update({ where: { id: teamId }, data: { icon: publicUrl } });
+    return res.status(200).json({ iconUrl: publicUrl });
+  } catch (e) {
+    console.error('[team_icon_upload_error]', (e as Error).message);
+    return res.status(500).json({ error: 'internal_error' });
+  }
 });
 
 // Editar um time (parcial)
