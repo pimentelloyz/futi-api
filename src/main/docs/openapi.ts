@@ -71,6 +71,30 @@ export const openapi: OpenAPIObject = {
         requestBody: {
           required: true,
           content: {
+            // Coloca multipart primeiro para ser o default no Swagger UI
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  file: { type: 'string', format: 'binary' },
+                  description: { type: 'string' },
+                  isActive: { type: 'string', enum: ['true', 'false'] },
+                },
+                required: ['name'],
+              },
+              examples: {
+                upload: {
+                  summary: 'Criar time com upload de ícone',
+                  value: {
+                    name: 'Meu Time',
+                    description: 'Time de testes',
+                    isActive: 'true',
+                    // file é selecionado na UI do Swagger
+                  },
+                },
+              },
+            },
             'application/json': {
               schema: {
                 type: 'object',
@@ -82,17 +106,11 @@ export const openapi: OpenAPIObject = {
                 },
                 required: ['name'],
               },
-            },
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string' },
-                  file: { type: 'string', format: 'binary' },
-                  description: { type: 'string' },
-                  isActive: { type: 'string', enum: ['true', 'false'] },
-                },
-                required: ['name'],
+              example: {
+                name: 'Time JSON',
+                description: 'Sem upload, apenas URL',
+                icon: 'https://example.com/icon.png',
+                isActive: true,
               },
             },
           },
