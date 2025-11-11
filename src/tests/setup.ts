@@ -92,10 +92,44 @@ const mem = {
       updatedAt: Date;
     }
   >(),
+  teamsById: new Map<
+    string,
+    { id: string; name: string; icon: string | null; description: string | null; isActive: boolean }
+  >(),
+  matchesById: new Map<
+    string,
+    {
+      id: string;
+      homeTeamId: string;
+      awayTeamId: string;
+      scheduledAt: Date;
+      status: 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELED';
+      homeScore: number;
+      awayScore: number;
+      createdAt: Date;
+      updatedAt: Date;
+    }
+  >(),
+  matchEventsByMatchId: new Map<
+    string,
+    Array<{
+      id: string;
+      matchId: string;
+      teamId: string | null;
+      playerId: string | null;
+      minute: number | null;
+      type: 'GOAL' | 'FOUL' | 'YELLOW_CARD' | 'RED_CARD' | 'OWN_GOAL';
+      createdAt: Date;
+    }>
+  >(),
+  playerTeamsByPlayerId: new Map<string, string[]>(),
 };
 let userSeq = 0;
 let tokenSeq = 0;
 let playerSeq = 0;
+let teamSeq = 0;
+let matchSeq = 0;
+let eventSeq = 0;
 let skillSeq = 0;
 
 vi.mock('../infra/repositories/prisma-user-repository.js', async () => {
@@ -158,6 +192,40 @@ vi.mock('../infra/repositories/prisma-refresh-token-repository.js', async () => 
 
 vi.mock('../infra/prisma/client.js', async () => {
   const prisma = {
+    team: {
+      create: async ({
+        data,
+        select,
+      }: {
+        data: {
+          name: string;
+          icon?: string | null;
+          description?: string | null;
+          isActive?: boolean;
+        };
+        select?: { id: boolean };
+      }): Promise<
+        | { id: string }
+        | {
+            id: string;
+            name: string;
+            icon: string | null;
+            description: string | null;
+            isActive: boolean;
+          }
+      > => {
+        const id = `team_${++teamSeq}`;
+        const rec = {
+          id,
+          name: data.name,
+          icon: data.icon ?? null,
+          description: data.description ?? null,
+          isActive: data.isActive ?? true,
+        };
+        mem.teamsById.set(id, rec);
+        return select && select.id ? { id } : rec;
+      },
+    },
     user: {
       findUnique: async ({ where }: { where: { id?: string; firebaseUid?: string } }) => {
         if (where.id) return mem.usersById.get(where.id) ?? null;
@@ -212,18 +280,301 @@ vi.mock('../infra/prisma/client.js', async () => {
       },
       findUnique: async ({
         where,
+        select,
       }: {
         where: { userId?: string };
-      }): Promise<{
-        id: string;
-        userId: string | null;
-        name: string;
-        position: string | null;
-        number: number | null;
-        isActive: boolean;
-      } | null> => {
-        if (where.userId) return mem.playersByUserId.get(where.userId) ?? null;
+        select?: { id?: boolean; teams?: { select: { id: boolean; name: boolean } } };
+      }): Promise<
+        | {
+            id: string;
+            userId: string | null;
+            name: string;
+            position: string | null;
+            number: number | null;
+            isActive: boolean;
+          }
+        | { id: string; teams: Array<{ id: string; name: string }> }
+        | null
+      > => {
+        if (where.userId) {
+          const rec = mem.playersByUserId.get(where.userId) ?? null;
+          if (!rec) return null;
+          if (select?.teams) {
+            const teamIds = mem.playerTeamsByPlayerId.get(rec.id) ?? [];
+            const teams: Array<{ id: string; name: string }> = [];
+            for (const tid of teamIds) {
+              const t = mem.teamsById.get(tid);
+              if (t) teams.push({ id: t.id, name: t.name });
+            }
+            return { id: rec.id, teams } as {
+              id: string;
+              teams: Array<{ id: string; name: string }>;
+            };
+          }
+          return rec;
+        }
         return null;
+      },
+      update: async ({
+        where,
+        data,
+      }: {
+        where: { id: string };
+        data: { teams?: { connect?: Array<{ id: string }> } };
+      }) => {
+        if (data.teams?.connect?.length) {
+          const current = mem.playerTeamsByPlayerId.get(where.id) ?? [];
+          const next = Array.from(new Set([...current, ...data.teams.connect.map((c) => c.id)]));
+          mem.playerTeamsByPlayerId.set(where.id, next);
+        }
+        const rec = mem.playersById.get(where.id);
+        return rec ?? null;
+      },
+    },
+    match: {
+      create: async ({
+        data,
+        select,
+      }: {
+        data: {
+          homeTeamId: string;
+          awayTeamId: string;
+          scheduledAt: Date;
+          status?: 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELED';
+          homeScore?: number;
+          awayScore?: number;
+        };
+        select?: { id: boolean };
+      }): Promise<
+        | { id: string }
+        | {
+            id: string;
+            homeTeamId: string;
+            awayTeamId: string;
+            scheduledAt: Date;
+            status: 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELED';
+            homeScore: number;
+            awayScore: number;
+            createdAt: Date;
+            updatedAt: Date;
+          }
+      > => {
+        const id = `match_${++matchSeq}`;
+        const now = new Date();
+        const rec = {
+          id,
+          homeTeamId: data.homeTeamId,
+          awayTeamId: data.awayTeamId,
+          scheduledAt: data.scheduledAt,
+          status: data.status ?? 'SCHEDULED',
+          homeScore: data.homeScore ?? 0,
+          awayScore: data.awayScore ?? 0,
+          createdAt: now,
+          updatedAt: now,
+        };
+        mem.matchesById.set(id, rec);
+        return select && select.id ? { id } : rec;
+      },
+      count: async ({
+        where,
+      }: {
+        where: {
+          status?: 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELED';
+          OR?: Array<{ homeTeamId?: string; awayTeamId?: string }>;
+          scheduledAt?: { gte?: Date; lte?: Date };
+        };
+      }) => {
+        const list = Array.from(mem.matchesById.values()).filter((m) => {
+          if (where?.status && m.status !== where.status) return false;
+          if (where?.OR) {
+            const ok = where.OR.some(
+              (cond) => m.homeTeamId === cond.homeTeamId || m.awayTeamId === cond.awayTeamId,
+            );
+            if (!ok) return false;
+          }
+          const schedCnt = where?.scheduledAt;
+          if (schedCnt) {
+            const gte = schedCnt.gte ? m.scheduledAt >= schedCnt.gte : true;
+            const lte = schedCnt.lte ? m.scheduledAt <= schedCnt.lte : true;
+            if (!(gte && lte)) return false;
+          }
+          return true;
+        });
+        return list.length;
+      },
+      findMany: async ({
+        where,
+        orderBy,
+        skip = 0,
+        take = 9999,
+        select,
+      }: {
+        where?: {
+          status?: 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELED';
+          OR?: Array<{ homeTeamId?: string; awayTeamId?: string }>;
+          scheduledAt?: { gte?: Date; lte?: Date };
+        };
+        orderBy?: { scheduledAt?: 'asc' | 'desc' };
+        skip?: number;
+        take?: number;
+        select?: {
+          id?: boolean;
+          homeTeamId?: boolean;
+          awayTeamId?: boolean;
+          scheduledAt?: boolean;
+          status?: boolean;
+          homeScore?: boolean;
+          awayScore?: boolean;
+          venue?: boolean;
+        };
+      }) => {
+        let list = Array.from(mem.matchesById.values());
+        if (where?.status) list = list.filter((m) => m.status === where.status);
+        if (where?.OR)
+          list = list.filter((m) =>
+            where.OR!.some(
+              (cond) => m.homeTeamId === cond.homeTeamId || m.awayTeamId === cond.awayTeamId,
+            ),
+          );
+        const schedMany = where?.scheduledAt;
+        if (schedMany) {
+          const { gte, lte } = schedMany;
+          if (gte) list = list.filter((m) => m.scheduledAt >= gte);
+          if (lte) list = list.filter((m) => m.scheduledAt <= lte);
+        }
+        if (orderBy?.scheduledAt === 'asc')
+          list.sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
+        if (orderBy?.scheduledAt === 'desc')
+          list.sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime());
+        const paged = list.slice(skip, skip + take);
+        if (select) {
+          return paged.map((m) => ({
+            id: m.id,
+            homeTeamId: m.homeTeamId,
+            awayTeamId: m.awayTeamId,
+            scheduledAt: m.scheduledAt,
+            status: m.status,
+            homeScore: m.homeScore,
+            awayScore: m.awayScore,
+            venue: null,
+          }));
+        }
+        return paged;
+      },
+      findFirst: async ({
+        where,
+        orderBy,
+        select,
+      }: {
+        where?: {
+          status?: 'SCHEDULED';
+          scheduledAt?: { gte?: Date };
+          OR?: Array<{ homeTeamId?: string; awayTeamId?: string }>;
+        };
+        orderBy?: { scheduledAt?: 'asc' | 'desc' };
+        select?: {
+          id?: boolean;
+          scheduledAt?: boolean;
+          venue?: boolean;
+          homeTeamId?: boolean;
+          awayTeamId?: boolean;
+        };
+      }) => {
+        let list = Array.from(mem.matchesById.values());
+        if (where?.status) list = list.filter((m) => m.status === where.status);
+        const sched = where?.scheduledAt;
+        if (sched?.gte) list = list.filter((m) => m.scheduledAt >= sched.gte!);
+        if (where?.OR)
+          list = list.filter((m) =>
+            where.OR!.some(
+              (cond) => m.homeTeamId === cond.homeTeamId || m.awayTeamId === cond.awayTeamId,
+            ),
+          );
+        if (orderBy?.scheduledAt === 'asc')
+          list.sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
+        if (orderBy?.scheduledAt === 'desc')
+          list.sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime());
+        const rec = list[0] ?? null;
+        if (!rec) return null;
+        if (select)
+          return {
+            id: rec.id,
+            scheduledAt: rec.scheduledAt,
+            venue: null as string | null,
+            homeTeamId: rec.homeTeamId,
+            awayTeamId: rec.awayTeamId,
+          };
+        return rec;
+      },
+      findUnique: async ({
+        where,
+        select,
+      }: {
+        where: { id: string };
+        select?: { id?: boolean; status?: boolean };
+      }) => {
+        const rec = mem.matchesById.get(where.id) ?? null;
+        if (!rec) return null;
+        if (select) return { id: rec.id, status: rec.status };
+        return rec;
+      },
+      update: async ({
+        where,
+        data,
+        select,
+      }: {
+        where: { id: string };
+        data: {
+          homeScore?: number;
+          awayScore?: number;
+          status?: 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELED';
+        };
+        select?: { id?: boolean; status?: boolean };
+      }) => {
+        const rec = mem.matchesById.get(where.id);
+        if (!rec) throw new Error('not_found');
+        if (typeof data.homeScore === 'number') rec.homeScore = data.homeScore;
+        if (typeof data.awayScore === 'number') rec.awayScore = data.awayScore;
+        if (typeof data.status === 'string') rec.status = data.status;
+        rec.updatedAt = new Date();
+        mem.matchesById.set(where.id, rec);
+        if (select) return { id: rec.id, status: rec.status };
+        return rec;
+      },
+    },
+    matchEvent: {
+      create: async ({
+        data,
+        select,
+      }: {
+        data: {
+          matchId: string;
+          teamId?: string | null;
+          playerId?: string | null;
+          minute?: number | null;
+          type: 'GOAL' | 'FOUL' | 'YELLOW_CARD' | 'RED_CARD' | 'OWN_GOAL';
+        };
+        select?: { id: boolean };
+      }) => {
+        const id = `event_${++eventSeq}`;
+        const rec = {
+          id,
+          matchId: data.matchId,
+          teamId: data.teamId ?? null,
+          playerId: data.playerId ?? null,
+          minute: data.minute ?? null,
+          type: data.type,
+          createdAt: new Date(),
+        };
+        const arr = mem.matchEventsByMatchId.get(data.matchId) ?? [];
+        arr.push(rec);
+        mem.matchEventsByMatchId.set(data.matchId, arr);
+        return select && select.id ? { id } : rec;
+      },
+      findMany: async ({ where }: { where: { matchId: string } }) => {
+        const arr = mem.matchEventsByMatchId.get(where.matchId) ?? [];
+        const sorted = [...arr].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+        return sorted;
       },
     },
     playerSkill: {

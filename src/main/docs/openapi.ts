@@ -286,7 +286,76 @@ export const openapi: OpenAPIObject = {
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'teamId', in: 'query', schema: { type: 'string' } }],
         responses: {
-          '200': { description: 'OK' },
+          '200': {
+            description: 'Team overview payload',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    team: {
+                      type: 'object',
+                      properties: { id: { type: 'string' }, name: { type: 'string' } },
+                    },
+                    recentMatches: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          scheduledAt: { type: 'string', format: 'date-time' },
+                          status: { type: 'string' },
+                          venue: { type: 'string', nullable: true },
+                          homeTeamId: { type: 'string' },
+                          awayTeamId: { type: 'string' },
+                          homeScore: { type: 'integer' },
+                          awayScore: { type: 'integer' },
+                        },
+                      },
+                    },
+                    next_game: {
+                      oneOf: [
+                        {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'string' },
+                            scheduledAt: { type: 'string', format: 'date-time' },
+                            venue: { type: 'string', nullable: true },
+                            homeTeamId: { type: 'string' },
+                            awayTeamId: { type: 'string' },
+                          },
+                        },
+                        { type: 'null' },
+                      ],
+                    },
+                  },
+                  required: ['team', 'recentMatches', 'next_game'],
+                },
+                example: {
+                  team: { id: 'team_1', name: 'Overview Team' },
+                  recentMatches: [
+                    {
+                      id: 'match_10',
+                      scheduledAt: '2025-11-10T12:00:00.000Z',
+                      status: 'FINISHED',
+                      venue: null,
+                      homeTeamId: 'team_1',
+                      awayTeamId: 'team_2',
+                      homeScore: 2,
+                      awayScore: 1,
+                    },
+                  ],
+                  next_game: {
+                    id: 'match_12',
+                    scheduledAt: '2025-11-13T12:00:00.000Z',
+                    venue: null,
+                    homeTeamId: 'team_1',
+                    awayTeamId: 'team_2',
+                  },
+                },
+              },
+            },
+          },
           '401': { description: 'Unauthorized' },
           '404': { description: 'Player not found / No team' },
         },
@@ -298,7 +367,53 @@ export const openapi: OpenAPIObject = {
         tags: ['Matches'],
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { '200': { description: 'OK' }, '401': { description: 'Unauthorized' } },
+        responses: {
+          '200': {
+            description: 'List of events',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          matchId: { type: 'string' },
+                          teamId: { type: 'string', nullable: true },
+                          playerId: { type: 'string', nullable: true },
+                          minute: { type: 'integer', nullable: true },
+                          type: {
+                            type: 'string',
+                            enum: ['GOAL', 'FOUL', 'YELLOW_CARD', 'RED_CARD', 'OWN_GOAL'],
+                          },
+                          createdAt: { type: 'string', format: 'date-time' },
+                        },
+                      },
+                    },
+                  },
+                  required: ['items'],
+                },
+                example: {
+                  items: [
+                    {
+                      id: 'event_1',
+                      matchId: 'match_1',
+                      teamId: 'team_1',
+                      playerId: null,
+                      minute: 10,
+                      type: 'GOAL',
+                      createdAt: '2025-11-11T12:00:00.000Z',
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized' },
+        },
       },
       post: {
         summary: 'Add an event to a match',
@@ -326,7 +441,19 @@ export const openapi: OpenAPIObject = {
           },
         },
         responses: {
-          '201': { description: 'Created' },
+          '201': {
+            description: 'Event created',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { id: { type: 'string' } },
+                  required: ['id'],
+                },
+                example: { id: 'event_123' },
+              },
+            },
+          },
           '400': { description: 'Invalid' },
           '401': { description: 'Unauthorized' },
         },
