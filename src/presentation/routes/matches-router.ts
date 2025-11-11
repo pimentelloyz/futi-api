@@ -89,12 +89,16 @@ matchesRouter.get('/:id/lineup', async (req, res) => {
       select: { homeTeamId: true, awayTeamId: true },
     });
     if (!match) return res.status(404).json({ error: 'match_not_found' });
-    const entries = await prisma.matchLineupEntry.findMany({
+    const entries = (await prisma.matchLineupEntry.findMany({
       where: { matchId },
       select: { playerId: true, teamId: true },
-    });
-    const home = entries.filter((e) => e.teamId === match.homeTeamId).map((e) => e.playerId);
-    const away = entries.filter((e) => e.teamId === match.awayTeamId).map((e) => e.playerId);
+    })) as Array<{ playerId: string; teamId: string }>;
+    const home = entries
+      .filter((e: { playerId: string; teamId: string }) => e.teamId === match.homeTeamId)
+      .map((e: { playerId: string; teamId: string }) => e.playerId);
+    const away = entries
+      .filter((e: { playerId: string; teamId: string }) => e.teamId === match.awayTeamId)
+      .map((e: { playerId: string; teamId: string }) => e.playerId);
     res.json({ home, away });
   } catch (e) {
     console.error('[get_lineup_error]', (e as Error).message);
@@ -120,63 +124,61 @@ matchesRouter.patch('/:id/status', async (req, res) => {
   const controller = makeUpdateMatchStatusController();
   const response = await controller.handle({ params: req.params, body: req.body });
   res.status(response.statusCode).json(response.body);
+  // Side-effect: geração de avaliações ao finalizar partida
+  if (response.statusCode !== 200) return;
+  const body = response.body as { status?: string; id?: string } | undefined;
+  if (body?.status !== 'FINISHED') return;
+  const matchId = req.params.id;
   try {
-    const bodyTyped = response.body as { id?: string; status?: string } | undefined;
-    if (response.statusCode === 200 && bodyTyped?.status === 'FINISHED') {
-      const matchId = req.params.id;
-      const match = await prisma.match.findUnique({
-        where: { id: matchId },
-        select: { homeTeamId: true, awayTeamId: true, scheduledAt: true },
-      });
-      if (match) {
-        // Preferir lineup se existir; caso contrário, cai no fallback com todos os jogadores vinculados ao time
-        const entries = await prisma.matchLineupEntry.findMany({
-          where: { matchId },
-          select: { playerId: true, teamId: true },
+    const match = await prisma.match.findUnique({
+      where: { id: matchId },
+      select: { homeTeamId: true, awayTeamId: true },
+    });
+    if (!match) return;
+    // Tenta usar lineup
+    const lineup = await prisma.matchLineupEntry.findMany({
+      where: { matchId },
+      select: { playerId: true, teamId: true },
+    });
+    const byTeam = new Map<string, string[]>();
+    for (const entry of lineup) {
+      const arr = byTeam.get(entry.teamId) ?? [];
+      arr.push(entry.playerId);
+      byTeam.set(entry.teamId, arr);
+    }
+    if (byTeam.size === 0) {
+      // fallback: todos os players dos times
+      for (const tid of [match.homeTeamId, match.awayTeamId]) {
+        const t = await prisma.team.findUnique({
+          where: { id: tid },
+          select: { players: { select: { id: true } } },
         });
-        const byTeam = new Map<string, string[]>();
-        for (const entry of entries) {
-          const arr = byTeam.get(entry.teamId) ?? [];
-          arr.push(entry.playerId);
-          byTeam.set(entry.teamId, arr);
-        }
-        if (byTeam.size === 0) {
-          for (const teamId of [match.homeTeamId, match.awayTeamId]) {
-            const t = await prisma.team.findUnique({
-              where: { id: teamId },
-              select: { players: { select: { id: true } } },
-            });
-            const ids = (t?.players ?? []).map((p: { id: string }) => p.id);
-            byTeam.set(teamId, ids);
-          }
-        }
-        const evalRepo = new PrismaMatchPlayerEvaluationRepository();
-        let createdAll: Array<{ evaluatorPlayerId: string; targetPlayerId: string }> = [];
-        for (const [, playerIds] of byTeam.entries()) {
-          if (playerIds.length < 2) continue; // precisa de pelo menos 2 para avaliar alguém
-          const created = await evalRepo.generateAssignments({
-            matchId,
-            teamPlayerIds: playerIds,
-            perPlayerTargets: 3,
-          });
-          createdAll = createdAll.concat(created);
-        }
-        // Notificações (stub) para cada avaliador
-        if (createdAll.length) {
-          const { sendNotification } = await import('../../infra/firebase/admin.js');
-          const notified = new Set<string>();
-          for (const a of createdAll) {
-            if (!notified.has(a.evaluatorPlayerId)) {
-              notified.add(a.evaluatorPlayerId);
-              sendNotification?.(
-                a.evaluatorPlayerId,
-                'Avaliações disponíveis',
-                'Avalie seus colegas desta partida.',
-              );
-            }
-          }
-        }
+        const ids = (t?.players ?? []).map((p: { id: string }) => p.id);
+        byTeam.set(tid, ids);
       }
+    }
+    const evalRepo = new PrismaMatchPlayerEvaluationRepository();
+    const createdAll: Array<{ evaluatorPlayerId: string; targetPlayerId: string }> = [];
+    for (const [, playerIds] of byTeam.entries()) {
+      if (playerIds.length < 2) continue;
+      const created = await evalRepo.generateAssignments({
+        matchId,
+        teamPlayerIds: playerIds,
+        perPlayerTargets: 3,
+      });
+      createdAll.push(...created);
+    }
+    if (!createdAll.length) return;
+    const { sendNotification } = await import('../../infra/firebase/admin.js');
+    const notified = new Set<string>();
+    for (const a of createdAll) {
+      if (notified.has(a.evaluatorPlayerId)) continue;
+      notified.add(a.evaluatorPlayerId);
+      sendNotification?.(
+        a.evaluatorPlayerId,
+        'Avaliações disponíveis',
+        'Avalie seus colegas desta partida.',
+      );
     }
   } catch (e) {
     console.error('[post_match_eval_generation_error]', (e as Error).message);
