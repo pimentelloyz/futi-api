@@ -15,6 +15,35 @@ teamsRouter.post('/', async (req, res) => {
   res.status(response.statusCode).json(response.body);
 });
 
+// Editar um time (parcial)
+teamsRouter.patch('/:id', async (req, res) => {
+  const teamId = req.params.id;
+  if (!teamId) return res.status(400).json({ error: 'invalid_team_id' });
+  const { name, icon, description, isActive } = req.body || {};
+  const updateData: Record<string, unknown> = {};
+  if (typeof name === 'string') updateData.name = name;
+  if (typeof icon === 'string' || icon === null) updateData.icon = icon;
+  if (typeof description === 'string' || description === null) updateData.description = description;
+  if (typeof isActive === 'boolean') updateData.isActive = isActive;
+  if (Object.keys(updateData).length === 0) return res.status(400).json({ error: 'invalid_body' });
+  try {
+    const prisma = (await import('../../infra/prisma/client.js')).prisma;
+    const team = await prisma.team.findUnique({ where: { id: teamId }, select: { id: true } });
+    if (!team) return res.status(404).json({ error: 'team_not_found' });
+    const updated = await prisma.team.update({ where: { id: teamId }, data: updateData });
+    return res.json({
+      id: updated.id,
+      name: updated.name,
+      icon: updated.icon,
+      description: updated.description,
+      isActive: updated.isActive,
+    });
+  } catch (e) {
+    console.error('[team_update_error]', (e as Error).message);
+    return res.status(500).json({ error: 'internal_error' });
+  }
+});
+
 // Listar jogadores de um time
 teamsRouter.get('/:id/players', async (req, res) => {
   const teamId = req.params.id;
@@ -32,12 +61,15 @@ teamsRouter.get('/:id/players', async (req, res) => {
     const team = await prisma.team.findUnique({
       where: { id: teamId },
       select: {
+        isActive: true,
         id: includeTeam ? true : undefined,
         name: includeTeam ? true : undefined,
         players: { select: { id: true, name: true, position: true, number: true, isActive: true } },
       },
     });
-    if (!team) return res.status(404).json({ error: 'team_not_found' });
+    if (!team || (team as { isActive?: boolean }).isActive === false) {
+      return res.status(404).json({ error: 'team_not_found' });
+    }
     // Ordenar e paginar em memória
     type PlayerLite = {
       id: string;
@@ -87,8 +119,11 @@ teamsRouter.post('/:id/players', async (req, res) => {
   }
   try {
     const prisma = (await import('../../infra/prisma/client.js')).prisma;
-    const team = await prisma.team.findUnique({ where: { id: teamId } });
-    if (!team) return res.status(404).json({ error: 'team_not_found' });
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+      select: { id: true, isActive: true },
+    });
+    if (!team || team.isActive === false) return res.status(404).json({ error: 'team_not_found' });
     const updated = await prisma.player.update({
       where: { id: playerId },
       data: { teams: { connect: [{ id: teamId }] } },
@@ -97,6 +132,27 @@ teamsRouter.post('/:id/players', async (req, res) => {
     return res.status(204).send();
   } catch (e) {
     console.error('[team_add_player_error]', (e as Error).message);
+    return res.status(500).json({ error: 'internal_error' });
+  }
+});
+
+// Soft delete de um time (usa isActive=false para evitar migração agora)
+teamsRouter.delete('/:id', async (req, res) => {
+  const teamId = req.params.id;
+  if (!teamId) return res.status(400).json({ error: 'invalid_team_id' });
+  try {
+    const prisma = (await import('../../infra/prisma/client.js')).prisma;
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+      select: { id: true, isActive: true },
+    });
+    if (!team) return res.status(404).json({ error: 'team_not_found' });
+    if (team.isActive) {
+      await prisma.team.update({ where: { id: teamId }, data: { isActive: false } });
+    }
+    return res.status(204).send();
+  } catch (e) {
+    console.error('[team_soft_delete_error]', (e as Error).message);
     return res.status(500).json({ error: 'internal_error' });
   }
 });
