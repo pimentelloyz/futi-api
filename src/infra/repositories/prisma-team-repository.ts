@@ -1,5 +1,5 @@
 import { prisma } from '../prisma/client.js';
-import { TeamRepository } from '../../data/protocols/team-repository.js';
+import { TeamBasic, TeamRepository } from '../../data/protocols/team-repository.js';
 import { AddTeamInput } from '../../domain/usecases/add-team.js';
 
 export class PrismaTeamRepository implements TeamRepository {
@@ -14,5 +14,15 @@ export class PrismaTeamRepository implements TeamRepository {
       select: { id: true },
     });
     return created;
+  }
+
+  async list(params?: { isActive?: boolean }): Promise<TeamBasic[]> {
+    const where = params?.isActive == null ? {} : { isActive: params.isActive };
+    const items = await prisma.team.findMany({
+      where,
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, icon: true, description: true, isActive: true },
+    });
+    return items as TeamBasic[];
   }
 }

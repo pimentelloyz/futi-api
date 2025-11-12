@@ -4,6 +4,7 @@ import { Router } from 'express';
 import multer from 'multer';
 
 import { makeAddTeamController } from '../../main/factories/make-add-team-controller.js';
+import { makeListTeamsController } from '../../main/factories/make-list-teams-controller.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
 // import { firebaseAuth } from '../middlewares/firebase-auth.js';
 import { ERROR_CODES } from '../../domain/constants.js';
@@ -84,6 +85,13 @@ teamsRouter.post('/', async (req, res) => {
       return res.status(400).json({ error: ERROR_CODES.INVALID_MULTIPART });
     return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
+});
+
+// Listar todos os times (opcionalmente filtrar por isActive)
+teamsRouter.get('/', async (req, res) => {
+  const controller = makeListTeamsController();
+  const response = await controller.handle({ query: req.query as Record<string, unknown> });
+  return res.status(response.statusCode).json(response.body);
 });
 
 // Upload de ícone do time (multipart/form-data: field "file")

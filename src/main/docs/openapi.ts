@@ -82,6 +82,50 @@ export const openapi: OpenAPIObject = {
       },
     },
     '/api/teams': {
+      get: {
+        summary: 'Listar times',
+        tags: ['Teams'],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'isActive',
+            in: 'query',
+            required: false,
+            schema: { type: 'string', enum: ['true', 'false'] },
+            description: 'Filtrar por ativo/inativo',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'OK',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          name: { type: 'string' },
+                          icon: { type: 'string', nullable: true },
+                          description: { type: 'string', nullable: true },
+                          isActive: { type: 'boolean' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Parâmetros inválidos' },
+          '401': { description: 'Não autorizado' },
+          '500': { description: 'Erro interno' },
+        },
+      },
       post: {
         summary: 'Create a team',
         tags: ['Teams'],
