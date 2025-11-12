@@ -142,15 +142,39 @@ async function main() {
     { slug: 'LF', name: 'Left Forward', description: 'Atacante pela esquerda' },
     { slug: 'RF', name: 'Right Forward', description: 'Atacante pela direita' },
   ];
-  const db = prisma as unknown as { position: any };
   for (const p of positions) {
-    await db.position.upsert({
-      where: { slug: p.slug },
-      update: { name: p.name, description: p.description },
-      create: { slug: p.slug, name: p.name, description: p.description },
-    });
+    await prisma.$executeRaw`INSERT INTO "Position" ("slug","name","description")
+      VALUES (${p.slug}, ${p.name}, ${p.description})
+      ON CONFLICT ("slug") DO UPDATE SET "name" = EXCLUDED."name", "description" = EXCLUDED."description"`;
   }
   console.log('[seed] positions upserted:', positions.length);
+
+  // Ensure Player profile for seeded user and link to default team
+  let player = await prisma.player.findUnique({ where: { userId: user.id } });
+  if (!player) {
+    const playerName = user.displayName || user.email?.split('@')[0] || 'Seed Player';
+    player = await prisma.player.create({
+      data: {
+        name: playerName,
+        isActive: true,
+        user: { connect: { id: user.id } },
+        teams: { connect: { id: team.id } },
+      },
+    });
+    console.log('[seed] created player for user:', { playerId: player.id, userId: user.id });
+  } else {
+    // ensure linkage with team exists
+    const existingLink = await prisma.team.findFirst({
+      where: { id: team.id, players: { some: { id: player.id } } },
+    });
+    if (!existingLink) {
+      await prisma.player.update({
+        where: { id: player.id },
+        data: { teams: { connect: { id: team.id } } },
+      });
+      console.log('[seed] linked existing player to team:', { playerId: player.id, teamId: team.id });
+    }
+  }
 }
 
 main()
