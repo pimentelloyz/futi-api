@@ -1,2 +1,3 @@
--- Add optional profile photo column to Player
-ALTER TABLE `Player` ADD COLUMN `photo` VARCHAR(255) NULL;
+/* deprecated mysql migration; no-op for postgres */
+-- no-op for PostgreSQL baseline
+SELECT 1;

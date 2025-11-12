@@ -51,6 +51,7 @@ const mem = {
       position: string | null;
       number: number | null;
       isActive: boolean;
+      photo?: string | null;
     }
   >(),
   playersByUserId: new Map<
@@ -62,6 +63,7 @@ const mem = {
       position: string | null;
       number: number | null;
       isActive: boolean;
+      photo?: string | null;
     }
   >(),
   refresh: new Map<
@@ -345,6 +347,7 @@ vi.mock('../infra/prisma/client.js', async () => {
           number?: number | null;
           isActive?: boolean;
           userId?: string;
+          photo?: string | null;
           teams?: unknown;
         };
         select?: { id: boolean };
@@ -357,6 +360,7 @@ vi.mock('../infra/prisma/client.js', async () => {
             position: string | null;
             number: number | null;
             isActive: boolean;
+            photo?: string | null;
           }
       > => {
         const id = `player_${++playerSeq}`;
@@ -367,6 +371,7 @@ vi.mock('../infra/prisma/client.js', async () => {
           position: string | null;
           number: number | null;
           isActive: boolean;
+          photo?: string | null;
         } = {
           id,
           userId: data.userId ?? null,
@@ -374,6 +379,7 @@ vi.mock('../infra/prisma/client.js', async () => {
           position: data.position ?? null,
           number: data.number ?? null,
           isActive: data.isActive ?? true,
+          photo: data.photo ?? null,
         };
         mem.playersById.set(id, rec);
         if (rec.userId) mem.playersByUserId.set(rec.userId, rec);
@@ -393,6 +399,7 @@ vi.mock('../infra/prisma/client.js', async () => {
             position: string | null;
             number: number | null;
             isActive: boolean;
+            photo?: string | null;
           }
         | { id: string; teams: Array<{ id: string; name: string }> }
         | null
@@ -421,7 +428,7 @@ vi.mock('../infra/prisma/client.js', async () => {
         data,
       }: {
         where: { id: string };
-        data: { teams?: { connect?: Array<{ id: string }> } };
+        data: { teams?: { connect?: Array<{ id: string }> }; photo?: string | null };
       }) => {
         if (data.teams?.connect?.length) {
           const current = mem.playerTeamsByPlayerId.get(where.id) ?? [];
@@ -429,6 +436,11 @@ vi.mock('../infra/prisma/client.js', async () => {
           mem.playerTeamsByPlayerId.set(where.id, next);
         }
         const rec = mem.playersById.get(where.id);
+        if (rec && Object.prototype.hasOwnProperty.call(data, 'photo')) {
+          rec.photo = data.photo ?? null;
+          mem.playersById.set(where.id, rec);
+          if (rec.userId) mem.playersByUserId.set(rec.userId, rec);
+        }
         return rec ?? null;
       },
     },
