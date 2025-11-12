@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { InitUserController } from '../controllers/init-user-controller.js';
 import { GetMyUserController } from '../controllers/get-my-user-controller.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
-import { RegisterPushTokenController } from '../controllers/register-push-token-controller.js';
+import { makeRegisterPushTokenController } from '../../main/factories/make-register-push-token-controller.js';
 
 export const usersRouter = Router();
 
@@ -25,7 +25,7 @@ usersRouter.get('/me', jwtAuth, async (req, res) => {
 
 // POST /api/users/me/push-tokens - registra token de push do usuário atual
 usersRouter.post('/me/push-tokens', jwtAuth, async (req, res) => {
-  const controller = new RegisterPushTokenController();
+  const controller = makeRegisterPushTokenController();
   const request: import('../protocols/http.js').HttpRequest & { user?: { id: string } } = {
     body: req.body,
   };
