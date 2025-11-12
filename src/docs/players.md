@@ -21,8 +21,7 @@ Body (JSON):
   "position": "GK",
   "number": 1,
   "isActive": true,
-  "teamIds": ["team_1", "team_2"],
-  "photo": "https://.../players/new/john_doe_123.jpg"
+  "teamIds": ["team_1", "team_2"]
 }
 ```
 
@@ -71,7 +70,7 @@ Auth: Bearer accessToken.
 Body mínimo (JSON):
 
 ```json
-{ "name": "John Doe", "teamIds": ["team_1"], "photo": "https://.../players/new/john_doe_123.jpg" }
+{ "name": "John Doe", "teamIds": ["team_1"] }
 ```
 
 Multipart:

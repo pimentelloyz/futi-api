@@ -425,6 +425,33 @@ export const openapi: OpenAPIObject = {
         requestBody: {
           required: true,
           content: {
+            // Deixa multipart como padrão (igual Teams)
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  position: { type: 'string' },
+                  number: { type: 'integer' },
+                  isActive: { type: 'string', enum: ['true', 'false'] },
+                  teamIds: { type: 'string', description: 'Comma-separated team IDs' },
+                  file: { type: 'string', format: 'binary', description: 'PNG/JPEG/WEBP, <=2MB' },
+                },
+                required: ['name'],
+              },
+              examples: {
+                upload: {
+                  summary: 'Criar jogador com upload de foto',
+                  value: {
+                    name: 'John Doe',
+                    position: 'FW',
+                    number: 9,
+                    isActive: 'true',
+                    teamIds: 'team_1,team_2',
+                  },
+                },
+              },
+            },
             'application/json': {
               schema: {
                 type: 'object',
@@ -437,25 +464,6 @@ export const openapi: OpenAPIObject = {
                     type: 'array',
                     items: { type: 'string' },
                     description: 'Optional list of team IDs to associate',
-                  },
-                  photo: { type: 'string', nullable: true, description: 'Profile photo URL' },
-                },
-                required: ['name'],
-              },
-            },
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string' },
-                  position: { type: 'string' },
-                  number: { type: 'integer' },
-                  isActive: { type: 'boolean' },
-                  teamIds: { type: 'string', description: 'Comma-separated team IDs' },
-                  file: {
-                    type: 'string',
-                    format: 'binary',
-                    description: 'Profile photo (PNG/JPEG/WEBP, <=2MB)',
                   },
                 },
                 required: ['name'],
@@ -517,19 +525,7 @@ export const openapi: OpenAPIObject = {
         requestBody: {
           required: true,
           content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string' },
-                  position: { type: 'string', nullable: true },
-                  number: { type: 'integer', nullable: true },
-                  teamIds: { type: 'array', items: { type: 'string' } },
-                  photo: { type: 'string', nullable: true, description: 'Profile photo URL' },
-                },
-                required: ['name'],
-              },
-            },
+            // Deixa multipart como padrão (igual Teams)
             'multipart/form-data': {
               schema: {
                 type: 'object',
@@ -538,11 +534,30 @@ export const openapi: OpenAPIObject = {
                   position: { type: 'string' },
                   number: { type: 'integer' },
                   teamIds: { type: 'string', description: 'Comma-separated team IDs' },
-                  file: {
-                    type: 'string',
-                    format: 'binary',
-                    description: 'Profile photo (PNG/JPEG/WEBP, <=2MB)',
+                  file: { type: 'string', format: 'binary', description: 'PNG/JPEG/WEBP, <=2MB' },
+                },
+                required: ['name'],
+              },
+              examples: {
+                upload: {
+                  summary: 'Criar meu jogador com upload de foto',
+                  value: {
+                    name: 'John Doe',
+                    position: 'MF',
+                    number: 8,
+                    teamIds: 'team_1',
                   },
+                },
+              },
+            },
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  position: { type: 'string', nullable: true },
+                  number: { type: 'integer', nullable: true },
+                  teamIds: { type: 'array', items: { type: 'string' } },
                 },
                 required: ['name'],
               },
