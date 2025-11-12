@@ -1,17 +1,21 @@
 services:
   db:
-    image: mysql:8.4
-    container_name: futi_mysql
+    image: postgres:16
+    container_name: futi_postgres
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-futi}
-      MYSQL_USER: ${MYSQL_USER:-futi}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-futi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-futi}
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - futi_mysql_data:/var/lib/mysql
-    command: ["mysqld", "--mysql-native-password=ON"]
+      - futi_pg_data:/var/lib/postgresql/data
+      - ./docker/local/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-futi}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 volumes:
-  futi_mysql_data:
+  futi_pg_data:

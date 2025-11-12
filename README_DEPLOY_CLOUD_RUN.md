@@ -12,7 +12,11 @@ Este guia descreve como publicar a futi-api no Google Cloud Run usando Docker.
 
 ## Variáveis de ambiente
 
-- `DATABASE_URL`: mysql://user:pass@host:port/dbname
+- `DATABASE_URL`: Postgres de produção. Exemplos:
+  - Supabase (pooling): `postgresql://USER:PASSWORD@HOST:6543/postgres?pgbouncer=true`
+  - Supabase (direto p/ migrations): use `DIRECT_URL` em vez de trocar `DATABASE_URL`.
+  - Cloud SQL (conector Cloud Run): `postgresql://USER:PASSWORD@localhost:5432/DB?host=/cloudsql/PROJECT:REGION:INSTANCE`
+- `DIRECT_URL` (opcional, recomendado com PgBouncer): conexão direta (porta 5432) usada pelo Prisma para migrations
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_CLIENT_EMAIL`
 - `FIREBASE_PRIVATE_KEY` (com quebras `\n` escapadas)
@@ -69,13 +73,14 @@ gcloud run services replace cloudrun.service.yaml --region=REGION
 
 A imagem não executa migrações automaticamente. Rode-as separadamente:
 
-- Opção A: Rode localmente apontando pro mesmo DB:
+- Opção A: Rode localmente apontando pro mesmo DB (Supabase/Cloud SQL):
 
 ```bash
-DATABASE_URL="mysql://user:pass@host:3306/dbname" npx prisma migrate deploy
+DATABASE_URL="postgresql://..." DIRECT_URL="postgresql://..." npx prisma migrate deploy
 ```
 
-- Opção B: Crie um Cloud Run Job temporário com uma imagem que inclua o CLI do Prisma e execute `prisma migrate deploy`.
+- Opção B: Use o workflow `.github/workflows/prisma-migrate.yml`.
+- Opção C: Crie um Cloud Run Job temporário com Prisma CLI e execute `prisma migrate deploy`.
 
 > Dica: você pode manter `prisma` em devDependencies e usar uma imagem auxiliar (ex.: node:20-alpine) apenas para migrações.
 
@@ -122,3 +127,4 @@ Observações:
 - Se usar Cloud SQL (MySQL), considere o conector do Cloud SQL para Cloud Run ou mantenha IP público com allowlist/SSL.
 - Para Firebase Storage, as credenciais de service account configuradas devem bastar.
 - PRIVATE_KEY: garanta que as quebras de linha estejam escapadas como `\\n`.
+- Com Supabase + PgBouncer, mantenha `DATABASE_URL` no pool (6543) e forneça `DIRECT_URL` (5432) para migrations.
