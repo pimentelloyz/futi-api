@@ -9,18 +9,18 @@ const schema = z.object({ refreshToken: z.string().min(20) });
 
 export class RefreshAccessTokenController implements Controller {
   async handle(request: HttpRequest): Promise<HttpResponse> {
-    let incomingRefresh: string | undefined;
-    // Permitir via corpo ou (fallback) campo injected de cookie
-    if (request.body && typeof request.body === 'object') {
-      const parsedBody = schema.safeParse(request.body);
-      if (parsedBody.success) incomingRefresh = parsedBody.data.refreshToken;
-    }
-    if (!incomingRefresh && typeof request.cookies?.refreshToken === 'string') {
-      const candidate = request.cookies.refreshToken as string;
-      if (candidate.length >= 20) incomingRefresh = candidate;
-    }
-    if (!incomingRefresh) throw new BadRequestError('invalid_request');
     try {
+      let incomingRefresh: string | undefined;
+      // Permitir via corpo ou (fallback) campo injected de cookie
+      if (request.body && typeof request.body === 'object') {
+        const parsedBody = schema.safeParse(request.body);
+        if (parsedBody.success) incomingRefresh = parsedBody.data.refreshToken;
+      }
+      if (!incomingRefresh && typeof request.cookies?.refreshToken === 'string') {
+        const candidate = request.cookies.refreshToken as string;
+        if (candidate.length >= 20) incomingRefresh = candidate;
+      }
+      if (!incomingRefresh) throw new BadRequestError('invalid_request');
       const repo = new PrismaRefreshTokenRepository();
       const usecase = new RefreshAccessTokenUseCase(repo);
       const result = await usecase.refresh(incomingRefresh);

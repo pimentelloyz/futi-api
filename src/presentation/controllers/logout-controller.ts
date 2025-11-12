@@ -5,20 +5,20 @@ import { refreshTokenService } from '../../infra/security/refresh-token-service.
 
 export class LogoutController implements Controller {
   async handle(request: HttpRequest): Promise<HttpResponse> {
-    const tokenBody =
-      typeof request.body === 'object' && request.body !== null
-        ? (request.body as Record<string, unknown>).refreshToken
-        : undefined;
-    const tokenCookie =
-      typeof request.cookies?.refreshToken === 'string'
-        ? (request.cookies?.refreshToken as string)
-        : undefined;
-    const token = (tokenCookie as string | undefined) || (tokenBody as string | undefined);
-    if (!token)
-      throw new BadRequestError('invalid_request', 'refreshToken required in body or cookie');
-    const repo = new PrismaRefreshTokenRepository();
-    const hash = refreshTokenService.hash(token);
     try {
+      const tokenBody =
+        typeof request.body === 'object' && request.body !== null
+          ? (request.body as Record<string, unknown>).refreshToken
+          : undefined;
+      const tokenCookie =
+        typeof request.cookies?.refreshToken === 'string'
+          ? (request.cookies?.refreshToken as string)
+          : undefined;
+      const token = (tokenCookie as string | undefined) || (tokenBody as string | undefined);
+      if (!token)
+        throw new BadRequestError('invalid_request', 'refreshToken required in body or cookie');
+      const repo = new PrismaRefreshTokenRepository();
+      const hash = refreshTokenService.hash(token);
       const rec = await repo.findByHash(hash);
       if (rec && !rec.revokedAt) {
         await repo.revokeById(rec.id);
