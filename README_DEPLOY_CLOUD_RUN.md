@@ -79,6 +79,33 @@ DATABASE_URL="mysql://user:pass@host:3306/dbname" npx prisma migrate deploy
 
 > Dica: você pode manter `prisma` em devDependencies e usar uma imagem auxiliar (ex.: node:20-alpine) apenas para migrações.
 
+## 4) CI/CD com GitHub Actions
+
+Este repo inclui dois workflows:
+
+- Deploy para Cloud Run: `.github/workflows/cloud-run-deploy.yml`
+  - Dispara em push para `main` e manual (workflow_dispatch)
+  - Faz build da imagem Docker (Dockerfile), push para Artifact Registry e `gcloud run deploy`
+- Prisma Migrate (manual): `.github/workflows/prisma-migrate.yml`
+  - Dispara manualmente; roda `prisma migrate status` (opcional) e `prisma migrate deploy`
+
+Secrets necessários (Settings > Secrets and variables > Actions):
+
+- `GCP_PROJECT_ID`: ID do projeto GCP
+- `GCP_REGION`: região (ex.: `us-central1`)
+- `GAR_REPOSITORY`: nome do repositório do Artifact Registry (ex.: `futi-docker`)
+- `CLOUD_RUN_SERVICE`: nome do serviço (ex.: `futi-api`)
+- `GCP_SA_KEY`: JSON da Service Account com permissões de Artifact Registry Writer, Cloud Run Admin e Service Account User
+- `DATABASE_URL`: conexão MySQL de produção
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_CLIENT_EMAIL`
+- `FIREBASE_PRIVATE_KEY`: atenção às quebras de linha (usar `\n`)
+
+Observações:
+
+- O deploy define `NODE_ENV=production` e `PORT=3000` automaticamente.
+- Migrações não são executadas no deploy; utilize o workflow de migrate ou rode localmente.
+
 ## 4) Verificação rápida
 
 - Abra a URL do serviço (saída do deploy)
