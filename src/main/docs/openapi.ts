@@ -40,6 +40,24 @@ export const openapi: OpenAPIObject = {
     { name: 'Matches', description: 'Partidas e placares' },
     { name: 'Access', description: 'Controle de acesso e roles' },
   ],
+  components: {
+    schemas: {
+      ErrorResponse: {
+        type: 'object',
+        properties: {
+          error: { type: 'string' },
+          details: { type: 'object', additionalProperties: true },
+        },
+      },
+    },
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+    },
+  },
   paths: {
     '/health': {
       get: {
@@ -1059,6 +1077,53 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/users/me/push-tokens': {
+      post: {
+        summary: 'Register or update a push notification token for the current user',
+        tags: ['Users'],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  token: { type: 'string', minLength: 10 },
+                  platform: { type: 'string', enum: ['ios', 'android', 'web'] },
+                },
+                required: ['token'],
+              },
+              example: {
+                token: 'fcm_device_token_example',
+                platform: 'android',
+              },
+            },
+          },
+        },
+        responses: {
+          '204': { description: 'Registered' },
+          '400': {
+            description: 'Invalid body',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '401': {
+            description: 'Unauthorized',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '500': {
+            description: 'Internal error',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
     '/api/matches': {
       post: {
         summary: 'Create a match',
@@ -1362,15 +1427,6 @@ export const openapi: OpenAPIObject = {
           '404': { description: 'Assignment or player not found' },
           '500': { description: 'Internal Error' },
         },
-      },
-    },
-  },
-  components: {
-    securitySchemes: {
-      bearerAuth: {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
       },
     },
   },

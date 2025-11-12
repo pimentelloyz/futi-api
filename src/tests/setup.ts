@@ -123,6 +123,10 @@ const mem = {
     }>
   >(),
   playerTeamsByPlayerId: new Map<string, string[]>(),
+  userPushTokens: new Map<
+    string,
+    { id: string; userId: string; token: string; platform: string | null; createdAt: Date }
+  >(),
 };
 let userSeq = 0;
 let tokenSeq = 0;
@@ -700,6 +704,37 @@ vi.mock('../infra/prisma/client.js', async () => {
       },
       findUnique: async ({ where }: { where: { playerId: string } }) => {
         return mem.playerSkillsByPlayerId.get(where.playerId) ?? null;
+      },
+    },
+    userPushToken: {
+      upsert: async ({
+        where,
+        create,
+        update,
+      }: {
+        where: { userId_token: { userId: string; token: string } };
+        create: { userId: string; token: string; platform: string | null };
+        update: { platform: string | null };
+      }) => {
+        const { userId, token } = where.userId_token;
+        const key = `${userId}::${token}`;
+        const existing = mem.userPushTokens.get(key) ?? null;
+        if (existing) {
+          const rec = { ...existing, platform: update.platform ?? existing.platform };
+          mem.userPushTokens.set(key, rec);
+          return rec;
+        } else {
+          const id = `upt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+          const rec = {
+            id,
+            userId,
+            token,
+            platform: create.platform ?? null,
+            createdAt: new Date(),
+          };
+          mem.userPushTokens.set(key, rec);
+          return rec;
+        }
       },
     },
   };
