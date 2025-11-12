@@ -8,6 +8,7 @@ import { HttpRequest } from '../protocols/http.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
 import { PrismaPlayerSkillRepository } from '../../infra/repositories/prisma-player-skill-repository.js';
 import { prisma } from '../../infra/prisma/client.js';
+import { ERROR_CODES } from '../../domain/constants.js';
 
 export const playersRouter = Router();
 
@@ -67,7 +68,9 @@ playersRouter.post('/me/skills', async (req, res) => {
   } catch (e) {
     // Log para facilitar diagnóstico em ambiente de testes
     console.error('[player_skill_upsert_error]', (e as Error).message);
-    return res.status(500).json({ error: 'internal_error', message: (e as Error).message });
+    return res
+      .status(500)
+      .json({ error: ERROR_CODES.INTERNAL_ERROR, message: (e as Error).message });
   }
 });
 

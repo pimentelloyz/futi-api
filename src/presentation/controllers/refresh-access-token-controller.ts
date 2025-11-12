@@ -4,6 +4,7 @@ import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
 import { BadRequestError } from '../errors/http-errors.js';
 import { PrismaRefreshTokenRepository } from '../../infra/repositories/prisma-refresh-token-repository.js';
 import { RefreshAccessTokenUseCase } from '../../data/usecases/refresh-access-token.js';
+import { ERROR_CODES } from '../../domain/constants.js';
 
 const schema = z.object({ refreshToken: z.string().min(20) });
 
@@ -44,7 +45,7 @@ export class RefreshAccessTokenController implements Controller {
     } catch (err) {
       if (err instanceof BadRequestError)
         return { statusCode: err.statusCode, body: { error: err.code } };
-      return { statusCode: 500, body: { error: 'internal_error' } };
+      return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
     }
   }
 }

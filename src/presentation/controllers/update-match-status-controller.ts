@@ -3,9 +3,15 @@ import { z } from 'zod';
 import { UpdateMatchStatus } from '../../domain/usecases/update-match-status.js';
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
 import { BadRequestError, NotFoundError } from '../errors/http-errors.js';
+import { ERROR_CODES, MATCH_STATUS } from '../../domain/constants.js';
 
 const bodySchema = z.object({
-  status: z.enum(['SCHEDULED', 'IN_PROGRESS', 'FINISHED', 'CANCELED']),
+  status: z.enum([
+    MATCH_STATUS.SCHEDULED,
+    MATCH_STATUS.IN_PROGRESS,
+    MATCH_STATUS.FINISHED,
+    MATCH_STATUS.CANCELED,
+  ]),
 });
 
 export class UpdateMatchStatusController implements Controller {
@@ -19,7 +25,7 @@ export class UpdateMatchStatusController implements Controller {
       if (!parsed.success) {
         const flat = parsed.error.flatten();
         const details = { formErrors: flat.formErrors, fieldErrors: flat.fieldErrors };
-        throw new BadRequestError('invalid_body', 'invalid request body', details);
+        throw new BadRequestError(ERROR_CODES.INVALID_BODY, 'invalid request body', details);
       }
       const result = await this.update.updateStatus({ id, ...parsed.data });
       return { statusCode: 200, body: result };
@@ -36,7 +42,7 @@ export class UpdateMatchStatusController implements Controller {
         const bad = new BadRequestError('invalid_transition');
         return { statusCode: bad.statusCode, body: { error: bad.code } };
       }
-      return { statusCode: 500, body: { error: 'internal_error' } };
+      return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
     }
   }
 }

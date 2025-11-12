@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
 import { PrismaMatchPlayerEvaluationRepository } from '../../infra/repositories/prisma-match-player-evaluation-repository.js';
 import { prisma } from '../../infra/prisma/client.js';
+import { ERROR_CODES } from '../../domain/constants.js';
 
 export const evaluationsRouter = Router();
 
@@ -41,7 +42,7 @@ evaluationsRouter.get('/pending', async (req, res) => {
     return res.json({ items: enriched });
   } catch (e) {
     console.error('[list_pending_evaluations_error]', (e as Error).message);
-    return res.status(500).json({ error: 'internal_error' });
+    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });
 
@@ -81,6 +82,6 @@ evaluationsRouter.post('/:assignmentId', async (req, res) => {
     if (msg === 'assignment_not_found') return res.status(404).json({ error: msg });
     if (msg === 'already_completed') return res.status(400).json({ error: msg });
     console.error('[submit_evaluation_error]', msg);
-    return res.status(500).json({ error: 'internal_error' });
+    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });

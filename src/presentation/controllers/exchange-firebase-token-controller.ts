@@ -7,6 +7,7 @@ import { IssueTokensUseCase } from '../../data/usecases/issue-tokens.js';
 import { PrismaRefreshTokenRepository } from '../../infra/repositories/prisma-refresh-token-repository.js';
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
 import { BadRequestError, UnauthorizedError, ServerError } from '../errors/http-errors.js';
+import { ERROR_CODES } from '../../domain/constants.js';
 
 const schema = z.object({ idToken: z.string().min(10), role: z.enum(['PLAYER']).optional() });
 
@@ -15,7 +16,7 @@ export class ExchangeFirebaseTokenController implements Controller {
     const parsed = schema.safeParse(request.body);
     if (!parsed.success) {
       const flat = parsed.error.flatten();
-      throw new BadRequestError('invalid_body', 'invalid request body', {
+      throw new BadRequestError(ERROR_CODES.INVALID_BODY, 'invalid request body', {
         formErrors: flat.formErrors,
         fieldErrors: flat.fieldErrors,
       });
@@ -23,7 +24,7 @@ export class ExchangeFirebaseTokenController implements Controller {
     try {
       const decoded = await verifyIdToken(parsed.data.idToken);
       if (!decoded || !decoded.uid) {
-        throw new UnauthorizedError('invalid_token', 'invalid firebase token');
+        throw new UnauthorizedError(ERROR_CODES.INVALID_TOKEN, 'invalid firebase token');
       }
       const userRepo = new PrismaUserRepository();
       const ensureUser = new DbEnsureUser(userRepo);
@@ -78,7 +79,7 @@ export class ExchangeFirebaseTokenController implements Controller {
       }
       const message = (e as Error).message;
       if (message === 'firebase_verify_failed') {
-        return { statusCode: 401, body: { error: 'invalid_token' } };
+        return { statusCode: 401, body: { error: ERROR_CODES.INVALID_TOKEN } };
       }
       console.error('[firebase_exchange_error]', {
         errorMessage: message,

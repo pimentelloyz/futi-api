@@ -3,9 +3,17 @@ import { z } from 'zod';
 import { ListMatches } from '../../domain/usecases/list-matches.js';
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
 import { BadRequestError } from '../errors/http-errors.js';
+import { ERROR_CODES, MATCH_STATUS } from '../../domain/constants.js';
 
 const querySchema = z.object({
-  status: z.enum(['SCHEDULED', 'IN_PROGRESS', 'FINISHED', 'CANCELED']).optional(),
+  status: z
+    .enum([
+      MATCH_STATUS.SCHEDULED,
+      MATCH_STATUS.IN_PROGRESS,
+      MATCH_STATUS.FINISHED,
+      MATCH_STATUS.CANCELED,
+    ])
+    .optional(),
   teamId: z.string().min(1).optional(),
   from: z
     .string()
@@ -47,7 +55,7 @@ export class ListMatchesController implements Controller {
     } catch (err) {
       if (err instanceof BadRequestError)
         return { statusCode: err.statusCode, body: { error: err.code, details: err.details } };
-      return { statusCode: 500, body: { error: 'internal_error' } };
+      return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
     }
   }
 }

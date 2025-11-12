@@ -2,6 +2,7 @@ import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
 import { UnauthorizedError, NotFoundError } from '../errors/http-errors.js';
 import { PlayerRepository } from '../../data/protocols/player-repository.js';
 import { PrismaPlayerRepository } from '../../infra/repositories/prisma-player-repository.js';
+import { ERROR_CODES } from '../../domain/constants.js';
 
 export class GetMyPlayerController implements Controller {
   private readonly repo: PlayerRepository;
@@ -19,7 +20,7 @@ export class GetMyPlayerController implements Controller {
       if (err instanceof UnauthorizedError || err instanceof NotFoundError) {
         return { statusCode: err.statusCode, body: { error: err.code, details: err.details } };
       }
-      return { statusCode: 500, body: { error: 'internal_error' } };
+      return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
     }
   }
 }

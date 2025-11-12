@@ -1,6 +1,7 @@
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
 import { UnauthorizedError } from '../errors/http-errors.js';
 import { PrismaAccessMembershipRepository } from '../../infra/repositories/prisma-access-membership-repository.js';
+import { ERROR_CODES } from '../../domain/constants.js';
 
 export class ListMyAccessController implements Controller {
   async handle(request: HttpRequest): Promise<HttpResponse> {
@@ -14,7 +15,7 @@ export class ListMyAccessController implements Controller {
       if (err instanceof UnauthorizedError) {
         return { statusCode: err.statusCode, body: { error: err.code } };
       }
-      return { statusCode: 500, body: { error: 'internal_error' } };
+      return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
     }
   }
 }

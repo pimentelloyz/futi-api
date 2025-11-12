@@ -9,6 +9,7 @@ import { jwtAuth } from '../middlewares/jwt-auth.js';
 import { PrismaMatchEventRepository } from '../../infra/repositories/prisma-match-event-repository.js';
 import { PrismaMatchPlayerEvaluationRepository } from '../../infra/repositories/prisma-match-player-evaluation-repository.js';
 import { prisma } from '../../infra/prisma/client.js';
+import { ERROR_CODES } from '../../domain/constants.js';
 
 export const matchesRouter = Router();
 
@@ -77,7 +78,7 @@ matchesRouter.post('/:id/lineup', async (req, res) => {
     return res.status(204).send();
   } catch (e) {
     console.error('[set_lineup_error]', (e as Error).message);
-    return res.status(500).json({ error: 'internal_error' });
+    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });
 
@@ -102,7 +103,7 @@ matchesRouter.get('/:id/lineup', async (req, res) => {
     res.json({ home, away });
   } catch (e) {
     console.error('[get_lineup_error]', (e as Error).message);
-    return res.status(500).json({ error: 'internal_error' });
+    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });
 

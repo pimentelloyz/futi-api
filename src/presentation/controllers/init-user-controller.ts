@@ -5,6 +5,7 @@ import { BadRequestError, UnauthorizedError } from '../errors/http-errors.js';
 import { verifyIdToken } from '../../infra/firebase/admin.js';
 import { PrismaUserRepository } from '../../infra/repositories/prisma-user-repository.js';
 import { DbEnsureUser } from '../../data/usecases/db-ensure-user.js';
+import { ERROR_CODES } from '../../domain/constants.js';
 
 const schema = z.object({ idToken: z.string().min(10), role: z.enum(['PLAYER']).optional() });
 
@@ -13,7 +14,7 @@ export class InitUserController implements Controller {
     const parsed = schema.safeParse(request.body);
     if (!parsed.success) {
       const flat = parsed.error.flatten();
-      throw new BadRequestError('invalid_body', 'invalid request body', {
+      throw new BadRequestError(ERROR_CODES.INVALID_BODY, 'invalid request body', {
         formErrors: flat.formErrors,
         fieldErrors: flat.fieldErrors,
       });
@@ -21,7 +22,7 @@ export class InitUserController implements Controller {
     try {
       const decoded = await verifyIdToken(parsed.data.idToken);
       if (!decoded || !decoded.uid)
-        throw new UnauthorizedError('invalid_token', 'invalid firebase token');
+        throw new UnauthorizedError(ERROR_CODES.INVALID_TOKEN, 'invalid firebase token');
 
       const userRepo = new PrismaUserRepository();
       const ensureUser = new DbEnsureUser(userRepo);
@@ -61,7 +62,7 @@ export class InitUserController implements Controller {
       if (err instanceof BadRequestError || err instanceof UnauthorizedError) {
         return { statusCode: err.statusCode, body: { error: err.code, details: err.details } };
       }
-      return { statusCode: 500, body: { error: 'internal_error' } };
+      return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
     }
   }
 }

@@ -1,6 +1,7 @@
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
 import { UnauthorizedError, NotFoundError } from '../errors/http-errors.js';
 import { prisma } from '../../infra/prisma/client.js';
+import { ERROR_CODES } from '../../domain/constants.js';
 
 export class GetMyUserController implements Controller {
   async handle(request: HttpRequest): Promise<HttpResponse> {
@@ -32,7 +33,7 @@ export class GetMyUserController implements Controller {
       if (err instanceof UnauthorizedError || err instanceof NotFoundError) {
         return { statusCode: err.statusCode, body: { error: err.code, details: err.details } };
       }
-      return { statusCode: 500, body: { error: 'internal_error' } };
+      return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
     }
   }
 }

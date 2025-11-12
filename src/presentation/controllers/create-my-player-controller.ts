@@ -4,6 +4,7 @@ import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
 import { BadRequestError, UnauthorizedError } from '../errors/http-errors.js';
 import { PrismaPlayerRepository } from '../../infra/repositories/prisma-player-repository.js';
 import { DbEnsurePlayerForUser } from '../../data/usecases/db-ensure-player-for-user.js';
+import { ERROR_CODES } from '../../domain/constants.js';
 
 const schema = z.object({
   name: z.string().min(1),
@@ -19,7 +20,7 @@ export class CreateMyPlayerController implements Controller {
     const parsed = schema.safeParse(request.body);
     if (!parsed.success) {
       const flat = parsed.error.flatten();
-      throw new BadRequestError('invalid_body', 'invalid request body', {
+      throw new BadRequestError(ERROR_CODES.INVALID_BODY, 'invalid request body', {
         formErrors: flat.formErrors,
         fieldErrors: flat.fieldErrors,
       });
@@ -33,7 +34,7 @@ export class CreateMyPlayerController implements Controller {
       if (err instanceof BadRequestError || err instanceof UnauthorizedError) {
         return { statusCode: err.statusCode, body: { error: err.code, details: err.details } };
       }
-      return { statusCode: 500, body: { error: 'internal_error' } };
+      return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
     }
   }
 }

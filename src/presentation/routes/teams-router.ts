@@ -6,6 +6,7 @@ import multer from 'multer';
 import { makeAddTeamController } from '../../main/factories/make-add-team-controller.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
 // import { firebaseAuth } from '../middlewares/firebase-auth.js';
+import { ERROR_CODES } from '../../domain/constants.js';
 
 export const teamsRouter = Router();
 
@@ -81,7 +82,7 @@ teamsRouter.post('/', async (req, res) => {
     console.error('[team_create_error]', (e as Error).message);
     if ((e as Error).message?.toLowerCase().includes('multipart'))
       return res.status(400).json({ error: 'invalid_multipart' });
-    return res.status(500).json({ error: 'internal_error' });
+    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });
 
@@ -134,7 +135,7 @@ teamsRouter.post('/:id/icon', upload.single('file'), async (req, res) => {
     return res.status(200).json({ iconUrl: publicUrl });
   } catch (e) {
     console.error('[team_icon_upload_error]', (e as Error).message);
-    return res.status(500).json({ error: 'internal_error' });
+    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });
 
@@ -148,7 +149,8 @@ teamsRouter.patch('/:id', async (req, res) => {
   if (typeof icon === 'string' || icon === null) updateData.icon = icon;
   if (typeof description === 'string' || description === null) updateData.description = description;
   if (typeof isActive === 'boolean') updateData.isActive = isActive;
-  if (Object.keys(updateData).length === 0) return res.status(400).json({ error: 'invalid_body' });
+  if (Object.keys(updateData).length === 0)
+    return res.status(400).json({ error: ERROR_CODES.INVALID_BODY });
   try {
     const prisma = (await import('../../infra/prisma/client.js')).prisma;
     const team = await prisma.team.findUnique({ where: { id: teamId }, select: { id: true } });
@@ -163,7 +165,7 @@ teamsRouter.patch('/:id', async (req, res) => {
     });
   } catch (e) {
     console.error('[team_update_error]', (e as Error).message);
-    return res.status(500).json({ error: 'internal_error' });
+    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });
 
@@ -228,7 +230,7 @@ teamsRouter.get('/:id/players', async (req, res) => {
     res.json(payload);
   } catch (e) {
     console.error('[team_players_error]', (e as Error).message);
-    return res.status(500).json({ error: 'internal_error' });
+    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });
 
@@ -255,7 +257,7 @@ teamsRouter.post('/:id/players', async (req, res) => {
     return res.status(204).send();
   } catch (e) {
     console.error('[team_add_player_error]', (e as Error).message);
-    return res.status(500).json({ error: 'internal_error' });
+    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });
 
@@ -276,6 +278,6 @@ teamsRouter.delete('/:id', async (req, res) => {
     return res.status(204).send();
   } catch (e) {
     console.error('[team_soft_delete_error]', (e as Error).message);
-    return res.status(500).json({ error: 'internal_error' });
+    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });

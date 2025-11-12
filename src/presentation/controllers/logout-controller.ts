@@ -2,6 +2,7 @@ import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
 import { BadRequestError, UnauthorizedError } from '../errors/http-errors.js';
 import { PrismaRefreshTokenRepository } from '../../infra/repositories/prisma-refresh-token-repository.js';
 import { refreshTokenService } from '../../infra/security/refresh-token-service.js';
+import { ERROR_CODES } from '../../domain/constants.js';
 
 export class LogoutController implements Controller {
   async handle(request: HttpRequest): Promise<HttpResponse> {
@@ -32,7 +33,7 @@ export class LogoutController implements Controller {
       if (err instanceof BadRequestError) {
         return { statusCode: err.statusCode, body: { error: err.code, details: err.details } };
       }
-      return { statusCode: 500, body: { error: 'internal_error' } };
+      return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
     }
   }
 }
@@ -53,7 +54,7 @@ export class LogoutAllController implements Controller {
       if (err instanceof UnauthorizedError) {
         return { statusCode: err.statusCode, body: { error: err.code } };
       }
-      return { statusCode: 500, body: { error: 'internal_error' } };
+      return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
     }
   }
 }

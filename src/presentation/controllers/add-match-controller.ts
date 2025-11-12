@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AddMatch } from '../../domain/usecases/add-match.js';
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
 import { BadRequestError } from '../errors/http-errors.js';
+import { ERROR_CODES, MATCH_STATUS } from '../../domain/constants.js';
 
 const schema = z
   .object({
@@ -11,7 +12,14 @@ const schema = z
     scheduledAt: z
       .union([z.string().datetime(), z.date()])
       .transform((v) => (v instanceof Date ? v : new Date(v))),
-    status: z.enum(['SCHEDULED', 'IN_PROGRESS', 'FINISHED', 'CANCELED']).optional(),
+    status: z
+      .enum([
+        MATCH_STATUS.SCHEDULED,
+        MATCH_STATUS.IN_PROGRESS,
+        MATCH_STATUS.FINISHED,
+        MATCH_STATUS.CANCELED,
+      ])
+      .optional(),
     homeScore: z.number().int().min(0).optional(),
     awayScore: z.number().int().min(0).optional(),
   })
@@ -28,7 +36,7 @@ export class AddMatchController implements Controller {
       const parsed = schema.safeParse(request.body);
       if (!parsed.success) {
         const flat = parsed.error.flatten();
-        throw new BadRequestError('invalid_body', 'invalid request body', {
+        throw new BadRequestError(ERROR_CODES.INVALID_BODY, 'invalid request body', {
           formErrors: flat.formErrors,
           fieldErrors: flat.fieldErrors,
         });
@@ -39,7 +47,7 @@ export class AddMatchController implements Controller {
       if (err instanceof BadRequestError) {
         return { statusCode: err.statusCode, body: { error: err.code, details: err.details } };
       }
-      return { statusCode: 500, body: { error: 'internal_error' } };
+      return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
     }
   }
 }

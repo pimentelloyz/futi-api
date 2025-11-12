@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 
 import type { AccessRole } from '../../data/protocols/access-membership-repository.js';
 import { PrismaAccessMembershipRepository } from '../../infra/repositories/prisma-access-membership-repository.js';
+import { ERROR_CODES } from '../../domain/constants.js';
 
 type TeamIdResolver = (req: Request) => string | null | undefined;
 
@@ -56,11 +57,11 @@ export function requireAnyRole(roles: AccessRole[], options: RequireRoleOptions 
     try {
       const teamId = resolveTeamId(req) ?? null;
       const ok = await userHasAnyRole(user.id, roles, teamId, allowAdminBypass);
-      if (!ok) return res.status(403).json({ error: 'not_authorized' });
+      if (!ok) return res.status(403).json({ error: ERROR_CODES.NOT_AUTHORIZED });
       return next();
     } catch {
       // Defensive: avoid leaking details; align with our error contract
-      return res.status(500).json({ error: 'internal_error' });
+      return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
     }
   };
 }
