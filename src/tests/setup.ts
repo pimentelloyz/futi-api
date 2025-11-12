@@ -229,6 +229,43 @@ vi.mock('../infra/prisma/client.js', async () => {
         mem.teamsById.set(id, rec);
         return select && select.id ? { id } : rec;
       },
+      findMany: async ({
+        where,
+        orderBy,
+        skip = 0,
+        take = 9999,
+        select,
+      }: {
+        where?: { isActive?: boolean };
+        orderBy?: { name?: 'asc' | 'desc' };
+        skip?: number;
+        take?: number;
+        select?: {
+          id?: boolean;
+          name?: boolean;
+          icon?: boolean;
+          description?: boolean;
+          isActive?: boolean;
+        };
+      }) => {
+        let list = Array.from(mem.teamsById.values());
+        if (typeof where?.isActive === 'boolean') {
+          list = list.filter((t) => t.isActive === where!.isActive);
+        }
+        if (orderBy?.name === 'asc') list.sort((a, b) => a.name.localeCompare(b.name));
+        if (orderBy?.name === 'desc') list.sort((a, b) => b.name.localeCompare(a.name));
+        const paged = list.slice(skip, skip + take);
+        if (select) {
+          return paged.map((t) => ({
+            id: select.id ? t.id : undefined,
+            name: select.name ? t.name : undefined,
+            icon: select.icon ? t.icon : undefined,
+            description: select.description ? t.description : undefined,
+            isActive: select.isActive ? t.isActive : undefined,
+          }));
+        }
+        return paged;
+      },
       findUnique: async ({
         where,
         select,
