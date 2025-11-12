@@ -38,7 +38,7 @@ matchesRouter.get('/:id/events', async (req, res) => {
 
 matchesRouter.post('/:id/events', async (req, res) => {
   const parsed = addEventSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' });
+  if (!parsed.success) return res.status(400).json({ error: ERROR_CODES.INVALID_REQUEST });
   const repo = new PrismaMatchEventRepository();
   const created = await repo.add({
     matchId: req.params.id,
@@ -59,13 +59,13 @@ const lineupSchema = z.object({
 matchesRouter.post('/:id/lineup', async (req, res) => {
   const matchId = req.params.id;
   const parsed = lineupSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' });
+  if (!parsed.success) return res.status(400).json({ error: ERROR_CODES.INVALID_REQUEST });
   try {
     const match = await prisma.match.findUnique({
       where: { id: matchId },
       select: { homeTeamId: true, awayTeamId: true },
     });
-    if (!match) return res.status(404).json({ error: 'match_not_found' });
+    if (!match) return res.status(404).json({ error: ERROR_CODES.MATCH_NOT_FOUND });
     // remove lineup atual
     await prisma.matchLineupEntry.deleteMany({ where: { matchId } });
     // cria nova
@@ -89,7 +89,7 @@ matchesRouter.get('/:id/lineup', async (req, res) => {
       where: { id: matchId },
       select: { homeTeamId: true, awayTeamId: true },
     });
-    if (!match) return res.status(404).json({ error: 'match_not_found' });
+    if (!match) return res.status(404).json({ error: ERROR_CODES.MATCH_NOT_FOUND });
     const entries = (await prisma.matchLineupEntry.findMany({
       where: { matchId },
       select: { playerId: true, teamId: true },

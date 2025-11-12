@@ -45,7 +45,7 @@ export class ListMatchesController implements Controller {
       const parsed = querySchema.safeParse(request.query ?? {});
       if (!parsed.success) {
         const flat = parsed.error.flatten();
-        throw new BadRequestError('invalid_query', 'invalid query params', {
+        throw new BadRequestError(ERROR_CODES.INVALID_QUERY, 'invalid query params', {
           formErrors: flat.formErrors,
           fieldErrors: flat.fieldErrors,
         });

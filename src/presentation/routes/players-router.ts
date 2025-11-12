@@ -53,12 +53,12 @@ const skillSchema = z.object({
 playersRouter.post('/me/skills', async (req, res) => {
   try {
     const parsed = skillSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ error: 'invalid_request' });
+    if (!parsed.success) return res.status(400).json({ error: ERROR_CODES.INVALID_REQUEST });
     // find my player
     const meUser = req.user as { id: string } | undefined;
-    if (!meUser) return res.status(401).json({ error: 'unauthorized' });
+    if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
     const player = await prisma.player.findUnique({ where: { userId: meUser.id } });
-    if (!player) return res.status(404).json({ error: 'player_not_found' });
+    if (!player) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
     const repo = new PrismaPlayerSkillRepository();
     const rec = await repo.upsert({
       playerId: player.id,
@@ -76,9 +76,9 @@ playersRouter.post('/me/skills', async (req, res) => {
 
 playersRouter.get('/me/graph', async (req, res) => {
   const meUser = req.user as { id: string } | undefined;
-  if (!meUser) return res.status(401).json({ error: 'unauthorized' });
+  if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
   const player = await prisma.player.findUnique({ where: { userId: meUser.id } });
-  if (!player) return res.status(404).json({ error: 'player_not_found' });
+  if (!player) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
   const repo = new PrismaPlayerSkillRepository();
   const skill = await repo.findByPlayerId(player.id);
   if (!skill) return res.status(404).json({ error: 'skills_not_found' });
@@ -98,14 +98,14 @@ playersRouter.get('/me/graph', async (req, res) => {
 
 playersRouter.get('/me/team/overview', async (req, res) => {
   const meUser = req.user as { id: string } | undefined;
-  if (!meUser) return res.status(401).json({ error: 'unauthorized' });
+  if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
   const { teamId } = req.query as { teamId?: string };
   // Get my player and teams
   const playerTeams = await prisma.player.findUnique({
     where: { userId: meUser.id },
     select: { id: true, teams: { select: { id: true, name: true } } },
   });
-  if (!playerTeams) return res.status(404).json({ error: 'player_not_found' });
+  if (!playerTeams) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
   const teams = playerTeams.teams as Array<{ id: string; name: string }>;
   if (teams.length === 0) return res.status(404).json({ error: 'no_team' });
   const selectedTeamId = teamId || teams[0].id;

@@ -36,7 +36,7 @@ teamsRouter.post('/', async (req, res) => {
       if (file) {
         const allowed = new Set(['image/png', 'image/jpeg', 'image/webp']);
         if (!allowed.has(file.mimetype)) {
-          return res.status(415).json({ error: 'unsupported_media_type' });
+          return res.status(415).json({ error: ERROR_CODES.UNSUPPORTED_MEDIA_TYPE });
         }
         const ext =
           file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
@@ -81,7 +81,7 @@ teamsRouter.post('/', async (req, res) => {
   } catch (e) {
     console.error('[team_create_error]', (e as Error).message);
     if ((e as Error).message?.toLowerCase().includes('multipart'))
-      return res.status(400).json({ error: 'invalid_multipart' });
+      return res.status(400).json({ error: ERROR_CODES.INVALID_MULTIPART });
     return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });
@@ -89,7 +89,7 @@ teamsRouter.post('/', async (req, res) => {
 // Upload de ícone do time (multipart/form-data: field "file")
 teamsRouter.post('/:id/icon', upload.single('file'), async (req, res) => {
   const teamId = req.params.id;
-  if (!teamId) return res.status(400).json({ error: 'invalid_team_id' });
+  if (!teamId) return res.status(400).json({ error: ERROR_CODES.INVALID_TEAM_ID });
   try {
     const prisma = (await import('../../infra/prisma/client.js')).prisma;
     const team = await prisma.team.findUnique({
@@ -102,7 +102,7 @@ teamsRouter.post('/:id/icon', upload.single('file'), async (req, res) => {
     if (!file) return res.status(400).json({ error: 'file_required' });
     const allowed = new Set(['image/png', 'image/jpeg', 'image/webp']);
     if (!allowed.has(file.mimetype))
-      return res.status(415).json({ error: 'unsupported_media_type' });
+      return res.status(415).json({ error: ERROR_CODES.UNSUPPORTED_MEDIA_TYPE });
 
     const ext =
       file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
@@ -142,7 +142,7 @@ teamsRouter.post('/:id/icon', upload.single('file'), async (req, res) => {
 // Editar um time (parcial)
 teamsRouter.patch('/:id', async (req, res) => {
   const teamId = req.params.id;
-  if (!teamId) return res.status(400).json({ error: 'invalid_team_id' });
+  if (!teamId) return res.status(400).json({ error: ERROR_CODES.INVALID_TEAM_ID });
   const { name, icon, description, isActive } = req.body || {};
   const updateData: Record<string, unknown> = {};
   if (typeof name === 'string') updateData.name = name;
@@ -154,7 +154,7 @@ teamsRouter.patch('/:id', async (req, res) => {
   try {
     const prisma = (await import('../../infra/prisma/client.js')).prisma;
     const team = await prisma.team.findUnique({ where: { id: teamId }, select: { id: true } });
-    if (!team) return res.status(404).json({ error: 'team_not_found' });
+    if (!team) return res.status(404).json({ error: ERROR_CODES.TEAM_NOT_FOUND });
     const updated = await prisma.team.update({ where: { id: teamId }, data: updateData });
     return res.json({
       id: updated.id,
@@ -238,9 +238,9 @@ teamsRouter.get('/:id/players', async (req, res) => {
 teamsRouter.post('/:id/players', async (req, res) => {
   const teamId = req.params.id;
   const { playerId } = req.body || {};
-  if (!teamId) return res.status(400).json({ error: 'invalid_team_id' });
+  if (!teamId) return res.status(400).json({ error: ERROR_CODES.INVALID_TEAM_ID });
   if (!playerId || typeof playerId !== 'string') {
-    return res.status(400).json({ error: 'invalid_player_id' });
+    return res.status(400).json({ error: ERROR_CODES.INVALID_PLAYER_ID });
   }
   try {
     const prisma = (await import('../../infra/prisma/client.js')).prisma;
@@ -248,12 +248,13 @@ teamsRouter.post('/:id/players', async (req, res) => {
       where: { id: teamId },
       select: { id: true, isActive: true },
     });
-    if (!team || team.isActive === false) return res.status(404).json({ error: 'team_not_found' });
+    if (!team || team.isActive === false)
+      return res.status(404).json({ error: ERROR_CODES.TEAM_NOT_FOUND });
     const updated = await prisma.player.update({
       where: { id: playerId },
       data: { teams: { connect: [{ id: teamId }] } },
     });
-    if (!updated) return res.status(404).json({ error: 'player_not_found' });
+    if (!updated) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
     return res.status(204).send();
   } catch (e) {
     console.error('[team_add_player_error]', (e as Error).message);
@@ -264,14 +265,14 @@ teamsRouter.post('/:id/players', async (req, res) => {
 // Soft delete de um time (usa isActive=false para evitar migração agora)
 teamsRouter.delete('/:id', async (req, res) => {
   const teamId = req.params.id;
-  if (!teamId) return res.status(400).json({ error: 'invalid_team_id' });
+  if (!teamId) return res.status(400).json({ error: ERROR_CODES.INVALID_TEAM_ID });
   try {
     const prisma = (await import('../../infra/prisma/client.js')).prisma;
     const team = await prisma.team.findUnique({
       where: { id: teamId },
       select: { id: true, isActive: true },
     });
-    if (!team) return res.status(404).json({ error: 'team_not_found' });
+    if (!team) return res.status(404).json({ error: ERROR_CODES.TEAM_NOT_FOUND });
     if (team.isActive) {
       await prisma.team.update({ where: { id: teamId }, data: { isActive: false } });
     }

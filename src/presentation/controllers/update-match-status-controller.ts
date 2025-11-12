@@ -20,7 +20,7 @@ export class UpdateMatchStatusController implements Controller {
   async handle(request: HttpRequest): Promise<HttpResponse> {
     try {
       const id = request.params?.id;
-      if (!id) throw new BadRequestError('missing_id');
+      if (!id) throw new BadRequestError(ERROR_CODES.MISSING_ID);
       const parsed = bodySchema.safeParse(request.body);
       if (!parsed.success) {
         const flat = parsed.error.flatten();
@@ -35,7 +35,7 @@ export class UpdateMatchStatusController implements Controller {
         return { statusCode: err.statusCode, body: { error: err.code, details: err.details } };
       }
       if (message === 'not_found') {
-        const nf = new NotFoundError('match_not_found');
+        const nf = new NotFoundError(ERROR_CODES.MATCH_NOT_FOUND);
         return { statusCode: nf.statusCode, body: { error: nf.code } };
       }
       if (message === 'invalid_transition') {

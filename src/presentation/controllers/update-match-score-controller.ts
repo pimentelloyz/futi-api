@@ -16,7 +16,7 @@ export class UpdateMatchScoreController implements Controller {
   async handle(request: HttpRequest): Promise<HttpResponse> {
     try {
       const id = request.params?.id;
-      if (!id) throw new BadRequestError('missing_id');
+      if (!id) throw new BadRequestError(ERROR_CODES.MISSING_ID);
       const parsed = bodySchema.safeParse(request.body);
       if (!parsed.success) {
         const flat = parsed.error.flatten();

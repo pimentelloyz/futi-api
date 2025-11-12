@@ -16,13 +16,13 @@ evaluationsRouter.use(jwtAuth);
 evaluationsRouter.get('/pending', async (req, res) => {
   try {
     const meUser = req.user as { id: string } | undefined;
-    if (!meUser) return res.status(401).json({ error: 'unauthorized' });
+    if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
     // Find player by user id
     const player = await prisma.player.findUnique({
       where: { userId: meUser.id },
       select: { id: true },
     });
-    if (!player) return res.status(404).json({ error: 'player_not_found' });
+    if (!player) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
     const repo = new PrismaMatchPlayerEvaluationRepository();
     const pending = await repo.listPendingForPlayer(player.id);
     // Enrich with target player name
@@ -55,32 +55,34 @@ const evalSchema = z.object({
 
 evaluationsRouter.post('/:assignmentId', async (req, res) => {
   const assignmentId = req.params.assignmentId;
-  if (!assignmentId) return res.status(400).json({ error: 'invalid_assignment_id' });
+  if (!assignmentId) return res.status(400).json({ error: ERROR_CODES.INVALID_ASSIGNMENT_ID });
   const parsed = evalSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' });
+  if (!parsed.success) return res.status(400).json({ error: ERROR_CODES.INVALID_REQUEST });
   try {
     const meUser = req.user as { id: string } | undefined;
-    if (!meUser) return res.status(401).json({ error: 'unauthorized' });
+    if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
     // ensure assignment belongs to this player's evaluator id
     const player = await prisma.player.findUnique({
       where: { userId: meUser.id },
       select: { id: true },
     });
-    if (!player) return res.status(404).json({ error: 'player_not_found' });
+    if (!player) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
     const assignment = await prisma.matchPlayerEvaluationAssignment.findUnique({
       where: { id: assignmentId },
       select: { evaluatorPlayerId: true },
     });
-    if (!assignment) return res.status(404).json({ error: 'assignment_not_found' });
+    if (!assignment) return res.status(404).json({ error: ERROR_CODES.ASSIGNMENT_NOT_FOUND });
     if (assignment.evaluatorPlayerId !== player.id)
-      return res.status(403).json({ error: 'forbidden' });
+      return res.status(403).json({ error: ERROR_CODES.FORBIDDEN });
     const repo = new PrismaMatchPlayerEvaluationRepository();
     const done = await repo.submitEvaluation(assignmentId, parsed.data.rating, parsed.data.comment);
     return res.status(201).json(done);
   } catch (e) {
     const msg = (e as Error).message;
-    if (msg === 'assignment_not_found') return res.status(404).json({ error: msg });
-    if (msg === 'already_completed') return res.status(400).json({ error: msg });
+    if (msg === 'assignment_not_found')
+      return res.status(404).json({ error: ERROR_CODES.ASSIGNMENT_NOT_FOUND });
+    if (msg === 'already_completed')
+      return res.status(400).json({ error: ERROR_CODES.ALREADY_COMPLETED });
     console.error('[submit_evaluation_error]', msg);
     return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }

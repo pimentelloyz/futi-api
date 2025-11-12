@@ -21,11 +21,11 @@ export class RefreshAccessTokenController implements Controller {
         const candidate = request.cookies.refreshToken as string;
         if (candidate.length >= 20) incomingRefresh = candidate;
       }
-      if (!incomingRefresh) throw new BadRequestError('invalid_request');
+      if (!incomingRefresh) throw new BadRequestError(ERROR_CODES.INVALID_REQUEST);
       const repo = new PrismaRefreshTokenRepository();
       const usecase = new RefreshAccessTokenUseCase(repo);
       const result = await usecase.refresh(incomingRefresh);
-      if (!result) return { statusCode: 401, body: { error: 'invalid_refresh' } };
+      if (!result) return { statusCode: 401, body: { error: ERROR_CODES.INVALID_REFRESH } };
       const isProd = process.env.NODE_ENV === 'production';
       return {
         statusCode: 200,
