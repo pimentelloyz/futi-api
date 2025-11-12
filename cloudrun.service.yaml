@@ -22,7 +22,9 @@ spec:
             - name: PORT
               value: "3000"
             - name: DATABASE_URL
-              value: "mysql://user:pass@host:3306/dbname"
+              value: "postgresql://USER:PASSWORD@HOST:6543/postgres?pgbouncer=true"
+            - name: DIRECT_URL
+              value: "postgresql://USER:PASSWORD@HOST:5432/postgres"
             - name: FIREBASE_PROJECT_ID
               value: "your-firebase-project-id"
             - name: FIREBASE_CLIENT_EMAIL

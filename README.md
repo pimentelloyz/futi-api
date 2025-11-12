@@ -1,6 +1,6 @@
 # futi-api
 
-API Node.js + TypeScript do projeto futi (Express + Prisma + MySQL + Firebase Admin).
+API Node.js + TypeScript do projeto futi (Express + Prisma + PostgreSQL/Supabase + Firebase Admin).
 
 ## Documentação
 

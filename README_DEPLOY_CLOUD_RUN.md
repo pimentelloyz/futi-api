@@ -7,7 +7,7 @@ Este guia descreve como publicar a futi-api no Google Cloud Run usando Docker.
 - Projeto no Google Cloud com faturamento habilitado
 - gcloud CLI autenticado: `gcloud auth login`
 - APIs ativas: Cloud Run, Cloud Build, Artifact Registry (ou Container Registry)
-- Banco MySQL acessível (Cloud SQL, PlanetScale, etc.)
+- Banco PostgreSQL acessível (Supabase/Cloud SQL/etc.)
 - Service Account do Firebase Admin com credenciais (PROJECT_ID, CLIENT_EMAIL, PRIVATE_KEY)
 
 ## Variáveis de ambiente
@@ -48,7 +48,7 @@ gcloud builds submit --tag REGION-docker.pkg.dev/PROJECT_ID/futi-docker/futi-api
 
 ## 2) Deploy no Cloud Run
 
-Usando gcloud:
+Usando gcloud (exemplo Supabase):
 
 ```bash
 gcloud run deploy futi-api \
@@ -60,7 +60,8 @@ gcloud run deploy futi-api \
   --set-env-vars=NODE_ENV=production,PORT=3000 \
   --set-env-vars=FIREBASE_PROJECT_ID=xxx,FIREBASE_CLIENT_EMAIL=xxx@xxx.iam.gserviceaccount.com \
   --set-env-vars=FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n" \
-  --set-env-vars=DATABASE_URL="mysql://user:pass@host:3306/dbname"
+  --set-env-vars=DATABASE_URL="postgresql://postgres.USERID:PASS@aws-1-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true" \
+  --set-env-vars=DIRECT_URL="postgresql://postgres.USERID:PASS@aws-1-us-east-1.pooler.supabase.com:5432/postgres"
 ```
 
 Ou via manifesto `cloudrun.service.yaml` (ajuste a imagem e envs):
@@ -101,7 +102,8 @@ Secrets necessários (Settings > Secrets and variables > Actions):
 - `GAR_REPOSITORY`: nome do repositório do Artifact Registry (ex.: `futi-docker`)
 - `CLOUD_RUN_SERVICE`: nome do serviço (ex.: `futi-api`)
 - `GCP_SA_KEY`: JSON da Service Account com permissões de Artifact Registry Writer, Cloud Run Admin e Service Account User
-- `DATABASE_URL`: conexão MySQL de produção
+- `DATABASE_URL`: conexão PostgreSQL de produção (ex.: Supabase pool)
+- `DIRECT_URL`: conexão direta para migrations (ex.: Supabase porta 5432)
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_CLIENT_EMAIL`
 - `FIREBASE_PRIVATE_KEY`: atenção às quebras de linha (usar `\n`)
@@ -124,7 +126,7 @@ Observações:
 
 ## 6) Notas
 
-- Se usar Cloud SQL (MySQL), considere o conector do Cloud SQL para Cloud Run ou mantenha IP público com allowlist/SSL.
+- Se usar Cloud SQL (PostgreSQL), considere o conector do Cloud Run ou mantenha IP público com allowlist/SSL.
 - Para Firebase Storage, as credenciais de service account configuradas devem bastar.
 - PRIVATE_KEY: garanta que as quebras de linha estejam escapadas como `\\n`.
 - Com Supabase + PgBouncer, mantenha `DATABASE_URL` no pool (6543) e forneça `DIRECT_URL` (5432) para migrations.

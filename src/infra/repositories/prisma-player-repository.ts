@@ -38,7 +38,7 @@ export class PrismaPlayerRepository implements PlayerRepository {
   async findByUserId(userId: string) {
     return prisma.player.findUnique({
       where: { userId },
-      select: { id: true, name: true, position: true, number: true, isActive: true },
+      select: { id: true, name: true, position: true, number: true, isActive: true, photo: true },
     });
   }
 }

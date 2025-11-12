@@ -32,11 +32,13 @@ jobs:
         if: ${{ inputs.migrateStatus == 'true' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
         run: npx prisma migrate status
 
       - name: Prisma migrate deploy
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
           PRISMA_MIGRATE_SKIP_GENERATE: 'true'
           PRISMA_TELEMETRY_INFORMATION: 'github-actions'
         run: |

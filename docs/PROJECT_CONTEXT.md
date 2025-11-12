@@ -6,7 +6,7 @@ Este arquivo serve como memória persistente do projeto para retomada rápida do
 
 - Alvo: Google Cloud Run (Docker + Node 20)
 - Registro de Imagens: Artifact Registry
-- Banco de Dados: MySQL (Cloud SQL/PlanetScale)
+- Banco de Dados: PostgreSQL (Supabase/Cloud SQL)
 - Firebase Admin: usado para Auth/Storage
 
 ## Artefatos de Deploy
@@ -30,7 +30,8 @@ Este arquivo serve como memória persistente do projeto para retomada rápida do
 - `GAR_REPOSITORY` (ex.: `futi-docker`)
 - `CLOUD_RUN_SERVICE` (ex.: `futi-api`)
 - `GCP_SA_KEY` (JSON da Service Account com Artifact Registry Writer, Cloud Run Admin, Service Account User)
-- `DATABASE_URL` (MySQL de produção)
+- `DATABASE_URL` (PostgreSQL de produção, ex.: Supabase pool)
+- `DIRECT_URL` (PostgreSQL conexão direta p/ migrations)
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_CLIENT_EMAIL`
 - `FIREBASE_PRIVATE_KEY` (com `\n` escapados)

@@ -6,7 +6,7 @@ Use este prompt como referência ao implementar novas features ou refatorações
 
 - API Node.js + TypeScript (ESM, moduleResolution NodeNext)
 - Express + camadas: domain / data / infra / presentation / main
-- Prisma (MySQL) como ORM
+- Prisma (PostgreSQL via Supabase) como ORM
 - Autenticação: Firebase (idToken) → JWT interno (access) + Refresh Tokens com rotação
 - Validação: Zod
 - Documentação: OpenAPI em `/docs` (UI) e `/docs.json`

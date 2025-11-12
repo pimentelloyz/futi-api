@@ -14,7 +14,8 @@ vi.mock('../infra/firebase/admin.js', () => {
 // Mock env to avoid strict validation in tests
 vi.mock('../main/config/env.js', () => {
   const fake: Record<string, string | undefined> = {
-    DATABASE_URL: 'mysql://user:pass@localhost:3306/test',
+    DATABASE_URL: 'postgresql://user:pass@localhost:5432/test',
+    DIRECT_URL: 'postgresql://user:pass@localhost:5432/test',
     FIREBASE_PROJECT_ID: 'test-project',
     FIREBASE_CLIENT_EMAIL: 'test@example.com',
     FIREBASE_PRIVATE_KEY: '-----BEGIN PRIVATE KEY-----\nTEST\n-----END PRIVATE KEY-----\n',

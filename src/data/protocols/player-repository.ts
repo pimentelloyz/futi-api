@@ -9,5 +9,6 @@ export interface PlayerRepository {
     position?: string | null;
     number?: number | null;
     isActive: boolean;
+    photo?: string | null;
   } | null>;
 }
