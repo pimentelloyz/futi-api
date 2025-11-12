@@ -4,6 +4,7 @@ export type EnsurePlayerForUserInput = {
   position?: string | null;
   number?: number | null;
   teamIds?: string[];
+  photo?: string | null;
 };
 
 export interface EnsurePlayerForUser {

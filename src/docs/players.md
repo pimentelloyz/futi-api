@@ -9,11 +9,11 @@ Campos usuais: `id`, `name`, `position?`, `number?`, `isActive?`, `teamIds?`.
 
 ### POST /api/players
 
-Cria um jogador.
+Cria um jogador. Suporta JSON e multipart/form-data para envio de foto de perfil.
 
 Auth: Bearer accessToken.
 
-Body:
+Body (JSON):
 
 ```json
 {
@@ -21,12 +21,26 @@ Body:
   "position": "GK",
   "number": 1,
   "isActive": true,
-  "teamIds": ["team_1", "team_2"]
+  "teamIds": ["team_1", "team_2"],
+  "photo": "https://.../players/new/john_doe_123.jpg"
 }
 ```
 
+Multipart (campo `file` para foto; tipos: png/jpeg/webp; até 2MB):
+
+```bash
+curl -X POST http://localhost:3000/api/players \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Accept: application/json" \
+  -F "name=John Doe" \
+  -F "position=GK" \
+  -F "number=1" \
+  -F "teamIds=team_1,team_2" \
+  -F "file=@/caminho/para/foto.jpg"
+```
+
 Resposta (201): `{ "id": "player_123" }`
-Erros: 400, 401.
+Erros: 400, 401, 415 (tipo de arquivo não suportado).
 
 ### GET /api/players/me
 
@@ -50,15 +64,44 @@ Erros: 401, 404.
 
 ### POST /api/players/me
 
-Cria (ou garante) o Player do usuário atual.
+Cria (ou garante) o Player do usuário atual. Suporta JSON e multipart/form-data (campo `file`).
 
 Auth: Bearer accessToken.
 
-Body mínimo:
+Body mínimo (JSON):
 
 ```json
-{ "name": "John Doe", "teamIds": ["team_1"] }
+{ "name": "John Doe", "teamIds": ["team_1"], "photo": "https://.../players/new/john_doe_123.jpg" }
+```
+
+Multipart:
+
+```bash
+curl -X POST http://localhost:3000/api/players/me \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Accept: application/json" \
+  -F "name=John Doe" \
+  -F "teamIds=team_1" \
+  -F "file=@/caminho/para/foto.jpg"
 ```
 
 Resposta (201): `{ "id": "player_123" }`
-Erros: 400, 401.
+Erros: 400, 401, 415.
+
+### POST /api/players/{id}/photo
+
+Faz upload de uma nova foto de perfil para o jogador existente.
+
+Auth: Bearer accessToken.
+
+Multipart:
+
+```bash
+curl -X POST http://localhost:3000/api/players/player_123/photo \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Accept: application/json" \
+  -F "file=@/caminho/para/foto.jpg"
+```
+
+Resposta (200): `{ "photoUrl": "https://storage.googleapis.com/<bucket>/players/player_123/photo_<ts>.jpg" }`
+Erros: 400, 401, 415, 500.

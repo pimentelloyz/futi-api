@@ -11,6 +11,7 @@ const schema = z.object({
   number: z.number().int().positive().max(999).optional(),
   isActive: z.boolean().optional(),
   teamIds: z.array(z.string().min(1)).optional(),
+  photo: z.string().url().optional().nullable(),
 });
 
 export class AddPlayerController implements Controller {

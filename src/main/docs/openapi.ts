@@ -438,6 +438,25 @@ export const openapi: OpenAPIObject = {
                     items: { type: 'string' },
                     description: 'Optional list of team IDs to associate',
                   },
+                  photo: { type: 'string', nullable: true, description: 'Profile photo URL' },
+                },
+                required: ['name'],
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  position: { type: 'string' },
+                  number: { type: 'integer' },
+                  isActive: { type: 'boolean' },
+                  teamIds: { type: 'string', description: 'Comma-separated team IDs' },
+                  file: {
+                    type: 'string',
+                    format: 'binary',
+                    description: 'Profile photo (PNG/JPEG/WEBP, <=2MB)',
+                  },
                 },
                 required: ['name'],
               },
@@ -506,6 +525,24 @@ export const openapi: OpenAPIObject = {
                   position: { type: 'string', nullable: true },
                   number: { type: 'integer', nullable: true },
                   teamIds: { type: 'array', items: { type: 'string' } },
+                  photo: { type: 'string', nullable: true, description: 'Profile photo URL' },
+                },
+                required: ['name'],
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  position: { type: 'string' },
+                  number: { type: 'integer' },
+                  teamIds: { type: 'string', description: 'Comma-separated team IDs' },
+                  file: {
+                    type: 'string',
+                    format: 'binary',
+                    description: 'Profile photo (PNG/JPEG/WEBP, <=2MB)',
+                  },
                 },
                 required: ['name'],
               },
@@ -523,6 +560,42 @@ export const openapi: OpenAPIObject = {
           },
           '400': { description: 'Bad Request' },
           '401': { description: 'Unauthorized' },
+        },
+      },
+    },
+    '/api/players/{id}/photo': {
+      post: {
+        summary: 'Upload player profile photo',
+        tags: ['Players'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  file: { type: 'string', format: 'binary', description: 'PNG/JPEG/WEBP, <=2MB' },
+                },
+                required: ['file'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Photo uploaded',
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { photoUrl: { type: 'string' } } },
+              },
+            },
+          },
+          '400': { description: 'Invalid request' },
+          '401': { description: 'Unauthorized' },
+          '415': { description: 'Unsupported media type' },
+          '500': { description: 'Internal Error' },
         },
       },
     },
