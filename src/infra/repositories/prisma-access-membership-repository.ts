@@ -3,6 +3,7 @@ import {
   AccessMembershipRepository,
   AccessRole,
   AccessMembership,
+  AccessMembershipWithTeam,
 } from '../../data/protocols/access-membership-repository.js';
 
 export class PrismaAccessMembershipRepository implements AccessMembershipRepository {
@@ -43,5 +44,24 @@ export class PrismaAccessMembershipRepository implements AccessMembershipReposit
 
   async listByUser(userId: string): Promise<AccessMembership[]> {
     return (await prisma.accessMembership.findMany({ where: { userId } })) as AccessMembership[];
+  }
+
+  async listByUserWithTeam(userId: string): Promise<AccessMembershipWithTeam[]> {
+    const rows = await prisma.accessMembership.findMany({
+      where: { userId },
+      include: {
+        team: {
+          select: {
+            id: true,
+            name: true,
+            icon: true,
+            description: true,
+            isActive: true,
+          },
+        },
+      },
+      orderBy: [{ createdAt: 'asc' }],
+    });
+    return rows as unknown as AccessMembershipWithTeam[];
   }
 }

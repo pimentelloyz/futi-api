@@ -9,7 +9,7 @@ export class ListMyAccessController implements Controller {
     if (!authUserId) throw new UnauthorizedError();
     try {
       const repo = new PrismaAccessMembershipRepository();
-      const memberships = await repo.listByUser(authUserId);
+      const memberships = await repo.listByUserWithTeam(authUserId);
       return { statusCode: 200, body: { memberships } };
     } catch (err) {
       if (err instanceof UnauthorizedError) {

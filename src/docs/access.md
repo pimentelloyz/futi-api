@@ -53,11 +53,28 @@ Resposta (200): `{ ok: true }`
 
 ### GET /api/access/me
 
-Lista memberships do usuário autenticado.
+Lista memberships do usuário autenticado, incluindo dados do time (quando aplicável).
 Resposta (200):
 
 ```json
-{ "memberships": [{ "id": "acc_1", "userId": "user_123", "teamId": "team_1", "role": "MANAGER" }] }
+{
+  "memberships": [
+    { "id": "acc_1", "userId": "user_123", "teamId": null, "role": "ADMIN", "team": null },
+    {
+      "id": "acc_2",
+      "userId": "user_123",
+      "teamId": "team_1",
+      "role": "MANAGER",
+      "team": {
+        "id": "team_1",
+        "name": "Futi FC",
+        "icon": null,
+        "description": null,
+        "isActive": true
+      }
+    }
+  ]
+}
 ```
 
 ## Regras de Permissão (Resumo)

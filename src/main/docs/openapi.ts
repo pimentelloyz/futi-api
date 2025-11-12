@@ -1176,7 +1176,45 @@ export const openapi: OpenAPIObject = {
         tags: ['Access'],
         security: [{ bearerAuth: [] }],
         responses: {
-          '200': { description: 'OK' },
+          '200': {
+            description: 'List of memberships with team data',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    memberships: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          userId: { type: 'string' },
+                          teamId: { type: 'string', nullable: true },
+                          role: {
+                            type: 'string',
+                            enum: ['ADMIN', 'MANAGER', 'ASSISTANT', 'PLAYER'],
+                          },
+                          createdAt: { type: 'string', format: 'date-time' },
+                          team: {
+                            type: 'object',
+                            nullable: true,
+                            properties: {
+                              id: { type: 'string' },
+                              name: { type: 'string' },
+                              icon: { type: 'string', nullable: true },
+                              description: { type: 'string', nullable: true },
+                              isActive: { type: 'boolean' },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           '401': { description: 'Unauthorized' },
         },
       },
