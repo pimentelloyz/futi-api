@@ -91,9 +91,13 @@ playersRouter.post('/', async (req, res) => {
     const response = await controller.handle({ body });
     res.status(response.statusCode).json(response.body);
   } catch (e) {
-    console.error('[player_create_error]', (e as Error).message);
-    if ((e as Error).message?.toLowerCase().includes('multipart'))
+    const msg = (e as Error).message || '';
+    console.error('[player_create_error]', msg);
+    if (msg.toLowerCase().includes('multipart'))
       return res.status(400).json({ error: ERROR_CODES.INVALID_MULTIPART });
+    if (msg.includes('Environment validation failed') || msg.includes('firebase')) {
+      return res.status(500).json({ error: ERROR_CODES.FIREBASE_CONFIG_ERROR });
+    }
     return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });
@@ -173,9 +177,13 @@ playersRouter.post('/me', async (req, res) => {
     const response = await controller.handle(request);
     res.status(response.statusCode).json(response.body);
   } catch (e) {
-    console.error('[player_me_create_error]', (e as Error).message);
-    if ((e as Error).message?.toLowerCase().includes('multipart'))
+    const msg = (e as Error).message || '';
+    console.error('[player_me_create_error]', msg);
+    if (msg.toLowerCase().includes('multipart'))
       return res.status(400).json({ error: ERROR_CODES.INVALID_MULTIPART });
+    if (msg.includes('Environment validation failed') || msg.includes('firebase')) {
+      return res.status(500).json({ error: ERROR_CODES.FIREBASE_CONFIG_ERROR });
+    }
     return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });
@@ -214,7 +222,11 @@ playersRouter.post('/:id/photo', upload.single('file'), async (req, res) => {
     }
     return res.status(200).json({ photoUrl: publicUrl });
   } catch (e) {
-    console.error('[player_photo_upload_error]', (e as Error).message);
+    const msg = (e as Error).message || '';
+    console.error('[player_photo_upload_error]', msg);
+    if (msg.includes('Environment validation failed') || msg.includes('firebase')) {
+      return res.status(500).json({ error: ERROR_CODES.FIREBASE_CONFIG_ERROR });
+    }
     return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });
