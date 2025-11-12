@@ -34,6 +34,7 @@ export const openapi: OpenAPIObject = {
   tags: [
     { name: 'Health', description: 'Verificação de status da API' },
     { name: 'Auth', description: 'Fluxos de autenticação e tokens' },
+    { name: 'Positions', description: 'Posições de jogadores (tabela de referência)' },
     { name: 'Users', description: 'Gestão de usuários' },
     { name: 'Players', description: 'Jogadores e perfil do jogador' },
     { name: 'Teams', description: 'Times e composição' },
@@ -1216,6 +1217,105 @@ export const openapi: OpenAPIObject = {
             },
           },
           '401': { description: 'Unauthorized' },
+        },
+      },
+      '/api/positions': {
+        get: {
+          summary: 'List positions',
+          tags: ['Positions'],
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': {
+              description: 'List of positions',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      items: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            slug: { type: 'string' },
+                            name: { type: 'string' },
+                            description: { type: 'string', nullable: true },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '401': { description: 'Unauthorized' },
+          },
+        },
+      },
+      '/api/positions/{slug}': {
+        patch: {
+          summary: 'Update a position (admin)',
+          tags: ['Positions'],
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'slug', in: 'path', required: true, schema: { type: 'string' } }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    description: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Updated',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      item: {
+                        type: 'object',
+                        properties: {
+                          slug: { type: 'string' },
+                          name: { type: 'string' },
+                          description: { type: 'string', nullable: true },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '401': { description: 'Unauthorized' },
+            '403': { description: 'Forbidden' },
+            '404': { description: 'Not found' },
+          },
+        },
+        delete: {
+          summary: 'Delete a position (admin)',
+          tags: ['Positions'],
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'slug', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: {
+            '200': {
+              description: 'Deleted',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { ok: { type: 'boolean' } } },
+                },
+              },
+            },
+            '401': { description: 'Unauthorized' },
+            '403': { description: 'Forbidden' },
+            '404': { description: 'Not found' },
+          },
         },
       },
     },

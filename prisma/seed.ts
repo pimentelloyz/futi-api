@@ -118,6 +118,39 @@ async function main() {
   } else {
     console.log('[seed] MANAGER already granted for team', { teamId: team.id });
   }
+
+  // Seed Positions
+  const positions: Array<{ slug: string; name: string; description: string }> = [
+    { slug: 'GK', name: 'Goalkeeper', description: 'Goleiro' },
+    { slug: 'CB', name: 'Centre Back', description: 'Zagueiro central' },
+    { slug: 'LCB', name: 'Left Centre Back', description: 'Zagueiro central esquerdo' },
+    { slug: 'RCB', name: 'Right Centre Back', description: 'Zagueiro central direito' },
+    { slug: 'LB', name: 'Left Back', description: 'Lateral-esquerdo' },
+    { slug: 'RB', name: 'Right Back', description: 'Lateral-direito' },
+    { slug: 'LWB', name: 'Left Wing Back', description: 'Ala-esquerdo / lateral-esquerdo ofensivo' },
+    { slug: 'RWB', name: 'Right Wing Back', description: 'Ala-direito / lateral-direito ofensivo' },
+    { slug: 'SW', name: 'Sweeper', description: 'Líbero (raro atualmente)' },
+    { slug: 'CDM', name: 'Central Defensive Midfielder', description: 'Volante / meio-campista defensivo' },
+    { slug: 'CM', name: 'Central Midfielder', description: 'Meio-campista central' },
+    { slug: 'CAM', name: 'Central Attacking Midfielder', description: 'Meia ofensivo / armador' },
+    { slug: 'LM', name: 'Left Midfielder', description: 'Meia-esquerda' },
+    { slug: 'RM', name: 'Right Midfielder', description: 'Meia-direita' },
+    { slug: 'CF', name: 'Centre Forward', description: 'Segundo atacante / centroavante recuado' },
+    { slug: 'ST', name: 'Striker', description: 'Centroavante' },
+    { slug: 'LW', name: 'Left Winger', description: 'Ponta-esquerda' },
+    { slug: 'RW', name: 'Right Winger', description: 'Ponta-direita' },
+    { slug: 'LF', name: 'Left Forward', description: 'Atacante pela esquerda' },
+    { slug: 'RF', name: 'Right Forward', description: 'Atacante pela direita' },
+  ];
+  const db = prisma as unknown as { position: any };
+  for (const p of positions) {
+    await db.position.upsert({
+      where: { slug: p.slug },
+      update: { name: p.name, description: p.description },
+      create: { slug: p.slug, name: p.name, description: p.description },
+    });
+  }
+  console.log('[seed] positions upserted:', positions.length);
 }
 
 main()

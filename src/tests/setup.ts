@@ -99,6 +99,7 @@ const mem = {
     string,
     { id: string; name: string; icon: string | null; description: string | null; isActive: boolean }
   >(),
+  positionsBySlug: new Map<string, { slug: string; name: string; description: string | null }>(),
   matchesById: new Map<
     string,
     {
@@ -199,6 +200,66 @@ vi.mock('../infra/repositories/prisma-refresh-token-repository.js', async () => 
 
 vi.mock('../infra/prisma/client.js', async () => {
   const prisma = {
+    position: {
+      // Pre-seed with two positions for tests
+      _init: (() => {
+        if (mem.positionsBySlug.size === 0) {
+          mem.positionsBySlug.set('GK', { slug: 'GK', name: 'Goalkeeper', description: 'Goleiro' });
+          mem.positionsBySlug.set('ST', {
+            slug: 'ST',
+            name: 'Striker',
+            description: 'Centroavante',
+          });
+        }
+      })(),
+      findMany: async ({
+        orderBy,
+        select,
+      }: {
+        orderBy?: { name?: 'asc' | 'desc' };
+        select?: { slug?: boolean; name?: boolean; description?: boolean };
+      }) => {
+        const list = Array.from(mem.positionsBySlug.values());
+        if (orderBy?.name === 'asc') list.sort((a, b) => a.name.localeCompare(b.name));
+        if (orderBy?.name === 'desc') list.sort((a, b) => b.name.localeCompare(a.name));
+        if (select) {
+          return list.map((p) => ({
+            slug: select.slug ? p.slug : undefined,
+            name: select.name ? p.name : undefined,
+            description: select.description ? p.description : undefined,
+          }));
+        }
+        return list;
+      },
+      update: async ({
+        where,
+        data,
+        select,
+      }: {
+        where: { slug: string };
+        data: { name?: string; description?: string | null };
+        select?: { slug?: boolean; name?: boolean; description?: boolean };
+      }) => {
+        const rec = mem.positionsBySlug.get(where.slug);
+        if (!rec) throw new Error('Record to update not found');
+        if (typeof data.name === 'string') rec.name = data.name;
+        if (data.description !== undefined) rec.description = data.description;
+        mem.positionsBySlug.set(where.slug, rec);
+        if (select) {
+          return {
+            slug: select.slug ? rec.slug : undefined,
+            name: select.name ? rec.name : undefined,
+            description: select.description ? rec.description : undefined,
+          };
+        }
+        return rec;
+      },
+      delete: async ({ where }: { where: { slug: string } }) => {
+        const existed = mem.positionsBySlug.delete(where.slug);
+        if (!existed) throw new Error('Record to delete does not exist');
+        return { slug: where.slug } as unknown as { slug: string };
+      },
+    },
     team: {
       create: async ({
         data,
