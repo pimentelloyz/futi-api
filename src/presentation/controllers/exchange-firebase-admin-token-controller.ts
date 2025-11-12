@@ -7,6 +7,12 @@ import { IssueTokensUseCase } from '../../data/usecases/issue-tokens.js';
 import { PrismaRefreshTokenRepository } from '../../infra/repositories/prisma-refresh-token-repository.js';
 import { PrismaAccessMembershipRepository } from '../../infra/repositories/prisma-access-membership-repository.js';
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
+import {
+  BadRequestError,
+  UnauthorizedError,
+  ForbiddenError,
+  ServerError,
+} from '../errors/http-errors.js';
 
 // Apenas idToken; sem role=PLAYER aqui porque é exclusivo para painel administrativo.
 const schema = z.object({ idToken: z.string().min(10) });
@@ -15,12 +21,16 @@ export class ExchangeFirebaseAdminTokenController implements Controller {
   async handle(request: HttpRequest): Promise<HttpResponse> {
     const parsed = schema.safeParse(request.body);
     if (!parsed.success) {
-      return { statusCode: 400, body: { error: 'invalid_request' } };
+      const flat = parsed.error.flatten();
+      throw new BadRequestError('invalid_body', 'invalid request body', {
+        formErrors: flat.formErrors,
+        fieldErrors: flat.fieldErrors,
+      });
     }
     try {
       const decoded = await verifyIdToken(parsed.data.idToken);
       if (!decoded || !decoded.uid) {
-        return { statusCode: 401, body: { error: 'invalid_token' } };
+        throw new UnauthorizedError('invalid_token', 'invalid firebase token');
       }
       const userRepo = new PrismaUserRepository();
       const ensureUser = new DbEnsureUser(userRepo);
@@ -36,7 +46,7 @@ export class ExchangeFirebaseAdminTokenController implements Controller {
       const hasManager = await membershipRepo.hasRole(user.id, 'MANAGER');
       const hasAssistant = await membershipRepo.hasRole(user.id, 'ASSISTANT');
       if (!hasAdmin && !hasManager && !hasAssistant) {
-        return { statusCode: 403, body: { error: 'not_authorized' } };
+        throw new ForbiddenError('not_authorized', 'user lacks administrative role');
       }
 
       // Emitir tokens internos
@@ -63,6 +73,13 @@ export class ExchangeFirebaseAdminTokenController implements Controller {
         },
       };
     } catch (e: unknown) {
+      if (
+        e instanceof BadRequestError ||
+        e instanceof UnauthorizedError ||
+        e instanceof ForbiddenError
+      ) {
+        return { statusCode: e.statusCode, body: { error: e.code, details: e.details } };
+      }
       const message = (e as Error).message;
       if (message === 'firebase_verify_failed') {
         return { statusCode: 401, body: { error: 'invalid_token' } };
@@ -76,7 +93,12 @@ export class ExchangeFirebaseAdminTokenController implements Controller {
           FIREBASE_PRIVATE_KEY_PRESENT: Boolean(process.env.FIREBASE_PRIVATE_KEY),
         },
       });
-      return { statusCode: 500, body: { error: 'firebase_config_error' } };
+      const serverErr = new ServerError(
+        500,
+        'firebase_config_error',
+        'firebase configuration error',
+      );
+      return { statusCode: serverErr.statusCode, body: { error: serverErr.code } };
     }
   }
 }

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { AddMatch } from '../../domain/usecases/add-match.js';
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
+import { BadRequestError } from '../errors/http-errors.js';
 
 const schema = z
   .object({
@@ -26,11 +27,18 @@ export class AddMatchController implements Controller {
     try {
       const parsed = schema.safeParse(request.body);
       if (!parsed.success) {
-        return { statusCode: 400, body: { error: parsed.error.flatten().formErrors.join('; ') } };
+        const flat = parsed.error.flatten();
+        throw new BadRequestError('invalid_body', 'invalid request body', {
+          formErrors: flat.formErrors,
+          fieldErrors: flat.fieldErrors,
+        });
       }
       const result = await this.addMatch.add(parsed.data);
       return { statusCode: 201, body: result };
-    } catch {
+    } catch (err) {
+      if (err instanceof BadRequestError) {
+        return { statusCode: err.statusCode, body: { error: err.code, details: err.details } };
+      }
       return { statusCode: 500, body: { error: 'internal_error' } };
     }
   }

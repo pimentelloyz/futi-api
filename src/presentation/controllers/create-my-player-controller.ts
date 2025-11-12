@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
+import { BadRequestError, UnauthorizedError } from '../errors/http-errors.js';
 import { PrismaPlayerRepository } from '../../infra/repositories/prisma-player-repository.js';
 import { DbEnsurePlayerForUser } from '../../data/usecases/db-ensure-player-for-user.js';
 
@@ -14,17 +15,24 @@ const schema = z.object({
 export class CreateMyPlayerController implements Controller {
   async handle(request: HttpRequest): Promise<HttpResponse> {
     const userId = (request as HttpRequest & { user?: { id: string } }).user?.id;
-    if (!userId) return { statusCode: 401, body: { error: 'unauthorized' } };
+    if (!userId) throw new UnauthorizedError();
     const parsed = schema.safeParse(request.body);
     if (!parsed.success) {
-      return { statusCode: 400, body: { error: 'invalid_request' } };
+      const flat = parsed.error.flatten();
+      throw new BadRequestError('invalid_body', 'invalid request body', {
+        formErrors: flat.formErrors,
+        fieldErrors: flat.fieldErrors,
+      });
     }
     try {
       const repo = new PrismaPlayerRepository();
       const usecase = new DbEnsurePlayerForUser(repo);
       const result = await usecase.ensure({ userId, ...parsed.data });
       return { statusCode: 201, body: result };
-    } catch {
+    } catch (err) {
+      if (err instanceof BadRequestError || err instanceof UnauthorizedError) {
+        return { statusCode: err.statusCode, body: { error: err.code, details: err.details } };
+      }
       return { statusCode: 500, body: { error: 'internal_error' } };
     }
   }

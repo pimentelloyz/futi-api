@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { ListMatches } from '../../domain/usecases/list-matches.js';
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
+import { BadRequestError } from '../errors/http-errors.js';
 
 const querySchema = z.object({
   status: z.enum(['SCHEDULED', 'IN_PROGRESS', 'FINISHED', 'CANCELED']).optional(),
@@ -35,11 +36,17 @@ export class ListMatchesController implements Controller {
     try {
       const parsed = querySchema.safeParse(request.query ?? {});
       if (!parsed.success) {
-        return { statusCode: 400, body: { error: parsed.error.flatten().formErrors.join('; ') } };
+        const flat = parsed.error.flatten();
+        throw new BadRequestError('invalid_query', 'invalid query params', {
+          formErrors: flat.formErrors,
+          fieldErrors: flat.fieldErrors,
+        });
       }
       const result = await this.listMatches.list(parsed.data);
       return { statusCode: 200, body: result };
-    } catch {
+    } catch (err) {
+      if (err instanceof BadRequestError)
+        return { statusCode: err.statusCode, body: { error: err.code, details: err.details } };
       return { statusCode: 500, body: { error: 'internal_error' } };
     }
   }

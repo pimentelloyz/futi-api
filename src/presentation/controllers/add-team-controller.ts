@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { AddTeam } from '../../domain/usecases/add-team.js';
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
+import { BadRequestError } from '../errors/http-errors.js';
 
 const schema = z.object({
   name: z.string().min(1),
@@ -17,11 +18,18 @@ export class AddTeamController implements Controller {
     try {
       const parsed = schema.safeParse(request.body);
       if (!parsed.success) {
-        return { statusCode: 400, body: { error: parsed.error.flatten().formErrors.join('; ') } };
+        const flat = parsed.error.flatten();
+        throw new BadRequestError('invalid_body', 'invalid request body', {
+          formErrors: flat.formErrors,
+          fieldErrors: flat.fieldErrors,
+        });
       }
       const result = await this.addTeam.add(parsed.data);
       return { statusCode: 201, body: result };
-    } catch {
+    } catch (err) {
+      if (err instanceof BadRequestError) {
+        return { statusCode: err.statusCode, body: { error: err.code, details: err.details } };
+      }
       return { statusCode: 500, body: { error: 'internal_error' } };
     }
   }

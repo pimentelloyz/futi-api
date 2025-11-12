@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
+import { BadRequestError } from '../errors/http-errors.js';
 import { PrismaRefreshTokenRepository } from '../../infra/repositories/prisma-refresh-token-repository.js';
 import { RefreshAccessTokenUseCase } from '../../data/usecases/refresh-access-token.js';
 
@@ -18,7 +19,7 @@ export class RefreshAccessTokenController implements Controller {
       const candidate = request.cookies.refreshToken as string;
       if (candidate.length >= 20) incomingRefresh = candidate;
     }
-    if (!incomingRefresh) return { statusCode: 400, body: { error: 'invalid_request' } };
+    if (!incomingRefresh) throw new BadRequestError('invalid_request');
     try {
       const repo = new PrismaRefreshTokenRepository();
       const usecase = new RefreshAccessTokenUseCase(repo);
@@ -40,7 +41,9 @@ export class RefreshAccessTokenController implements Controller {
           },
         },
       };
-    } catch {
+    } catch (err) {
+      if (err instanceof BadRequestError)
+        return { statusCode: err.statusCode, body: { error: err.code } };
       return { statusCode: 500, body: { error: 'internal_error' } };
     }
   }

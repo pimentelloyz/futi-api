@@ -6,6 +6,7 @@ import { PrismaUserRepository } from '../../infra/repositories/prisma-user-repos
 import { IssueTokensUseCase } from '../../data/usecases/issue-tokens.js';
 import { PrismaRefreshTokenRepository } from '../../infra/repositories/prisma-refresh-token-repository.js';
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
+import { BadRequestError, UnauthorizedError, ServerError } from '../errors/http-errors.js';
 
 const schema = z.object({ idToken: z.string().min(10), role: z.enum(['PLAYER']).optional() });
 
@@ -13,12 +14,16 @@ export class ExchangeFirebaseTokenController implements Controller {
   async handle(request: HttpRequest): Promise<HttpResponse> {
     const parsed = schema.safeParse(request.body);
     if (!parsed.success) {
-      return { statusCode: 400, body: { error: 'invalid_request' } };
+      const flat = parsed.error.flatten();
+      throw new BadRequestError('invalid_body', 'invalid request body', {
+        formErrors: flat.formErrors,
+        fieldErrors: flat.fieldErrors,
+      });
     }
     try {
       const decoded = await verifyIdToken(parsed.data.idToken);
       if (!decoded || !decoded.uid) {
-        return { statusCode: 401, body: { error: 'invalid_token' } };
+        throw new UnauthorizedError('invalid_token', 'invalid firebase token');
       }
       const userRepo = new PrismaUserRepository();
       const ensureUser = new DbEnsureUser(userRepo);
@@ -68,12 +73,13 @@ export class ExchangeFirebaseTokenController implements Controller {
       };
       return resp;
     } catch (e: unknown) {
+      if (e instanceof BadRequestError || e instanceof UnauthorizedError) {
+        return { statusCode: e.statusCode, body: { error: e.code, details: e.details } };
+      }
       const message = (e as Error).message;
       if (message === 'firebase_verify_failed') {
         return { statusCode: 401, body: { error: 'invalid_token' } };
       }
-      // Log detalhado para diagnosticar problemas de configuração do Firebase
-      // Possíveis causas: variáveis de ambiente faltando, chave privada mal formatada, projectId incorreto
       console.error('[firebase_exchange_error]', {
         errorMessage: message,
         stack: (e as Error).stack,
@@ -83,7 +89,12 @@ export class ExchangeFirebaseTokenController implements Controller {
           FIREBASE_PRIVATE_KEY_PRESENT: Boolean(process.env.FIREBASE_PRIVATE_KEY),
         },
       });
-      return { statusCode: 500, body: { error: 'firebase_config_error' } };
+      const serverErr = new ServerError(
+        500,
+        'firebase_config_error',
+        'firebase configuration error',
+      );
+      return { statusCode: serverErr.statusCode, body: { error: serverErr.code } };
     }
   }
 }
