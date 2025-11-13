@@ -76,6 +76,11 @@ playersRouter.post('/', async (req, res) => {
             typeof req.body?.number === 'string' ? Number.parseInt(req.body.number, 10) : undefined,
           isActive:
             typeof req.body?.isActive === 'string' ? req.body.isActive === 'true' : undefined,
+          // Aceita teamId (único) ou teamIds (lista/comma-separated)
+          teamId:
+            typeof req.body?.teamId === 'string' && req.body.teamId
+              ? String(req.body.teamId).trim()
+              : undefined,
           teamIds: Array.isArray(req.body?.teamIds)
             ? req.body.teamIds
             : typeof req.body?.teamIds === 'string' && req.body.teamIds
@@ -326,6 +331,11 @@ playersRouter.post('/me', async (req, res) => {
           positionSlug: req.body?.positionSlug ?? undefined,
           number:
             typeof req.body?.number === 'string' ? Number.parseInt(req.body.number, 10) : undefined,
+          // Aceita teamId (único) ou teamIds (lista/comma-separated)
+          teamId:
+            typeof req.body?.teamId === 'string' && req.body.teamId
+              ? String(req.body.teamId).trim()
+              : undefined,
           teamIds: Array.isArray(req.body?.teamIds)
             ? req.body.teamIds
             : typeof req.body?.teamIds === 'string' && req.body.teamIds
