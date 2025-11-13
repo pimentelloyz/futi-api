@@ -114,12 +114,19 @@ teamsRouter.post('/:id/icon', upload.single('file'), async (req, res) => {
 
     const ext =
       file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
-    // Evitar cache agressivo no cliente: incluir hash simples pelo mtime
-    const stamp = Date.now();
-    const objectPath = path.posix.join('teams', teamId, `icon_${stamp}.${ext}`);
+    // Nome determinístico baseado no ID do time; substituir arquivos anteriores
+    const folderPrefix = path.posix.join('teams', teamId, '/');
+    const objectPath = path.posix.join('teams', teamId, `${teamId}.${ext}`);
 
     const { getDefaultBucket } = await import('../../infra/firebase/admin.js');
     const bucket = getDefaultBucket();
+    // Remove qualquer arquivo anterior na pasta do time
+    try {
+      const [existing] = await bucket.getFiles({ prefix: folderPrefix });
+      if (existing && existing.length) {
+        await Promise.allSettled(existing.map((f) => f.delete()));
+      }
+    } catch {}
     const gcsFile = bucket.file(objectPath);
 
     // Tipos do @google-cloud/storage não expõem 'public' diretamente em SaveOptions.
@@ -127,7 +134,8 @@ teamsRouter.post('/:id/icon', upload.single('file'), async (req, res) => {
     await gcsFile.save(file.buffer, {
       contentType: file.mimetype,
       resumable: false,
-      metadata: { cacheControl: 'public,max-age=3600' },
+      // Evitar cache agressivo no cliente, já que a URL agora é fixa
+      metadata: { cacheControl: 'no-cache, max-age=0' },
     });
     // Tornar o objeto público (se o bucket permitir)
     try {

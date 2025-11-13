@@ -257,6 +257,8 @@ export const openapi: OpenAPIObject = {
     '/api/teams/{id}/icon': {
       post: {
         summary: 'Upload de ícone do time (multipart/form-data)',
+        description:
+          'Substitui o ícone anterior deste time. O arquivo é salvo com nome determinístico em teams/{id}/{id}.{ext} (ext: png/jpg/webp) e uma URL estável é retornada. Para evitar cache agressivo no cliente, usamos cache-control: no-cache, max-age=0. Envie o arquivo no campo multipart "file" (PNG/JPEG/WEBP, até 2MB).',
         tags: ['Teams'],
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
@@ -673,6 +675,8 @@ export const openapi: OpenAPIObject = {
     '/api/players/{id}/photo': {
       post: {
         summary: 'Upload player profile photo',
+        description:
+          'Substitui a foto anterior do jogador. O arquivo é salvo com nome determinístico em players/{id}/{id}.{ext} (ext: png/jpg/webp) e uma URL estável é retornada. Para evitar cache agressivo no cliente, usamos cache-control: no-cache, max-age=0. Envie o arquivo no campo multipart "file" (PNG/JPEG/WEBP, até 2MB).',
         tags: ['Players'],
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
