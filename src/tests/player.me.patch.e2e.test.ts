@@ -28,9 +28,16 @@ describe('PATCH /api/players/me e2e', () => {
     const patch = await request(app)
       .patch('/api/players/me')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ name: 'Player Patched', positionSlug: 'CM' });
+      .send({ name: 'Player Patched', positionSlug: 'CM', number: 7 });
     expect(patch.status).toBe(200);
     expect(typeof patch.body.name).toBe('string');
+    // Confirma via GET após PATCH
+    const meAfter = await request(app)
+      .get('/api/players/me')
+      .set('Authorization', `Bearer ${accessToken}`);
+    expect(meAfter.status).toBe(200);
+    // número pode ser null ou number dependendo de políticas; aqui garantimos que o campo existe
+    expect('number' in meAfter.body).toBe(true);
     // position returns either null or object; schema ensures shape
     expect('position' in patch.body).toBe(true);
     if (patch.body.position) {

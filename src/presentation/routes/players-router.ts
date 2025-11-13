@@ -124,7 +124,36 @@ const updateMeSchema = z
 
 playersRouter.patch('/me', async (req, res) => {
   try {
-    const parsed = updateMeSchema.safeParse(req.body);
+    // aceitar alias 'numero' além de 'number'
+    const raw = req.body as {
+      name?: unknown;
+      positionSlug?: unknown;
+      number?: unknown;
+      numero?: unknown;
+    };
+    const incoming = {
+      name: typeof raw?.name === 'string' ? raw.name : undefined,
+      positionSlug:
+        raw?.positionSlug === null
+          ? null
+          : typeof raw?.positionSlug === 'string'
+            ? raw.positionSlug
+            : undefined,
+      number:
+        raw?.number === null || raw?.numero === null
+          ? null
+          : typeof raw?.number === 'number'
+            ? raw.number
+            : typeof raw?.numero === 'number'
+              ? raw.numero
+              : typeof raw?.number === 'string' && raw.number.trim() !== ''
+                ? Number.parseInt(raw.number, 10)
+                : typeof raw?.numero === 'string' && raw.numero.trim() !== ''
+                  ? Number.parseInt(raw.numero, 10)
+                  : undefined,
+    } as { name?: string; positionSlug?: string | null; number?: number | null };
+
+    const parsed = updateMeSchema.safeParse(incoming);
     if (!parsed.success) return res.status(400).json({ error: ERROR_CODES.INVALID_REQUEST });
     const meUser = req.user as { id: string } | undefined;
     if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
@@ -191,7 +220,43 @@ playersRouter.patch('/me', async (req, res) => {
       }
       throw e;
     }
-    // Retorna o mesmo shape do GET /me (inclui position)
+    // Recarrega do banco para garantir consistência (alguns clients podem não refletir update imediato)
+    try {
+      const db2 = prisma as unknown as {
+        player: {
+          findUnique: (args: {
+            where: { id: string };
+            select: {
+              id: true;
+              name: true;
+              positionSlug: true;
+              number: true;
+              isActive: true;
+              position: { select: { slug: true; name: true; description: true } };
+            };
+          }) => Promise<{
+            id: string;
+            name: string;
+            positionSlug: string | null;
+            number: number | null;
+            isActive: boolean;
+            position: { slug: string; name: string; description: string | null } | null;
+          } | null>;
+        };
+      };
+      const reloaded = await db2.player.findUnique({
+        where: { id: player.id },
+        select: {
+          id: true,
+          name: true,
+          positionSlug: true,
+          number: true,
+          isActive: true,
+          position: { select: { slug: true, name: true, description: true } },
+        },
+      });
+      if (reloaded) return res.status(200).json(reloaded);
+    } catch {}
     return res.status(200).json(updated);
   } catch (e) {
     console.error('[player_me_update_error]', (e as Error).message);
