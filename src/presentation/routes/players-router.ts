@@ -186,6 +186,7 @@ playersRouter.patch('/me', async (req, res) => {
     let updated: {
       id: string;
       name: string;
+      photo: string | null;
       positionSlug: string | null;
       number: number | null;
       isActive: boolean;
@@ -200,6 +201,7 @@ playersRouter.patch('/me', async (req, res) => {
             select: {
               id: true;
               name: true;
+              photo: true;
               positionSlug: true;
               number: true;
               isActive: true;
@@ -208,6 +210,7 @@ playersRouter.patch('/me', async (req, res) => {
           }) => Promise<{
             id: string;
             name: string;
+            photo: string | null;
             positionSlug: string | null;
             number: number | null;
             isActive: boolean;
@@ -221,6 +224,7 @@ playersRouter.patch('/me', async (req, res) => {
         select: {
           id: true,
           name: true,
+          photo: true,
           positionSlug: true,
           number: true,
           isActive: true,
@@ -246,6 +250,7 @@ playersRouter.patch('/me', async (req, res) => {
             select: {
               id: true;
               name: true;
+              photo: true;
               positionSlug: true;
               number: true;
               isActive: true;
@@ -254,6 +259,7 @@ playersRouter.patch('/me', async (req, res) => {
           }) => Promise<{
             id: string;
             name: string;
+            photo: string | null;
             positionSlug: string | null;
             number: number | null;
             isActive: boolean;
@@ -266,6 +272,7 @@ playersRouter.patch('/me', async (req, res) => {
         select: {
           id: true,
           name: true,
+          photo: true,
           positionSlug: true,
           number: true,
           isActive: true,
