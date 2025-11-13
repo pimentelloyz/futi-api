@@ -526,6 +526,64 @@ export const openapi: OpenAPIObject = {
           '404': { description: 'Player not found' },
         },
       },
+      patch: {
+        summary: 'Update my player profile',
+        tags: ['Players'],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  positionSlug: { type: 'string', nullable: true },
+                  number: { type: 'integer', nullable: true },
+                },
+                additionalProperties: false,
+              },
+              examples: {
+                updateNameAndPosition: {
+                  summary: 'Atualizar nome e posição',
+                  value: { name: 'Novo Nome', positionSlug: 'CM' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Updated profile',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' },
+                    positionSlug: { type: 'string', nullable: true },
+                    position: {
+                      type: 'object',
+                      nullable: true,
+                      properties: {
+                        slug: { type: 'string' },
+                        name: { type: 'string' },
+                        description: { type: 'string', nullable: true },
+                      },
+                    },
+                    number: { type: 'integer', nullable: true },
+                    isActive: { type: 'boolean' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Bad Request' },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Player not found' },
+        },
+      },
       post: {
         summary: 'Create my player if missing (idempotent)',
         tags: ['Players'],

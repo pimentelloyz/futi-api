@@ -110,6 +110,95 @@ playersRouter.get('/me', async (req, res) => {
   res.status(response.statusCode).json(response.body);
 });
 
+// Atualiza meu perfil de jogador
+const updateMeSchema = z
+  .object({
+    name: z.string().min(1).max(100).optional(),
+    positionSlug: z.string().min(1).max(20).nullable().optional(),
+    number: z.number().int().min(0).max(99).nullable().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'at least one field must be provided',
+    path: [],
+  });
+
+playersRouter.patch('/me', async (req, res) => {
+  try {
+    const parsed = updateMeSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: ERROR_CODES.INVALID_REQUEST });
+    const meUser = req.user as { id: string } | undefined;
+    if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
+    const player = await prisma.player.findUnique({
+      where: { userId: meUser.id },
+      select: { id: true },
+    });
+    if (!player) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
+    const data: { name?: string; positionSlug?: string | null; number?: number | null } = {};
+    if (parsed.data.name !== undefined) data.name = parsed.data.name;
+    if (parsed.data.positionSlug !== undefined) data.positionSlug = parsed.data.positionSlug;
+    if (parsed.data.number !== undefined) data.number = parsed.data.number;
+    let updated: {
+      id: string;
+      name: string;
+      positionSlug: string | null;
+      number: number | null;
+      isActive: boolean;
+      position: { slug: string; name: string; description: string | null } | null;
+    };
+    try {
+      const db = prisma as unknown as {
+        player: {
+          update: (args: {
+            where: { id: string };
+            data: { name?: string; positionSlug?: string | null; number?: number | null };
+            select: {
+              id: true;
+              name: true;
+              positionSlug: true;
+              number: true;
+              isActive: true;
+              position: { select: { slug: true; name: true; description: true } };
+            };
+          }) => Promise<{
+            id: string;
+            name: string;
+            positionSlug: string | null;
+            number: number | null;
+            isActive: boolean;
+            position: { slug: string; name: string; description: string | null } | null;
+          }>;
+        };
+      };
+      updated = await db.player.update({
+        where: { id: player.id },
+        data,
+        select: {
+          id: true,
+          name: true,
+          positionSlug: true,
+          number: true,
+          isActive: true,
+          position: { select: { slug: true, name: true, description: true } },
+        },
+      });
+    } catch (e) {
+      const msg = (e as Error).message || '';
+      // Mapeia violação de FK de positionSlug (posição inexistente)
+      if (msg.toLowerCase().includes('foreign key') || msg.toLowerCase().includes('relation')) {
+        return res
+          .status(400)
+          .json({ error: ERROR_CODES.INVALID_REQUEST, message: 'invalid positionSlug' });
+      }
+      throw e;
+    }
+    // Retorna o mesmo shape do GET /me (inclui position)
+    return res.status(200).json(updated);
+  } catch (e) {
+    console.error('[player_me_update_error]', (e as Error).message);
+    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
+  }
+});
+
 playersRouter.post('/me', async (req, res) => {
   const controller = new CreateMyPlayerController();
   const isMultipart = req.is('multipart/form-data');
