@@ -211,6 +211,11 @@ model PlayerEvaluation {
   rating       Int      @default(0)
   comment      String?  @db.VarChar(500)
   createdAt    DateTime @default(now())
+  // Campos novos (opcionais) para avaliação ponderada por critérios
+  form         EvaluationForm? @relation(fields: [formId], references: [id])
+  formId       String?
+  overallScore Decimal? @db.Decimal(5, 2)
+  formSnapshot Json?
 }
 
 model Position {
@@ -220,4 +225,81 @@ model Position {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   players     Player[]
+}
+
+// ====== Avaliações adaptáveis (versões, critérios e contexto) ======
+
+enum EvaluationPositionType {
+  LINE
+  GOALKEEPER
+}
+
+model EvaluationForm {
+  id           String                  @id @default(uuid())
+  name         String                  @db.VarChar(100)
+  positionType EvaluationPositionType
+  version      Int                     @default(1)
+  isActive     Boolean                 @default(true)
+  criteria     EvaluationCriteria[]
+  createdAt    DateTime                @default(now())
+  evaluations  PlayerEvaluation[]
+}
+
+model EvaluationCriteria {
+  id          String         @id @default(uuid())
+  form        EvaluationForm  @relation(fields: [formId], references: [id])
+  formId      String
+  key         String          @db.VarChar(50)
+  name        String          @db.VarChar(100)
+  description String?         @db.VarChar(255)
+  weight      Decimal         @db.Decimal(5, 2)
+  minValue    Int             @default(0)
+  maxValue    Int             @default(10)
+  createdAt   DateTime        @default(now())
+
+  @@unique([formId, key])
+}
+
+model PlayerEvaluationItem {
+  id           String             @id @default(uuid())
+  evaluation   PlayerEvaluation   @relation(fields: [evaluationId], references: [id])
+  evaluationId String
+  criteria     EvaluationCriteria @relation(fields: [criteriaId], references: [id])
+  criteriaId   String
+  value        Int
+}
+
+model PlayerEvaluationAggregate {
+  id          String          @id @default(uuid())
+  player      Player          @relation(fields: [playerId], references: [id])
+  playerId    String
+  form        EvaluationForm  @relation(fields: [formId], references: [id])
+  formId      String
+  count       Int             @default(0)
+  weightedSum Decimal         @db.Decimal(10, 2) @default(0)
+  average     Decimal         @db.Decimal(5, 2)  @default(0)
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([playerId, formId])
+  @@index([playerId])
+}
+
+// Peso do avaliador (default 1.00) para futura ponderação
+// Campo adicional não quebra código existente
+model MatchPlayerEvaluationAssignment {
+  id                String   @id @default(uuid())
+  match             Match    @relation(fields: [matchId], references: [id])
+  matchId           String
+  evaluator         Player   @relation("Evaluator", fields: [evaluatorPlayerId], references: [id])
+  evaluatorPlayerId String
+  target            Player   @relation("EvaluationTarget", fields: [targetPlayerId], references: [id])
+  targetPlayerId    String
+  createdAt         DateTime @default(now())
+  completedAt       DateTime?
+  evaluation        PlayerEvaluation?
+  weight            Decimal  @db.Decimal(5, 2) @default(1.00)
+
+  @@unique([matchId, evaluatorPlayerId, targetPlayerId])
+  @@index([evaluatorPlayerId, matchId])
+  @@index([targetPlayerId, matchId])
 }
