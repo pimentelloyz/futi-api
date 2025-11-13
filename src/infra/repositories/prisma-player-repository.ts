@@ -74,6 +74,7 @@ export class PrismaPlayerRepository implements PlayerRepository {
           select: {
             id: true;
             name: true;
+            photo: true;
             positionSlug: true;
             number: true;
             isActive: true;
@@ -82,6 +83,7 @@ export class PrismaPlayerRepository implements PlayerRepository {
         }) => Promise<{
           id: string;
           name: string;
+          photo: string | null;
           positionSlug: string | null;
           number: number | null;
           isActive: boolean;
@@ -94,6 +96,7 @@ export class PrismaPlayerRepository implements PlayerRepository {
       select: {
         id: true,
         name: true,
+        photo: true,
         positionSlug: true,
         number: true,
         isActive: true,

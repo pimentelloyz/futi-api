@@ -509,6 +509,7 @@ export const openapi: OpenAPIObject = {
                   properties: {
                     id: { type: 'string' },
                     name: { type: 'string' },
+                    photo: { type: 'string', nullable: true },
                     positionSlug: { type: 'string', nullable: true },
                     position: {
                       type: 'object',
@@ -574,6 +575,7 @@ export const openapi: OpenAPIObject = {
                   properties: {
                     id: { type: 'string' },
                     name: { type: 'string' },
+                    photo: { type: 'string', nullable: true },
                     positionSlug: { type: 'string', nullable: true },
                     position: {
                       type: 'object',
