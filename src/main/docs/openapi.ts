@@ -539,7 +539,11 @@ export const openapi: OpenAPIObject = {
                 properties: {
                   name: { type: 'string' },
                   positionSlug: { type: 'string', nullable: true },
-                  number: { type: 'integer', nullable: true },
+                  number: {
+                    type: 'integer',
+                    nullable: true,
+                    description: "Também aceita o alias 'numero' (pt-BR)",
+                  },
                 },
                 additionalProperties: false,
               },
@@ -547,6 +551,10 @@ export const openapi: OpenAPIObject = {
                 updateNameAndPosition: {
                   summary: 'Atualizar nome e posição',
                   value: { name: 'Novo Nome', positionSlug: 'CM' },
+                },
+                updateNumberAlias: {
+                  summary: "Atualizar número usando alias 'numero'",
+                  value: { numero: 7 },
                 },
               },
             },
