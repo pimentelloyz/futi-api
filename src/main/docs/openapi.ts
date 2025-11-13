@@ -796,7 +796,26 @@ export const openapi: OpenAPIObject = {
                   properties: {
                     team: {
                       type: 'object',
-                      properties: { id: { type: 'string' }, name: { type: 'string' } },
+                      properties: {
+                        id: { type: 'string' },
+                        name: { type: 'string' },
+                        icon: { type: 'string', nullable: true },
+                        description: { type: 'string', nullable: true },
+                        isActive: { type: 'boolean' },
+                      },
+                    },
+                    players: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          name: { type: 'string' },
+                          positionSlug: { type: 'string', nullable: true },
+                          number: { type: 'integer', nullable: true },
+                          isActive: { type: 'boolean' },
+                        },
+                      },
                     },
                     recentMatches: {
                       type: 'array',
@@ -830,10 +849,25 @@ export const openapi: OpenAPIObject = {
                       ],
                     },
                   },
-                  required: ['team', 'recentMatches', 'next_game'],
+                  required: ['team', 'players', 'recentMatches', 'next_game'],
                 },
                 example: {
-                  team: { id: 'team_1', name: 'Overview Team' },
+                  team: {
+                    id: 'team_1',
+                    name: 'Overview Team',
+                    icon: null,
+                    description: null,
+                    isActive: true,
+                  },
+                  players: [
+                    {
+                      id: 'player_10',
+                      name: 'Jogador Exemplo',
+                      positionSlug: 'CM',
+                      number: 8,
+                      isActive: true,
+                    },
+                  ],
                   recentMatches: [
                     {
                       id: 'match_10',

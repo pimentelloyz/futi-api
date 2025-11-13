@@ -497,6 +497,62 @@ playersRouter.get('/me/team/overview', async (req, res) => {
   const selectedTeamId = teamId || teams[0].id;
   const team = teams.find((t: { id: string; name: string }) => t.id === selectedTeamId) || teams[0];
   // recent matches and next game
+  // Enriquecer dados do time e jogadores
+  const fullTeam = (await prisma.team.findUnique({
+    where: { id: team.id },
+  })) as unknown as {
+    id: string;
+    name: string;
+    icon: string | null;
+    description: string | null;
+    isActive: boolean;
+  } | null;
+  if (!fullTeam || (fullTeam as { isActive?: boolean }).isActive === false) {
+    return res.status(404).json({ error: ERROR_CODES.TEAM_NOT_FOUND });
+  }
+  const teamDb = prisma as unknown as {
+    team: {
+      findUnique: (args: {
+        where: { id: string };
+        select: {
+          players: {
+            select: {
+              id: true;
+              name: true;
+              positionSlug: true;
+              number: true;
+              isActive: true;
+            };
+          };
+        };
+      }) => Promise<{
+        players: Array<{
+          id: string;
+          name: string;
+          positionSlug: string | null;
+          number: number | null;
+          isActive: boolean;
+        }>;
+      } | null>;
+    };
+  };
+  const teamWithPlayers = (await teamDb.team.findUnique({
+    where: { id: team.id },
+    select: {
+      players: {
+        select: { id: true, name: true, positionSlug: true, number: true, isActive: true },
+      },
+    },
+  })) as unknown as {
+    players: Array<{
+      id: string;
+      name: string;
+      positionSlug: string | null;
+      number: number | null;
+      isActive: boolean;
+    }>;
+  } | null;
+  const teamPlayers = teamWithPlayers?.players ?? [];
   const recent = await prisma.match.findMany({
     where: { OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }] },
     orderBy: { scheduledAt: 'desc' },
@@ -523,7 +579,14 @@ playersRouter.get('/me/team/overview', async (req, res) => {
     select: { id: true, scheduledAt: true, venue: true, homeTeamId: true, awayTeamId: true },
   });
   res.json({
-    team: { id: team.id, name: team.name },
+    team: {
+      id: fullTeam.id,
+      name: fullTeam.name,
+      icon: fullTeam.icon,
+      description: fullTeam.description,
+      isActive: fullTeam.isActive,
+    },
+    players: teamPlayers,
     recentMatches: recent,
     next_game: next || null,
   });
