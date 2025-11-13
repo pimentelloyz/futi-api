@@ -8,7 +8,7 @@ import { ERROR_CODES } from '../../domain/constants.js';
 
 const schema = z.object({
   name: z.string().min(1),
-  position: z.string().max(50).optional().nullable(),
+  positionSlug: z.string().max(20).optional().nullable(),
   number: z.number().int().min(0).max(999).optional(),
   teamIds: z.array(z.string().min(1)).optional(),
   photo: z.string().url().optional().nullable(),

@@ -1,6 +1,6 @@
 export type AddPlayerInput = {
   name: string;
-  position?: string | null;
+  positionSlug?: string | null;
   number?: number | null;
   isActive?: boolean;
   teamIds?: string[]; // optional list of teams to link

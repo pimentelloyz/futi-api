@@ -184,22 +184,61 @@ teamsRouter.get('/:id/players', async (req, res) => {
   // Query params: page, limit, sort, order, includeTeam
   const page = Math.max(parseInt(String(req.query.page ?? '1'), 10) || 1, 1);
   const limit = Math.min(Math.max(parseInt(String(req.query.limit ?? '20'), 10) || 20, 1), 100);
-  const sort = String(req.query.sort ?? 'name') as 'name' | 'number' | 'position' | 'isActive';
+  const sort = String(req.query.sort ?? 'name') as 'name' | 'number' | 'positionSlug' | 'isActive';
   const order = String(req.query.order ?? 'asc') === 'desc' ? 'desc' : 'asc';
   const includeTeam = String(req.query.includeTeam ?? 'false') === 'true';
-  const validSorts = new Set(['name', 'number', 'position', 'isActive']);
+  const validSorts = new Set(['name', 'number', 'positionSlug', 'isActive']);
   const sortKey = validSorts.has(sort) ? sort : 'name';
   try {
-    const prisma = (await import('../../infra/prisma/client.js')).prisma;
-    const team = await prisma.team.findUnique({
+    const prismaMod = await import('../../infra/prisma/client.js');
+    const db = prismaMod.prisma as unknown as {
+      team: {
+        findUnique: (args: {
+          where: { id: string };
+          select: {
+            isActive: true;
+            id?: true;
+            name?: true;
+            players: {
+              select: { id: true; name: true; positionSlug: true; number: true; isActive: true };
+            };
+          };
+        }) => Promise<{
+          isActive: boolean;
+          id?: string;
+          name?: string;
+          players: Array<{
+            id: string;
+            name: string;
+            positionSlug: string | null;
+            number: number | null;
+            isActive: boolean;
+          }>;
+        } | null>;
+      };
+    };
+    const team = (await db.team.findUnique({
       where: { id: teamId },
       select: {
         isActive: true,
         id: includeTeam ? true : undefined,
         name: includeTeam ? true : undefined,
-        players: { select: { id: true, name: true, position: true, number: true, isActive: true } },
+        players: {
+          select: { id: true, name: true, positionSlug: true, number: true, isActive: true },
+        },
       },
-    });
+    })) as unknown as {
+      isActive: boolean;
+      id?: string;
+      name?: string;
+      players: Array<{
+        id: string;
+        name: string;
+        positionSlug: string | null;
+        number: number | null;
+        isActive: boolean;
+      }>;
+    };
     if (!team || (team as { isActive?: boolean }).isActive === false) {
       return res.status(404).json({ error: 'team_not_found' });
     }
@@ -207,7 +246,7 @@ teamsRouter.get('/:id/players', async (req, res) => {
     type PlayerLite = {
       id: string;
       name: string;
-      position: string | null;
+      positionSlug: string | null;
       number: number | null;
       isActive: boolean;
     };

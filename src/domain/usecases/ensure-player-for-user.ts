@@ -1,7 +1,7 @@
 export type EnsurePlayerForUserInput = {
   userId: string;
   name: string;
-  position?: string | null;
+  positionSlug?: string | null;
   number?: number | null;
   teamIds?: string[];
   photo?: string | null;

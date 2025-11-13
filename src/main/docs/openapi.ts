@@ -316,7 +316,7 @@ export const openapi: OpenAPIObject = {
           {
             name: 'sort',
             in: 'query',
-            schema: { type: 'string', enum: ['name', 'number', 'position', 'isActive'] },
+            schema: { type: 'string', enum: ['name', 'number', 'positionSlug', 'isActive'] },
             description: 'Campo de ordenação (default: name)',
           },
           {
@@ -347,7 +347,7 @@ export const openapi: OpenAPIObject = {
                         properties: {
                           id: { type: 'string' },
                           name: { type: 'string' },
-                          position: { type: 'string', nullable: true },
+                          positionSlug: { type: 'string', nullable: true },
                           number: { type: 'integer', nullable: true },
                           isActive: { type: 'boolean' },
                         },
@@ -370,7 +370,7 @@ export const openapi: OpenAPIObject = {
                     {
                       id: 'player_10',
                       name: 'Jogador Exemplo',
-                      position: 'MID',
+                      positionSlug: 'CM',
                       number: 8,
                       isActive: true,
                     },
@@ -432,7 +432,7 @@ export const openapi: OpenAPIObject = {
                 type: 'object',
                 properties: {
                   name: { type: 'string' },
-                  position: { type: 'string' },
+                  positionSlug: { type: 'string' },
                   number: { type: 'integer' },
                   isActive: { type: 'string', enum: ['true', 'false'] },
                   teamIds: { type: 'string', description: 'Comma-separated team IDs' },
@@ -445,7 +445,7 @@ export const openapi: OpenAPIObject = {
                   summary: 'Criar jogador com upload de foto',
                   value: {
                     name: 'John Doe',
-                    position: 'FW',
+                    positionSlug: 'ST',
                     number: 9,
                     isActive: 'true',
                     teamIds: 'team_1,team_2',
@@ -458,7 +458,7 @@ export const openapi: OpenAPIObject = {
                 type: 'object',
                 properties: {
                   name: { type: 'string' },
-                  position: { type: 'string', nullable: true },
+                  positionSlug: { type: 'string', nullable: true },
                   number: { type: 'integer', nullable: true },
                   isActive: { type: 'boolean' },
                   teamIds: {
@@ -505,7 +505,7 @@ export const openapi: OpenAPIObject = {
                   properties: {
                     id: { type: 'string' },
                     name: { type: 'string' },
-                    position: { type: 'string', nullable: true },
+                    positionSlug: { type: 'string', nullable: true },
                     number: { type: 'integer', nullable: true },
                     isActive: { type: 'boolean' },
                   },
@@ -532,7 +532,7 @@ export const openapi: OpenAPIObject = {
                 type: 'object',
                 properties: {
                   name: { type: 'string' },
-                  position: { type: 'string' },
+                  positionSlug: { type: 'string' },
                   number: { type: 'integer' },
                   teamIds: { type: 'string', description: 'Comma-separated team IDs' },
                   file: { type: 'string', format: 'binary', description: 'PNG/JPEG/WEBP, <=2MB' },
@@ -544,7 +544,7 @@ export const openapi: OpenAPIObject = {
                   summary: 'Criar meu jogador com upload de foto',
                   value: {
                     name: 'John Doe',
-                    position: 'MF',
+                    positionSlug: 'CM',
                     number: 8,
                     teamIds: 'team_1',
                   },
@@ -556,7 +556,7 @@ export const openapi: OpenAPIObject = {
                 type: 'object',
                 properties: {
                   name: { type: 'string' },
-                  position: { type: 'string', nullable: true },
+                  positionSlug: { type: 'string', nullable: true },
                   number: { type: 'integer', nullable: true },
                   teamIds: { type: 'array', items: { type: 'string' } },
                 },

@@ -71,7 +71,7 @@ playersRouter.post('/', async (req, res) => {
     const body = isMultipart
       ? {
           name: req.body?.name,
-          position: req.body?.position ?? undefined,
+          positionSlug: req.body?.positionSlug ?? undefined,
           number:
             typeof req.body?.number === 'string' ? Number.parseInt(req.body.number, 10) : undefined,
           isActive:
@@ -157,7 +157,7 @@ playersRouter.post('/me', async (req, res) => {
     const body = isMultipart
       ? {
           name: req.body?.name,
-          position: req.body?.position ?? undefined,
+          positionSlug: req.body?.positionSlug ?? undefined,
           number:
             typeof req.body?.number === 'string' ? Number.parseInt(req.body.number, 10) : undefined,
           teamIds: Array.isArray(req.body?.teamIds)

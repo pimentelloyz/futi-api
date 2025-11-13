@@ -6,9 +6,8 @@ export interface PlayerRepository {
   findByUserId(userId: string): Promise<{
     id: string;
     name: string;
-    position?: string | null;
+    positionSlug?: string | null;
     number?: number | null;
     isActive: boolean;
-    photo?: string | null;
   } | null>;
 }

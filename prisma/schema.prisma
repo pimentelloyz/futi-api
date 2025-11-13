@@ -41,7 +41,8 @@ model User {
 model Player {
   id        String   @id @default(uuid())
   name      String   @db.VarChar(100)
-  position  String?  @db.VarChar(50)
+  positionSlug String?  @db.VarChar(20)
+  position  Position? @relation(fields: [positionSlug], references: [slug])
   number    Int?
   isActive  Boolean  @default(true)
   photo     String?  @db.VarChar(255)
@@ -218,4 +219,5 @@ model Position {
   description String?  @db.VarChar(255)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  players     Player[]
 }

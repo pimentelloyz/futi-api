@@ -51,7 +51,7 @@ describe('teams players list e2e', () => {
     const p2 = await request(app)
       .post('/api/players')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ name: 'Teammate', position: 'MID', number: 8 });
+      .send({ name: 'Teammate', positionSlug: 'CM', number: 8 });
     expect(p2.status).toBe(201);
     teammateId = p2.body.id as string;
 
