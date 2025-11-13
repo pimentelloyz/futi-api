@@ -506,6 +506,15 @@ export const openapi: OpenAPIObject = {
                     id: { type: 'string' },
                     name: { type: 'string' },
                     positionSlug: { type: 'string', nullable: true },
+                    position: {
+                      type: 'object',
+                      nullable: true,
+                      properties: {
+                        slug: { type: 'string' },
+                        name: { type: 'string' },
+                        description: { type: 'string', nullable: true },
+                      },
+                    },
                     number: { type: 'integer', nullable: true },
                     isActive: { type: 'boolean' },
                   },

@@ -71,19 +71,34 @@ export class PrismaPlayerRepository implements PlayerRepository {
       player: {
         findUnique: (args: {
           where: { userId: string };
-          select: { id: true; name: true; positionSlug: true; number: true; isActive: true };
+          select: {
+            id: true;
+            name: true;
+            positionSlug: true;
+            number: true;
+            isActive: true;
+            position: { select: { slug: true; name: true; description: true } };
+          };
         }) => Promise<{
           id: string;
           name: string;
           positionSlug: string | null;
           number: number | null;
           isActive: boolean;
+          position: { slug: string; name: string; description: string | null } | null;
         } | null>;
       };
     };
     return db.player.findUnique({
       where: { userId },
-      select: { id: true, name: true, positionSlug: true, number: true, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        positionSlug: true,
+        number: true,
+        isActive: true,
+        position: { select: { slug: true, name: true, description: true } },
+      },
     });
   }
 }

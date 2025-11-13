@@ -7,6 +7,7 @@ export interface PlayerRepository {
     id: string;
     name: string;
     positionSlug?: string | null;
+    position?: { slug: string; name: string; description?: string | null } | null;
     number?: number | null;
     isActive: boolean;
   } | null>;
