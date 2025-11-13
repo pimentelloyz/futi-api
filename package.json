@@ -18,7 +18,10 @@
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:studio": "prisma studio",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:clean:positions-only": "tsx scripts/clean-positions-only.ts",
+    "db:seed:positions-only": "tsx scripts/seed-positions-only.ts",
+    "db:reset:positions": "npm run db:clean:positions-only && npm run db:seed:positions-only"
   },
   "keywords": [
     "node",
