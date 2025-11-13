@@ -2,7 +2,8 @@ import { PrismaClient } from '@prisma/client';
 
 // Prefer DIRECT_URL (5432) for seed to avoid PgBouncer issues on pooled port (6543)
 const prisma = new PrismaClient({
-  datasourceUrl: process.env.DIRECT_URL || process.env.DATABASE_URL,
+  // Use pooled connection for Supabase to avoid direct 5432 host issues
+  datasourceUrl: process.env.DATABASE_URL,
 });
 
 // Seed an admin user using Firebase data provided
@@ -143,9 +144,9 @@ async function main() {
     { slug: 'RF', name: 'Right Forward', description: 'Atacante pela direita' },
   ];
   for (const p of positions) {
-    await prisma.$executeRaw`INSERT INTO "Position" ("slug","name","description")
-      VALUES (${p.slug}, ${p.name}, ${p.description})
-      ON CONFLICT ("slug") DO UPDATE SET "name" = EXCLUDED."name", "description" = EXCLUDED."description"`;
+    await prisma.$executeRaw`INSERT INTO "Position" ("slug","name","description","createdAt","updatedAt")
+      VALUES (${p.slug}, ${p.name}, ${p.description}, NOW(), NOW())
+      ON CONFLICT ("slug") DO UPDATE SET "name" = EXCLUDED."name", "description" = EXCLUDED."description", "updatedAt" = NOW()`;
   }
   console.log('[seed] positions upserted:', positions.length);
 
@@ -174,6 +175,241 @@ async function main() {
       });
       console.log('[seed] linked existing player to team:', { playerId: player.id, teamId: team.id });
     }
+  }
+
+  // === Custom players seed ===
+  // Helper to upsert a player by name and link to the team; optionally set positionSlug
+  async function upsertPlayer(opts: { name: string }) {
+    const existing = await prisma.player.findFirst({ where: { name: opts.name } });
+    let createdOrExisting = existing;
+    if (!existing) {
+      createdOrExisting = await prisma.player.create({
+        data: {
+          name: opts.name,
+          isActive: true,
+          teams: { connect: { id: team!.id } },
+        },
+      });
+      console.log('[seed] created player:', { id: createdOrExisting.id, name: opts.name });
+    } else {
+      // Ensure team link and positionSlug
+      await prisma.player.update({
+        where: { id: existing.id },
+        data: {
+          teams: { connect: { id: team!.id } },
+        },
+      });
+      console.log('[seed] ensured link/updated player:', { id: existing.id, name: opts.name });
+    }
+    return createdOrExisting ?? existing!;
+  }
+
+  // Helper to upsert PlayerSkill for a player (line players)
+  async function upsertLinePlayerSkill(playerId: string, skill: {
+    pace: number; shooting: number; passing: number; dribbling: number; defense: number; physical: number;
+  }) {
+    const existing = await prisma.playerSkill.findUnique({ where: { playerId } });
+    if (!existing) {
+      await prisma.playerSkill.create({
+        data: {
+          playerId,
+          preferredFoot: 'RIGHT',
+          pace: skill.pace,
+          shooting: skill.shooting,
+          passing: skill.passing,
+          dribbling: skill.dribbling,
+          defense: skill.defense,
+          physical: skill.physical,
+          // Keep other defaults; set ballControl as average of dribbling and passing (rounded)
+          ballControl: Math.round((skill.dribbling + skill.passing) / 2),
+          attack: Math.round((skill.shooting + skill.dribbling + skill.pace) / 3),
+        },
+      });
+      console.log('[seed] created PlayerSkill for player:', { playerId });
+    } else {
+      await prisma.playerSkill.update({
+        where: { id: existing.id },
+        data: {
+          pace: skill.pace,
+          shooting: skill.shooting,
+          passing: skill.passing,
+          dribbling: skill.dribbling,
+          defense: skill.defense,
+          physical: skill.physical,
+          ballControl: Math.round((skill.dribbling + skill.passing) / 2),
+          attack: Math.round((skill.shooting + skill.dribbling + skill.pace) / 3),
+        },
+      });
+      console.log('[seed] updated PlayerSkill for player:', { playerId });
+    }
+  }
+
+  // Jogadores de linha
+  const renan = await upsertPlayer({ name: 'Renan Martins Moreira' });
+  await upsertLinePlayerSkill(renan.id, {
+    pace: 78, // Ritmo (PAC)
+    shooting: 81, // Chute (SHO)
+    passing: 83, // Passe (PAS)
+    dribbling: 86, // Drible (DRI)
+    defense: 70, // Defesa (DEF)
+    physical: 74, // Físico (PHY)
+  });
+
+  const bruno = await upsertPlayer({ name: 'Bruno Rholing Moreira' });
+  await upsertLinePlayerSkill(bruno.id, {
+    pace: 75,
+    shooting: 83,
+    passing: 83,
+    dribbling: 78,
+    defense: 85,
+    physical: 73,
+  });
+
+  const laercio = await upsertPlayer({ name: 'Laercio' });
+  await upsertLinePlayerSkill(laercio.id, {
+    pace: 70,
+    shooting: 78,
+    passing: 80,
+    dribbling: 77,
+    defense: 85,
+    physical: 78,
+  });
+
+  // Goleiro (mantemos PlayerSkill com defaults, posição definida como GK)
+  const matheus = await upsertPlayer({ name: 'Matheus Amaral' });
+
+  // === Evaluation forms & criteria (pesos) ===
+  type LineKey = 'PAC' | 'SHO' | 'PAS' | 'DRI' | 'DEF' | 'PHY' | 'DIS';
+  type GkKey = 'REF' | 'COL' | 'MAO' | 'MER' | 'JCP' | 'PHY' | 'DIS';
+
+  async function upsertForm(
+    params: {
+      name: string;
+      positionType: 'LINE' | 'GOALKEEPER';
+      isActive: boolean;
+      version?: number;
+    },
+    criteria: Array<{ key: string; name: string; weight: number; min?: number; max?: number }>,
+  ) {
+    const version = params.version ?? 1;
+    const pAny = prisma as unknown as {
+      evaluationForm: {
+        findFirst: (args: { where: { name: string; positionType: string; version: number } }) => Promise<{ id: string; name: string; isActive: boolean } | null>;
+        create: (args: { data: { name: string; positionType: string; version: number; isActive: boolean } }) => Promise<{ id: string; name: string; isActive: boolean }>;
+        update: (args: { where: { id: string }; data: { isActive: boolean } }) => Promise<{ id: string; name: string; isActive: boolean }>
+      };
+      evaluationCriteria: {
+        deleteMany: (args: { where: { formId: string } }) => Promise<unknown>;
+        createMany: (args: { data: Array<{ formId: string; key: string; name: string; weight: number; minValue: number; maxValue: number }> }) => Promise<unknown>;
+      };
+    };
+    let form = await pAny.evaluationForm.findFirst({
+      where: { name: params.name, positionType: params.positionType, version },
+    });
+    if (!form) {
+      form = await pAny.evaluationForm.create({
+        data: {
+          name: params.name,
+          positionType: params.positionType,
+          version,
+          isActive: params.isActive,
+        },
+      });
+      console.log('[seed] created EvaluationForm:', { id: form.id, name: form.name });
+    } else if (form.isActive !== params.isActive) {
+      form = await pAny.evaluationForm.update({
+        where: { id: form.id },
+        data: { isActive: params.isActive },
+      });
+      console.log('[seed] updated EvaluationForm isActive:', { id: form.id, isActive: form.isActive });
+    }
+
+    // Replace criteria set to keep in sync with provided weights
+    await pAny.evaluationCriteria.deleteMany({ where: { formId: form.id } });
+    await pAny.evaluationCriteria.createMany({
+      data: criteria.map((c) => ({
+        formId: form!.id,
+        key: c.key,
+        name: c.name,
+        weight: c.weight,
+        minValue: c.min ?? 0,
+        maxValue: c.max ?? 100,
+      })),
+    });
+    console.log('[seed] criteria set for form:', { formId: form.id, count: criteria.length });
+    return form;
+  }
+
+  // Atacante (ativo por padrão)
+  const formAtacante = await upsertForm(
+    { name: 'Linha - Atacante', positionType: 'LINE', isActive: true },
+    [
+      { key: 'PAC', name: 'Ritmo (PAC)', weight: 0.25 },
+      { key: 'SHO', name: 'Finalização (SHO)', weight: 0.4 },
+      { key: 'PAS', name: 'Passe (PAS)', weight: 0.15 },
+      { key: 'DRI', name: 'Drible (DRI)', weight: 0.2 },
+      { key: 'DEF', name: 'Defesa (DEF)', weight: 0.0 },
+      { key: 'PHY', name: 'Físico (PHY)', weight: 0.1 },
+      { key: 'DIS', name: 'Disciplina (DIS)', weight: 0.1 },
+    ],
+  );
+
+  // Meio campo (inativo por enquanto)
+  await upsertForm(
+    { name: 'Linha - Meio campo', positionType: 'LINE', isActive: false },
+    [
+      { key: 'PAC', name: 'Ritmo (PAC)', weight: 0.2 },
+      { key: 'SHO', name: 'Finalização (SHO)', weight: 0.25 },
+      { key: 'PAS', name: 'Passe (PAS)', weight: 0.3 },
+      { key: 'DRI', name: 'Drible (DRI)', weight: 0.1 },
+      { key: 'DEF', name: 'Defesa (DEF)', weight: 0.15 },
+      { key: 'PHY', name: 'Físico (PHY)', weight: 0.0 },
+      { key: 'DIS', name: 'Disciplina (DIS)', weight: 0.1 },
+    ],
+  );
+
+  // Defesa (inativo por enquanto)
+  await upsertForm(
+    { name: 'Linha - Defesa', positionType: 'LINE', isActive: false },
+    [
+      { key: 'PAC', name: 'Ritmo (PAC)', weight: 0.1 },
+      { key: 'SHO', name: 'Finalização (SHO)', weight: 0.05 },
+      { key: 'PAS', name: 'Passe (PAS)', weight: 0.15 },
+      { key: 'DRI', name: 'Drible (DRI)', weight: 0.0 },
+      { key: 'DEF', name: 'Defesa (DEF)', weight: 0.4 },
+      { key: 'PHY', name: 'Físico (PHY)', weight: 0.3 },
+      { key: 'DIS', name: 'Disciplina (DIS)', weight: 0.1 },
+    ],
+  );
+
+  // Goleiro (ativo)
+  const formGoleiro = await upsertForm(
+    { name: 'Goleiro', positionType: 'GOALKEEPER', isActive: true },
+    [
+      { key: 'REF', name: 'Reflexo (REF)', weight: 0.25 },
+      { key: 'COL', name: 'Colocação (COL)', weight: 0.1 },
+      { key: 'MAO', name: 'Mãos (MAO)', weight: 0.3 },
+      { key: 'MER', name: 'Mergulho (MER)', weight: 0.15 },
+      { key: 'JCP', name: 'Jogo com os pés (JCP)', weight: 0.2 },
+      { key: 'PHY', name: 'Físico (PHY)', weight: 0.0 },
+      { key: 'DIS', name: 'Disciplina (DIS)', weight: 0.1 },
+    ],
+  );
+
+  // Agregado inicial para o goleiro (Overall 81)
+  if (matheus && formGoleiro) {
+    const pAny2 = prisma as unknown as {
+      playerEvaluationAggregate: {
+        upsert: (args: { where: { playerId_formId: { playerId: string; formId: string } }; create: { playerId: string; formId: string; count: number; weightedSum: number; average: number }; update: { count: { increment: number }; weightedSum: { increment: number }; average: number }; select: { playerId: true } }) => Promise<{ playerId: string }>
+      }
+    };
+    await pAny2.playerEvaluationAggregate.upsert({
+      where: { playerId_formId: { playerId: matheus.id, formId: formGoleiro.id } },
+      create: { playerId: matheus.id, formId: formGoleiro.id, count: 1, weightedSum: 81, average: 81 },
+      update: { count: { increment: 0 }, weightedSum: { increment: 0 }, average: 81 },
+      select: { playerId: true },
+    });
+    console.log('[seed] initialized GK aggregate for Matheus Amaral with overall 81');
   }
 }
 

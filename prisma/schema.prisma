@@ -56,6 +56,7 @@ model Player {
   evaluationAssignmentsAsEvaluator MatchPlayerEvaluationAssignment[] @relation("Evaluator")
   evaluationAssignmentsAsTarget   MatchPlayerEvaluationAssignment[] @relation("EvaluationTarget")
   lineupEntries MatchLineupEntry[]
+  evaluationAggregates PlayerEvaluationAggregate[]
 }
 
 enum MatchStatus {
@@ -187,22 +188,7 @@ model PlayerSkill {
   updatedAt    DateTime      @updatedAt
 }
 
-model MatchPlayerEvaluationAssignment {
-  id                String   @id @default(uuid())
-  match             Match    @relation(fields: [matchId], references: [id])
-  matchId           String
-  evaluator         Player   @relation("Evaluator", fields: [evaluatorPlayerId], references: [id])
-  evaluatorPlayerId String
-  target            Player   @relation("EvaluationTarget", fields: [targetPlayerId], references: [id])
-  targetPlayerId    String
-  createdAt         DateTime @default(now())
-  completedAt       DateTime?
-  evaluation        PlayerEvaluation?
-
-  @@unique([matchId, evaluatorPlayerId, targetPlayerId])
-  @@index([evaluatorPlayerId, matchId])
-  @@index([targetPlayerId, matchId])
-}
+// removed duplicate MatchPlayerEvaluationAssignment (kept the version with weight below)
 
 model PlayerEvaluation {
   id           String   @id @default(uuid())
@@ -216,6 +202,7 @@ model PlayerEvaluation {
   formId       String?
   overallScore Decimal? @db.Decimal(5, 2)
   formSnapshot Json?
+  items        PlayerEvaluationItem[]
 }
 
 model Position {
@@ -243,6 +230,7 @@ model EvaluationForm {
   criteria     EvaluationCriteria[]
   createdAt    DateTime                @default(now())
   evaluations  PlayerEvaluation[]
+  aggregates   PlayerEvaluationAggregate[]
 }
 
 model EvaluationCriteria {
@@ -256,6 +244,7 @@ model EvaluationCriteria {
   minValue    Int             @default(0)
   maxValue    Int             @default(10)
   createdAt   DateTime        @default(now())
+  items       PlayerEvaluationItem[]
 
   @@unique([formId, key])
 }
