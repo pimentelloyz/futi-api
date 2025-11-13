@@ -376,15 +376,24 @@ playersRouter.post('/:id/photo', upload.single('file'), async (req, res) => {
       return res.status(415).json({ error: ERROR_CODES.UNSUPPORTED_MEDIA_TYPE });
     const ext =
       file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
-    const stamp = Date.now();
-    const objectPath = path.posix.join('players', playerId, `photo_${stamp}.${ext}`);
+    // Nome determinístico baseado no ID do player; substituir arquivos anteriores
+    const folderPrefix = path.posix.join('players', playerId, '/');
+    const objectPath = path.posix.join('players', playerId, `${playerId}.${ext}`);
     const { getDefaultBucket } = await import('../../infra/firebase/admin.js');
     const bucket = getDefaultBucket();
+    // Remove qualquer arquivo anterior na pasta do player
+    try {
+      const [existing] = await bucket.getFiles({ prefix: folderPrefix });
+      if (existing && existing.length) {
+        await Promise.allSettled(existing.map((f) => f.delete()));
+      }
+    } catch {}
     const gcsFile = bucket.file(objectPath);
     await gcsFile.save(file.buffer, {
       contentType: file.mimetype,
       resumable: false,
-      metadata: { cacheControl: 'public,max-age=3600' },
+      // Evitar cache agressivo no cliente, já que a URL agora é fixa
+      metadata: { cacheControl: 'no-cache, max-age=0' },
     });
     try {
       await gcsFile.makePublic();
