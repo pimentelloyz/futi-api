@@ -654,6 +654,18 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/players/me/exists': {
+      get: {
+        summary: 'Check if my player exists',
+        tags: ['Players'],
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'Player exists' },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Player not found' },
+        },
+      },
+    },
     '/api/players/{id}/photo': {
       post: {
         summary: 'Upload player profile photo',

@@ -110,6 +110,18 @@ playersRouter.get('/me', async (req, res) => {
   res.status(response.statusCode).json(response.body);
 });
 
+// Retorna 200 se o usuário autenticado possuir Player vinculado; caso contrário, 404
+playersRouter.get('/me/exists', async (req, res) => {
+  const meUser = req.user as { id: string } | undefined;
+  if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
+  const has = await prisma.player.findUnique({
+    where: { userId: meUser.id },
+    select: { id: true },
+  });
+  if (!has) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
+  return res.status(200).send();
+});
+
 // Atualiza meu perfil de jogador
 const updateMeSchema = z
   .object({
