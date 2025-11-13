@@ -483,111 +483,103 @@ playersRouter.get('/me/graph', async (req, res) => {
 });
 
 playersRouter.get('/me/team/overview', async (req, res) => {
-  const meUser = req.user as { id: string } | undefined;
-  if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
-  const { teamId } = req.query as { teamId?: string };
-  // Get my player and teams
-  const playerTeams = await prisma.player.findUnique({
-    where: { userId: meUser.id },
-    select: { id: true, teams: { select: { id: true, name: true } } },
-  });
-  if (!playerTeams) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
-  const teams = playerTeams.teams as Array<{ id: string; name: string }>;
-  if (teams.length === 0) return res.status(404).json({ error: 'no_team' });
-  const selectedTeamId = teamId || teams[0].id;
-  const team = teams.find((t: { id: string; name: string }) => t.id === selectedTeamId) || teams[0];
-  // recent matches and next game
-  // Enriquecer dados do time e jogadores
-  const fullTeam = (await prisma.team.findUnique({
-    where: { id: team.id },
-  })) as unknown as {
-    id: string;
-    name: string;
-    icon: string | null;
-    description: string | null;
-    isActive: boolean;
-  } | null;
-  if (!fullTeam || (fullTeam as { isActive?: boolean }).isActive === false) {
-    return res.status(404).json({ error: ERROR_CODES.TEAM_NOT_FOUND });
-  }
-  const teamDb = prisma as unknown as {
-    team: {
-      findUnique: (args: {
-        where: { id: string };
-        select: {
-          players: {
-            select: {
-              id: true;
-              name: true;
-              positionSlug: true;
-              number: true;
-              isActive: true;
-            };
-          };
-        };
-      }) => Promise<{
-        players: Array<{
-          id: string;
-          name: string;
-          positionSlug: string | null;
-          number: number | null;
-          isActive: boolean;
-        }>;
-      } | null>;
-    };
-  };
-  const teamWithPlayers = (await teamDb.team.findUnique({
-    where: { id: team.id },
-    select: {
-      players: {
-        select: { id: true, name: true, positionSlug: true, number: true, isActive: true },
-      },
-    },
-  })) as unknown as {
-    players: Array<{
+  try {
+    const meUser = req.user as { id: string } | undefined;
+    if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
+    const { teamId } = req.query as { teamId?: string };
+
+    // Meu player
+    const mePlayer = await prisma.player.findUnique({
+      where: { userId: meUser.id },
+      select: { id: true },
+    });
+    if (!mePlayer) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
+
+    // Descobrir times em que estou. Preferimos uma consulta que funcione com o client atual.
+    // Assumindo relação implícita (Team.players: Player[]), filtramos por players.some.id = mePlayer.id
+    const myTeams = await prisma.team.findMany({
+      where: { players: { some: { id: mePlayer.id } } },
+      select: { id: true, name: true },
+    });
+    if (!myTeams.length) return res.status(404).json({ error: 'no_team' });
+
+    const selectedTeamId = teamId || myTeams[0].id;
+    const team = myTeams.find((t) => t.id === selectedTeamId) || myTeams[0];
+
+    // Carregar dados básicos do time
+    const fullTeam = (await prisma.team.findUnique({
+      where: { id: team.id },
+    })) as unknown as {
       id: string;
       name: string;
-      positionSlug: string | null;
-      number: number | null;
+      icon: string | null;
+      description: string | null;
       isActive: boolean;
-    }>;
-  } | null;
-  const teamPlayers = teamWithPlayers?.players ?? [];
-  const recent = await prisma.match.findMany({
-    where: { OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }] },
-    orderBy: { scheduledAt: 'desc' },
-    take: 5,
-    select: {
-      id: true,
-      scheduledAt: true,
-      status: true,
-      venue: true,
-      homeTeamId: true,
-      awayTeamId: true,
-      homeScore: true,
-      awayScore: true,
-    },
-  });
-  const now = new Date();
-  const next = await prisma.match.findFirst({
-    where: {
-      status: 'SCHEDULED',
-      scheduledAt: { gte: now },
-      OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
-    },
-    orderBy: { scheduledAt: 'asc' },
-    select: { id: true, scheduledAt: true, venue: true, homeTeamId: true, awayTeamId: true },
-  });
-  res.json({
-    team: {
-      id: fullTeam.id,
-      name: fullTeam.name,
-      icon: fullTeam.icon,
-      description: fullTeam.description,
-      isActive: fullTeam.isActive,
-    },
-    players: teamPlayers,
-    recentMatches: recent,
-    next_game: next || null,
-  });
+    } | null;
+    if (!fullTeam || (fullTeam as { isActive?: boolean }).isActive === false) {
+      return res.status(404).json({ error: ERROR_CODES.TEAM_NOT_FOUND });
+    }
+
+    // Jogadores do time (seguindo a mesma abordagem do teamsRouter)
+    const teamWithPlayers = (await prisma.team.findUnique({
+      where: { id: team.id },
+      select: {
+        players: {
+          select: { id: true, name: true, positionSlug: true, number: true, isActive: true },
+        },
+      },
+    })) as unknown as {
+      players: Array<{
+        id: string;
+        name: string;
+        positionSlug: string | null;
+        number: number | null;
+        isActive: boolean;
+      }>;
+    } | null;
+    const teamPlayers = teamWithPlayers?.players ?? [];
+
+    // Partidas recentes e próximo jogo
+    const recent = await prisma.match.findMany({
+      where: { OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }] },
+      orderBy: { scheduledAt: 'desc' },
+      take: 5,
+      select: {
+        id: true,
+        scheduledAt: true,
+        status: true,
+        venue: true,
+        homeTeamId: true,
+        awayTeamId: true,
+        homeScore: true,
+        awayScore: true,
+      },
+    });
+    const now = new Date();
+    const next = await prisma.match.findFirst({
+      where: {
+        status: 'SCHEDULED',
+        scheduledAt: { gte: now },
+        OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
+      },
+      orderBy: { scheduledAt: 'asc' },
+      select: { id: true, scheduledAt: true, venue: true, homeTeamId: true, awayTeamId: true },
+    });
+
+    return res.json({
+      team: {
+        id: fullTeam.id,
+        name: fullTeam.name,
+        icon: fullTeam.icon,
+        description: fullTeam.description,
+        isActive: fullTeam.isActive,
+      },
+      players: teamPlayers,
+      recentMatches: recent,
+      next_game: next || null,
+    });
+  } catch (e) {
+    console.error('[player_overview_error]', (e as Error).message);
+    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
+  }
 });

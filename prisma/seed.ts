@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, MatchEventType } from '@prisma/client';
 
 // Prefer DIRECT_URL (5432) for seed to avoid PgBouncer issues on pooled port (6543)
 const prisma = new PrismaClient({
@@ -159,19 +159,18 @@ async function main() {
         name: playerName,
         isActive: true,
         user: { connect: { id: user.id } },
-        teams: { connect: { id: team.id } },
+        teams: { create: { teamId: team.id } },
       },
     });
     console.log('[seed] created player for user:', { playerId: player.id, userId: user.id });
   } else {
     // ensure linkage with team exists
-    const existingLink = await prisma.team.findFirst({
-      where: { id: team.id, players: { some: { id: player.id } } },
+    const existingLink = await prisma.playersOnTeams.findUnique({
+      where: { playerId_teamId: { playerId: player.id, teamId: team.id } },
     });
     if (!existingLink) {
-      await prisma.player.update({
-        where: { id: player.id },
-        data: { teams: { connect: { id: team.id } } },
+      await prisma.playersOnTeams.create({
+        data: { playerId: player.id, teamId: team.id },
       });
       console.log('[seed] linked existing player to team:', { playerId: player.id, teamId: team.id });
     }
@@ -187,18 +186,20 @@ async function main() {
         data: {
           name: opts.name,
           isActive: true,
-          teams: { connect: { id: team!.id } },
+          teams: { create: { teamId: team!.id } },
         },
       });
       console.log('[seed] created player:', { id: createdOrExisting.id, name: opts.name });
     } else {
-      // Ensure team link and positionSlug
-      await prisma.player.update({
-        where: { id: existing.id },
-        data: {
-          teams: { connect: { id: team!.id } },
-        },
+      // Ensure team link
+      const existingLink = await prisma.playersOnTeams.findUnique({
+        where: { playerId_teamId: { playerId: existing.id, teamId: team!.id } },
       });
+      if (!existingLink) {
+        await prisma.playersOnTeams.create({
+          data: { playerId: existing.id, teamId: team!.id },
+        });
+      }
       console.log('[seed] ensured link/updated player:', { id: existing.id, name: opts.name });
     }
     return createdOrExisting ?? existing!;
@@ -410,6 +411,85 @@ async function main() {
       select: { playerId: true },
     });
     console.log('[seed] initialized GK aggregate for Matheus Amaral with overall 81');
+  }
+
+  // === Match seeds ===
+  if (!team) {
+    console.log('[seed-matches] Default team not found, skipping match seeds.');
+    return;
+  }
+
+  // Ensure a second team exists for matches
+  let opponentTeam = await prisma.team.findFirst({ where: { name: 'Adversário FC' } });
+  if (!opponentTeam) {
+    opponentTeam = await prisma.team.create({
+      data: { name: 'Adversário FC' },
+    });
+    console.log('[seed] created opponent team:', { id: opponentTeam.id, name: opponentTeam.name });
+  }
+
+  // 1. Match for tomorrow (Nov 14, 2025, 18:00)
+  const tomorrow = new Date('2025-11-14T18:00:00');
+
+  // Upsert to avoid duplicates on re-seed
+  const scheduledMatch = await prisma.match.upsert({
+    where: {
+      homeTeamId_awayTeamId_scheduledAt: {
+        homeTeamId: team.id,
+        awayTeamId: opponentTeam.id,
+        scheduledAt: tomorrow,
+      },
+    },
+    update: { status: 'SCHEDULED' },
+    create: {
+      homeTeamId: team.id,
+      awayTeamId: opponentTeam.id,
+      scheduledAt: tomorrow,
+      venue: 'Estádio Principal',
+      status: 'SCHEDULED',
+    },
+  });
+  console.log('[seed] upserted scheduled match for tomorrow:', { id: scheduledMatch.id });
+
+  // 2. Match from yesterday (Nov 12, 2025, 18:00) with events
+  const yesterday = new Date('2025-11-12T18:00:00');
+  const finishedMatch = await prisma.match.upsert({
+    where: {
+      homeTeamId_awayTeamId_scheduledAt: {
+        homeTeamId: team.id,
+        awayTeamId: opponentTeam.id,
+        scheduledAt: yesterday,
+      },
+    },
+    update: { status: 'FINISHED', homeScore: 1, awayScore: 0 },
+    create: {
+      homeTeamId: team.id,
+      awayTeamId: opponentTeam.id,
+      scheduledAt: yesterday,
+      venue: 'Estádio Secundário',
+      status: 'FINISHED',
+      homeScore: 1,
+      awayScore: 0,
+    },
+  });
+  console.log('[seed] upserted finished match from yesterday:', { id: finishedMatch.id });
+
+  // Create events for the finished match
+  const playerForEvents = renan; // Use 'Renan Martins Moreira' for events
+  if (playerForEvents) {
+    const eventTypes: MatchEventType[] = ['GOAL', 'FOUL', 'YELLOW_CARD', 'RED_CARD', 'OWN_GOAL'];
+    for (const type of eventTypes) {
+      await prisma.matchEvent.create({
+        data: {
+          matchId: finishedMatch.id,
+          teamId: team.id,
+          playerId: playerForEvents.id,
+          minute: Math.floor(Math.random() * 90) + 1, // random minute
+          type: type,
+        },
+      });
+    }
+    console.log('[seed] created match events for finished match:', { matchId: finishedMatch.id, count: eventTypes.length });
   }
 }
 
