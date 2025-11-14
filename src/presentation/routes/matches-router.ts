@@ -5,8 +5,7 @@ import { makeListMatchesController } from '../../main/factories/make-list-matche
 import { makeUpdateMatchScoreController } from '../../main/factories/make-update-match-score-controller.js';
 import { makeUpdateMatchStatusController } from '../../main/factories/make-update-match-status-controller.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
-import { PrismaMatchPlayerEvaluationRepository } from '../../infra/repositories/prisma-match-player-evaluation-repository.js';
-import { prisma } from '../../infra/prisma/client.js';
+import { MatchEvaluationAssignmentService } from '../../domain/services/match-evaluation-assignment-service.js';
 import {
   MatchEventsListController,
   MatchEventCreateController,
@@ -73,66 +72,8 @@ matchesRouter.patch('/:id/status', async (req, res) => {
   if (response.statusCode !== 200) return;
   const body = response.body as { status?: string; id?: string } | undefined;
   if (body?.status !== 'FINISHED') return;
-  const matchId = req.params.id;
   try {
-    const match = await prisma.match.findUnique({
-      where: { id: matchId },
-      select: { homeTeamId: true, awayTeamId: true },
-    });
-    if (!match) return;
-    // Tenta usar lineup
-    const lineup = await prisma.matchLineupEntry.findMany({
-      where: { matchId },
-      select: { playerId: true, teamId: true },
-    });
-    const byTeam = new Map<string, string[]>();
-    for (const entry of lineup) {
-      const arr = byTeam.get(entry.teamId) ?? [];
-      arr.push(entry.playerId);
-      byTeam.set(entry.teamId, arr);
-    }
-    if (byTeam.size === 0) {
-      // fallback: todos os players dos times
-      for (const tid of [match.homeTeamId, match.awayTeamId]) {
-        const pAny = prisma as unknown as {
-          playersOnTeams: {
-            findMany: (args: {
-              where: { teamId: string };
-              select: { playerId: true };
-            }) => Promise<Array<{ playerId: string }>>;
-          };
-        };
-        const links = await pAny.playersOnTeams.findMany({
-          where: { teamId: tid },
-          select: { playerId: true },
-        });
-        const ids = links.map((l) => l.playerId);
-        byTeam.set(tid, ids);
-      }
-    }
-    const evalRepo = new PrismaMatchPlayerEvaluationRepository();
-    const createdAll: Array<{ evaluatorPlayerId: string; targetPlayerId: string }> = [];
-    for (const [, playerIds] of byTeam.entries()) {
-      if (playerIds.length < 2) continue;
-      const created = await evalRepo.generateAssignments({
-        matchId,
-        teamPlayerIds: playerIds,
-        perPlayerTargets: 3,
-      });
-      createdAll.push(...created);
-    }
-    if (!createdAll.length) return;
-    const { sendNotification } = await import('../../infra/firebase/admin.js');
-    const notified = new Set<string>();
-    for (const a of createdAll) {
-      if (notified.has(a.evaluatorPlayerId)) continue;
-      notified.add(a.evaluatorPlayerId);
-      sendNotification?.(
-        a.evaluatorPlayerId,
-        'Avaliações disponíveis',
-        'Avalie seus colegas desta partida.',
-      );
-    }
+    await new MatchEvaluationAssignmentService().generateForFinishedMatch(req.params.id);
   } catch (e) {
     console.error('[post_match_eval_generation_error]', (e as Error).message);
   }

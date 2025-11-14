@@ -1,5 +1,6 @@
 import { prisma } from '../../infra/prisma/client.js';
-import { ERROR_CODES } from '../../domain/constants.js';
+import { ERROR_CODES, EVALUATION_WINDOW_MS } from '../../domain/constants.js';
+import { listTeamIdsForPlayer } from '../../infra/prisma/players-on-teams-utils.js';
 
 interface EvaluationBannerResponse {
   evaluationBanner: null | {
@@ -37,24 +38,12 @@ export class EvaluationBannerController {
     const mePlayer = await prisma.player.findUnique({ where: { userId }, select: { id: true } });
     if (!mePlayer) return { statusCode: 404, body: { error: ERROR_CODES.PLAYER_NOT_FOUND } };
 
-    const prismaExt = prisma as unknown as {
-      playersOnTeams: {
-        findMany: (args: {
-          where: { playerId?: string };
-          select: { teamId?: true };
-        }) => Promise<Array<{ teamId?: string }>>;
-      };
-    };
-    const memberships = await prismaExt.playersOnTeams.findMany({
-      where: { playerId: mePlayer.id },
-      select: { teamId: true },
-    });
-    const allTeamIds = memberships.map((m) => m.teamId!).filter(Boolean);
+    const allTeamIds = await listTeamIdsForPlayer(mePlayer.id);
     if (!allTeamIds.length) return { statusCode: 404, body: { evaluationBanner: null } };
     const focusTeamIds = teamId && allTeamIds.includes(teamId) ? [teamId] : allTeamIds;
 
     const now = new Date();
-    const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const windowStart = new Date(now.getTime() - EVALUATION_WINDOW_MS);
 
     const recentMatch = await prisma.match.findFirst({
       where: {
@@ -108,7 +97,7 @@ export class EvaluationBannerController {
           match: recentMatch,
           pendingCount,
           expiresAt: new Date(
-            recentMatch.scheduledAt.getTime() + 24 * 60 * 60 * 1000,
+            recentMatch.scheduledAt.getTime() + EVALUATION_WINDOW_MS,
           ).toISOString(),
           players,
         },

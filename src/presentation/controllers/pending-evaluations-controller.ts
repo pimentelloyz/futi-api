@@ -1,5 +1,9 @@
 import { prisma } from '../../infra/prisma/client.js';
-import { ERROR_CODES } from '../../domain/constants.js';
+import { ERROR_CODES, EVALUATION_WINDOW_MS } from '../../domain/constants.js';
+import {
+  listTeamIdsForPlayer,
+  listPlayerIdsForTeam,
+} from '../../infra/prisma/players-on-teams-utils.js';
 
 interface PendingEvaluationsResponse {
   match: {
@@ -34,23 +38,11 @@ export class PendingEvaluationsController {
     const mePlayer = await prisma.player.findUnique({ where: { userId }, select: { id: true } });
     if (!mePlayer) return { statusCode: 404, body: { error: ERROR_CODES.PLAYER_NOT_FOUND } };
 
-    const prismaExt = prisma as unknown as {
-      playersOnTeams: {
-        findMany: (args: {
-          where: { playerId?: string; teamId?: string };
-          select: { teamId?: true; playerId?: true };
-        }) => Promise<Array<{ teamId?: string; playerId?: string }>>;
-      };
-    };
-    const memberships = await prismaExt.playersOnTeams.findMany({
-      where: { playerId: mePlayer.id },
-      select: { teamId: true },
-    });
-    const teamIds = memberships.map((m) => m.teamId!).filter((id): id is string => Boolean(id));
+    const teamIds = await listTeamIdsForPlayer(mePlayer.id);
     if (!teamIds.length) return { statusCode: 404, body: { error: 'no_team' } };
 
     const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(now.getTime() - EVALUATION_WINDOW_MS);
 
     const recentMatch = await prisma.match.findFirst({
       where: {
@@ -95,11 +87,8 @@ export class PendingEvaluationsController {
     }
 
     if (targetPlayerIds.length === 0) {
-      const roster = await prismaExt.playersOnTeams.findMany({
-        where: { teamId: myTeamId },
-        select: { playerId: true },
-      });
-      targetPlayerIds = roster.map((r) => r.playerId!).filter((id) => id && id !== mePlayer.id);
+      const rosterIds = await listPlayerIdsForTeam(myTeamId);
+      targetPlayerIds = rosterIds.filter((id: string) => id !== mePlayer.id);
     }
 
     const players = await prisma.player.findMany({
@@ -113,7 +102,7 @@ export class PendingEvaluationsController {
         match: recentMatch,
         teamId: myTeamId,
         evaluatorPlayerId: mePlayer.id,
-        expiresAt: new Date(recentMatch.scheduledAt.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+        expiresAt: new Date(recentMatch.scheduledAt.getTime() + EVALUATION_WINDOW_MS).toISOString(),
         players,
       },
     };

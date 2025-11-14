@@ -46,3 +46,6 @@ export const PUSH_PLATFORM = {
   WEB: 'web',
 } as const;
 export type PushPlatform = (typeof PUSH_PLATFORM)[keyof typeof PUSH_PLATFORM];
+
+// Evaluation window (24h) for pending player evaluations and banner visibility
+export const EVALUATION_WINDOW_MS = 24 * 60 * 60 * 1000;
