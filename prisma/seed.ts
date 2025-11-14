@@ -1,10 +1,17 @@
 import { PrismaClient, MatchEventType } from '@prisma/client';
 
-// Prefer DIRECT_URL (5432) for seed to avoid PgBouncer issues on pooled port (6543)
-const prisma = new PrismaClient({
-  // Use pooled connection for Supabase to avoid direct 5432 host issues
-  datasourceUrl: process.env.DATABASE_URL,
-});
+// Prefer DIRECT_URL (5432) para evitar problemas de PgBouncer (porta 6543) em seeds pesados.
+// Se DIRECT_URL não estiver definido, cai no DATABASE_URL.
+let datasourceUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
+if (!datasourceUrl) {
+  console.warn('[seed] Nenhuma DIRECT_URL ou DATABASE_URL definida. Verifique o .env antes de continuar.');
+} else if (/:6543\b/.test(datasourceUrl)) {
+  const directCandidate = datasourceUrl.replace(':6543', ':5432');
+  console.log('[seed] Detectado URL pooled (PgBouncer 6543). Usando fallback direto 5432:', directCandidate);
+  datasourceUrl = directCandidate;
+}
+const prisma = new PrismaClient({ datasourceUrl });
+console.log('[seed] usando datasourceUrl=', datasourceUrl?.replace(/:[^:@/]*@/,'://***:***@')); // máscara básica de credenciais
 
 // Seed an admin user using Firebase data provided
 // You can override via env if needed
@@ -152,25 +159,38 @@ async function main() {
 
   // Ensure Player profile for seeded user and link to default team
   let player = await prisma.player.findUnique({ where: { userId: user.id } });
-  const prismaAny = prisma as any;
+  // use prisma.playersOnTeams directly (generated client)
   if (!player) {
     const playerName = user.displayName || user.email?.split('@')[0] || 'Seed Player';
     player = await prisma.player.create({
       data: { name: playerName, isActive: true, user: { connect: { id: user.id } } },
     });
     // explicit join
-    try {
-      await prismaAny.playersOnTeams.create({ data: { playerId: player.id, teamId: team.id } });
-    } catch (e) {}
+      try {
+        await prisma.playersOnTeams.create({ data: { playerId: player.id, teamId: team!.id } });
+      } catch {}
     console.log('[seed] created player for user:', { playerId: player.id, userId: user.id });
   } else {
-    const existingLink = await prismaAny.playersOnTeams.findUnique({
+    const existingLink = await prisma.playersOnTeams.findUnique({
       where: { playerId_teamId: { playerId: player.id, teamId: team.id } },
     });
     if (!existingLink) {
-      await prismaAny.playersOnTeams.create({ data: { playerId: player.id, teamId: team.id } });
+      await prisma.playersOnTeams.create({ data: { playerId: player.id, teamId: team.id } });
       console.log('[seed] linked existing player to team:', { playerId: player.id, teamId: team.id });
     }
+  }
+
+  // Ensure seeded user's PlayerSkill (André Pimentel) has a similar average to the other seeded players
+  if (player) {
+    await upsertLinePlayerSkill(player.id, {
+      pace: 76,
+      shooting: 78,
+      passing: 80,
+      dribbling: 79,
+      defense: 74,
+      physical: 75,
+    });
+    console.log('[seed] ensured PlayerSkill for seeded user (André Pimentel):', { playerId: player.id });
   }
 
   // === Custom players seed ===
@@ -183,15 +203,15 @@ async function main() {
         data: { name: opts.name, isActive: true },
       });
       try {
-        await prismaAny.playersOnTeams.create({ data: { playerId: createdOrExisting.id, teamId: team!.id } });
+        await prisma.playersOnTeams.create({ data: { playerId: createdOrExisting.id, teamId: team!.id } });
       } catch {}
       console.log('[seed] created player:', { id: createdOrExisting.id, name: opts.name });
     } else {
-      const existingLink = await prismaAny.playersOnTeams.findUnique({
+      const existingLink = await prisma.playersOnTeams.findUnique({
         where: { playerId_teamId: { playerId: existing.id, teamId: team!.id } },
       });
       if (!existingLink) {
-        await prismaAny.playersOnTeams.create({ data: { playerId: existing.id, teamId: team!.id } });
+        await prisma.playersOnTeams.create({ data: { playerId: existing.id, teamId: team!.id } });
       }
       console.log('[seed] ensured link/updated player:', { id: existing.id, name: opts.name });
     }
@@ -273,8 +293,8 @@ async function main() {
   const matheus = await upsertPlayer({ name: 'Matheus Amaral' });
 
   // === Evaluation forms & criteria (pesos) ===
-  type LineKey = 'PAC' | 'SHO' | 'PAS' | 'DRI' | 'DEF' | 'PHY' | 'DIS';
-  type GkKey = 'REF' | 'COL' | 'MAO' | 'MER' | 'JCP' | 'PHY' | 'DIS';
+  // evaluation form keys (kept for reference)
+  // (intentionally not declared as types to avoid unused-type lint in seeds)
 
   async function upsertForm(
     params: {
@@ -286,22 +306,12 @@ async function main() {
     criteria: Array<{ key: string; name: string; weight: number; min?: number; max?: number }>,
   ) {
     const version = params.version ?? 1;
-    const pAny = prisma as unknown as {
-      evaluationForm: {
-        findFirst: (args: { where: { name: string; positionType: string; version: number } }) => Promise<{ id: string; name: string; isActive: boolean } | null>;
-        create: (args: { data: { name: string; positionType: string; version: number; isActive: boolean } }) => Promise<{ id: string; name: string; isActive: boolean }>;
-        update: (args: { where: { id: string }; data: { isActive: boolean } }) => Promise<{ id: string; name: string; isActive: boolean }>
-      };
-      evaluationCriteria: {
-        deleteMany: (args: { where: { formId: string } }) => Promise<unknown>;
-        createMany: (args: { data: Array<{ formId: string; key: string; name: string; weight: number; minValue: number; maxValue: number }> }) => Promise<unknown>;
-      };
-    };
-    let form = await pAny.evaluationForm.findFirst({
+    // use prisma.evaluationForm and prisma.evaluationCriteria directly
+    let form = await prisma.evaluationForm.findFirst({
       where: { name: params.name, positionType: params.positionType, version },
     });
     if (!form) {
-      form = await pAny.evaluationForm.create({
+      form = await prisma.evaluationForm.create({
         data: {
           name: params.name,
           positionType: params.positionType,
@@ -311,7 +321,7 @@ async function main() {
       });
       console.log('[seed] created EvaluationForm:', { id: form.id, name: form.name });
     } else if (form.isActive !== params.isActive) {
-      form = await pAny.evaluationForm.update({
+      form = await prisma.evaluationForm.update({
         where: { id: form.id },
         data: { isActive: params.isActive },
       });
@@ -319,8 +329,8 @@ async function main() {
     }
 
     // Replace criteria set to keep in sync with provided weights
-    await pAny.evaluationCriteria.deleteMany({ where: { formId: form.id } });
-    await pAny.evaluationCriteria.createMany({
+    await prisma.evaluationCriteria.deleteMany({ where: { formId: form.id } });
+    await prisma.evaluationCriteria.createMany({
       data: criteria.map((c) => ({
         formId: form!.id,
         key: c.key,
@@ -335,7 +345,7 @@ async function main() {
   }
 
   // Atacante (ativo por padrão)
-  const formAtacante = await upsertForm(
+  await upsertForm(
     { name: 'Linha - Atacante', positionType: 'LINE', isActive: true },
     [
       { key: 'PAC', name: 'Ritmo (PAC)', weight: 0.25 },
@@ -344,7 +354,7 @@ async function main() {
       { key: 'DRI', name: 'Drible (DRI)', weight: 0.2 },
       { key: 'DEF', name: 'Defesa (DEF)', weight: 0.0 },
       { key: 'PHY', name: 'Físico (PHY)', weight: 0.1 },
-      { key: 'DIS', name: 'Disciplina (DIS)', weight: 0.1 },
+          { key: 'DIS', name: 'Disciplina (DIS)', weight: 0.1 },
     ],
   );
 
@@ -392,12 +402,7 @@ async function main() {
 
   // Agregado inicial para o goleiro (Overall 81)
   if (matheus && formGoleiro) {
-    const pAny2 = prisma as unknown as {
-      playerEvaluationAggregate: {
-        upsert: (args: { where: { playerId_formId: { playerId: string; formId: string } }; create: { playerId: string; formId: string; count: number; weightedSum: number; average: number }; update: { count: { increment: number }; weightedSum: { increment: number }; average: number }; select: { playerId: true } }) => Promise<{ playerId: string }>
-      }
-    };
-    await pAny2.playerEvaluationAggregate.upsert({
+    await prisma.playerEvaluationAggregate.upsert({
       where: { playerId_formId: { playerId: matheus.id, formId: formGoleiro.id } },
       create: { playerId: matheus.id, formId: formGoleiro.id, count: 1, weightedSum: 81, average: 81 },
       update: { count: { increment: 0 }, weightedSum: { increment: 0 }, average: 81 },
@@ -421,80 +426,119 @@ async function main() {
     console.log('[seed] created opponent team:', { id: opponentTeam.id, name: opponentTeam.name });
   }
 
-  // 1. Match for tomorrow (Nov 14, 2025, 18:00)
-  const tomorrow = new Date('2025-11-14T18:00:00');
-
-  // Upsert to avoid duplicates on re-seed
-  let scheduledMatch = await prisma.match.findFirst({
-    where: { homeTeamId: team.id, awayTeamId: opponentTeam.id, scheduledAt: tomorrow },
-  });
-  if (scheduledMatch) {
-    scheduledMatch = await prisma.match.update({
-      where: { id: scheduledMatch.id },
-      data: { status: 'SCHEDULED' },
-    });
-  } else {
-    scheduledMatch = await prisma.match.create({
+  // Ensure a sample League / Championship and link both teams to it
+  const leagueSlug = 'futi-cup';
+  let league = await prisma.league.findFirst({ where: { slug: leagueSlug } });
+  if (!league) {
+    league = await prisma.league.create({
       data: {
-        homeTeamId: team.id,
-        awayTeamId: opponentTeam.id,
-        scheduledAt: tomorrow,
-        venue: 'Estádio Principal',
-        status: 'SCHEDULED',
+        name: 'Futi Cup',
+        slug: leagueSlug,
+        description: 'Liga exemplo criada pelo seed',
+        startAt: new Date(),
+        isActive: true,
       },
     });
+    console.log('[seed] created league:', { id: league.id, name: league.name });
   }
-  console.log('[seed] ensured scheduled match for tomorrow:', { id: scheduledMatch.id });
 
-  // 2. Match from yesterday (Nov 12, 2025, 18:00) with events
-  const yesterday = new Date('2025-11-12T18:00:00');
-  let finishedMatch = await prisma.match.findFirst({
-    where: { homeTeamId: team.id, awayTeamId: opponentTeam.id, scheduledAt: yesterday },
-  });
-  if (finishedMatch) {
-    finishedMatch = await prisma.match.update({
-      where: { id: finishedMatch.id },
-      data: { status: 'FINISHED', homeScore: 1, awayScore: 0 },
-    });
-  } else {
-    finishedMatch = await prisma.match.create({
-      data: {
-        homeTeamId: team.id,
-        awayTeamId: opponentTeam.id,
-        scheduledAt: yesterday,
-        venue: 'Estádio Secundário',
-        status: 'FINISHED',
-        homeScore: 1,
-        awayScore: 0,
-      },
-    });
+  // Link default team and opponent to the league if not linked
+  const existingLinkA = await prisma.leagueTeam.findFirst({ where: { leagueId: league.id, teamId: team!.id } });
+  if (!existingLinkA) {
+    await prisma.leagueTeam.create({ data: { leagueId: league.id, teamId: team!.id, division: 'A' } });
+    console.log('[seed] linked team to league:', { teamId: team!.id, leagueId: league.id });
   }
-  console.log('[seed] ensured finished match from yesterday:', { id: finishedMatch.id });
+  const existingLinkB = await prisma.leagueTeam.findFirst({ where: { leagueId: league.id, teamId: opponentTeam.id } });
+  if (!existingLinkB) {
+    await prisma.leagueTeam.create({ data: { leagueId: league.id, teamId: opponentTeam.id, division: 'A' } });
+    console.log('[seed] linked opponent team to league:', { teamId: opponentTeam.id, leagueId: league.id });
+  }
 
-  // Create events for the finished match
-  const playerForEvents = renan; // Use 'Renan Martins Moreira' for events
-  if (playerForEvents) {
-    const eventTypes: MatchEventType[] = ['GOAL', 'FOUL', 'YELLOW_CARD', 'RED_CARD', 'OWN_GOAL'];
-    for (const type of eventTypes) {
-      await prisma.matchEvent.create({
-        data: {
-          matchId: finishedMatch.id,
-          teamId: team.id,
-          playerId: playerForEvents.id,
-          minute: Math.floor(Math.random() * 90) + 1, // random minute
-          type: type,
-        },
-      });
+  // Create matches relative to now so seeds are always meaningful when executed:
+  // - one match 12 hours ago (with multiple events for registered players)
+  // - one match 1 week ago
+  // - one match 1 month ago
+  // - one match 1 year ago
+
+  const now = new Date();
+  const match12hAgoDate = new Date(Date.now() - 12 * 60 * 60 * 1000);
+  const match1WeekAgoDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  // For 1 month ago, adjust month to avoid issues with month lengths
+  const match1MonthAgoDate = new Date(now);
+  match1MonthAgoDate.setMonth(now.getMonth() - 1);
+  const match1YearAgoDate = new Date(now);
+  match1YearAgoDate.setFullYear(now.getFullYear() - 1);
+
+  async function ensureFinishedMatchAt(date: Date, venue: string, homeScore = 0, awayScore = 0) {
+    const existing = await prisma.match.findFirst({
+      where: { homeTeamId: team!.id, awayTeamId: opponentTeam!.id, scheduledAt: date },
+    });
+    if (existing) {
+      return await prisma.match.update({ where: { id: existing.id }, data: { status: 'FINISHED', homeScore, awayScore } });
     }
-    console.log('[seed] created match events for finished match:', { matchId: finishedMatch.id, count: eventTypes.length });
+    return await prisma.match.create({
+      data: {
+        homeTeamId: team!.id,
+        awayTeamId: opponentTeam!.id,
+        scheduledAt: date,
+        venue,
+        status: 'FINISHED',
+        homeScore,
+        awayScore,
+      },
+    });
+  }
+
+  const match12h = await ensureFinishedMatchAt(match12hAgoDate, 'Estádio 12h Atrás', Math.floor(Math.random() * 4), Math.floor(Math.random() * 4));
+  const matchWeek = await ensureFinishedMatchAt(match1WeekAgoDate, 'Estádio Semana', Math.floor(Math.random() * 4), Math.floor(Math.random() * 4));
+  const matchMonth = await ensureFinishedMatchAt(match1MonthAgoDate, 'Estádio Mês', Math.floor(Math.random() * 4), Math.floor(Math.random() * 4));
+  const matchYear = await ensureFinishedMatchAt(match1YearAgoDate, 'Estádio Ano', Math.floor(Math.random() * 4), Math.floor(Math.random() * 4));
+
+  console.log('[seed] ensured historical matches:', {
+    match12h: { id: match12h.id, at: match12h.scheduledAt.toISOString() },
+    matchWeek: { id: matchWeek.id, at: matchWeek.scheduledAt.toISOString() },
+    matchMonth: { id: matchMonth.id, at: matchMonth.scheduledAt.toISOString() },
+    matchYear: { id: matchYear.id, at: matchYear.scheduledAt.toISOString() },
+  });
+
+  // Create events for the 12h-ago match using registered players on the team
+  const teamPlayersLinks = await prisma.playersOnTeams.findMany({ where: { teamId: team!.id }, select: { playerId: true } });
+  const teamPlayerIds = teamPlayersLinks.map((l: { playerId: string }) => l.playerId).filter(Boolean);
+
+  // If we have players, create a variety of events spread across minutes
+  if (teamPlayerIds.length > 0) {
+  const eventTypes: MatchEventType[] = ['GOAL', 'FOUL', 'YELLOW_CARD', 'RED_CARD', 'OWN_GOAL'];
+    let eventsCreated = 0;
+    // For each player create 1-3 events (bounded) to populate the match
+    for (let i = 0; i < teamPlayerIds.length; i++) {
+      const playerId = teamPlayerIds[i];
+      const eventsForPlayer = Math.floor(Math.random() * 3) + 1; // 1..3
+      for (let e = 0; e < eventsForPlayer; e++) {
+        const type = eventTypes[(i + e) % eventTypes.length];
+        const minute = Math.floor(Math.random() * 90) + 1;
+        await prisma.matchEvent.create({
+          data: {
+            matchId: match12h.id,
+            teamId: team!.id,
+            playerId,
+            minute,
+            type,
+          },
+        });
+        eventsCreated += 1;
+      }
+    }
+    console.log('[seed] created match events for 12h-ago match:', { matchId: match12h.id, count: eventsCreated });
+  } else {
+    console.log('[seed] no players found to create events for 12h-ago match');
   }
 
   // === Recent finished match (within last 24h) for evaluation banner/pending tests ===
   const recentFinishedDate = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2h ago
   let recentFinishedMatch = await prisma.match.findFirst({
     where: {
-      homeTeamId: team.id,
-      awayTeamId: opponentTeam.id,
+      homeTeamId: team!.id,
+      awayTeamId: opponentTeam!.id,
       scheduledAt: recentFinishedDate,
     },
   });
@@ -506,8 +550,8 @@ async function main() {
   } else {
     recentFinishedMatch = await prisma.match.create({
       data: {
-        homeTeamId: team.id,
-        awayTeamId: opponentTeam.id,
+        homeTeamId: team!.id,
+        awayTeamId: opponentTeam!.id,
         scheduledAt: recentFinishedDate,
         venue: 'Estádio Dinâmico',
         status: 'FINISHED',
@@ -519,16 +563,7 @@ async function main() {
   console.log('[seed] ensured recent finished match:', { id: recentFinishedMatch.id, scheduledAt: recentFinishedMatch.scheduledAt.toISOString() });
 
   // Deterministic evaluation assignments for recent match
-  const pAnyPlayers = prisma as unknown as {
-    playersOnTeams: {
-      findMany: (args: { where: { teamId: string }; select: { playerId: true } }) => Promise<Array<{ playerId: string }>>;
-    };
-  };
-  const teamPlayersLinks = await pAnyPlayers.playersOnTeams.findMany({
-    where: { teamId: team.id },
-    select: { playerId: true },
-  });
-  const teamPlayerIds = teamPlayersLinks.map((l: { playerId: string }) => l.playerId).filter(Boolean);
+  // Reuse previously resolved teamPlayerIds from above (populated for the 12h-ago match)
   // Simple logic: each of first up to 3 players evaluates the next player cyclically
   const existingAssignments = await prisma.matchPlayerEvaluationAssignment.findMany({
     where: { matchId: recentFinishedMatch.id },

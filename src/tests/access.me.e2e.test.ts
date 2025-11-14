@@ -72,9 +72,9 @@ describe('GET /api/access/me', () => {
     const admin = mems.find((m) => m.role === 'ADMIN');
     const manager = mems.find((m) => m.role === 'MANAGER');
     expect(admin).toBeTruthy();
-    expect(admin.team).toBeNull();
+    expect(admin!.team).toBeNull();
     expect(manager).toBeTruthy();
-    expect(manager.team).toBeTruthy();
-    expect(manager.team.name).toBe('Futi FC');
+    expect(manager!.team).toBeTruthy();
+    expect(manager!.team!.name).toBe('Futi FC');
   });
 });

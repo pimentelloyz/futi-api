@@ -23,6 +23,9 @@ model Team {
   accessMemberships AccessMembership[]
   matchEvents MatchEvent[]
   lineupEntries MatchLineupEntry[]
+  // Relations for league structures
+  leagueTeams LeagueTeam[]
+  leagueGroupTeams LeagueGroupTeam[]
 }
 
 model User {
@@ -72,6 +75,11 @@ model Match {
   homeTeamId  String
   awayTeam    Team         @relation("AwayTeam", fields: [awayTeamId], references: [id])
   awayTeamId  String
+  // Optional relation to a league and an optional group within that league
+  league      League?      @relation(fields: [leagueId], references: [id])
+  leagueId    String?
+  group       LeagueGroup? @relation(fields: [groupId], references: [id])
+  groupId     String?
   scheduledAt DateTime
   venue       String?      @db.VarChar(191)
   status      MatchStatus  @default(SCHEDULED)
@@ -304,5 +312,60 @@ model PlayersOnTeams {
   assignedBy String? // Could be a user ID
 
   @@id([playerId, teamId])
+  @@index([teamId])
+}
+
+// League / Championship structure
+model League {
+  id          String    @id @default(uuid())
+  name        String    @db.VarChar(191)
+  slug        String    @unique @db.VarChar(191)
+  description String?   @db.VarChar(255)
+  startAt     DateTime?
+  endAt       DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  teams       LeagueTeam[]
+  groups      LeagueGroup[]
+  // Matches that belong to this league (optional relation from Match)
+  matches     Match[]
+}
+
+model LeagueTeam {
+  id        String   @id @default(uuid())
+  league    League   @relation(fields: [leagueId], references: [id])
+  leagueId  String
+  team      Team     @relation(fields: [teamId], references: [id])
+  teamId    String
+  division  String?  @db.VarChar(64)
+  createdAt DateTime @default(now())
+
+  @@unique([leagueId, teamId])
+  @@index([teamId])
+}
+
+model LeagueGroup {
+  id        String    @id @default(uuid())
+  league    League    @relation(fields: [leagueId], references: [id])
+  leagueId  String
+  name      String    @db.VarChar(100)
+  createdAt DateTime  @default(now())
+
+  teams     LeagueGroupTeam[]
+  // Matches that belong to this group (optional relation from Match)
+  matches   Match[]
+}
+
+model LeagueGroupTeam {
+  id       String      @id @default(uuid())
+  group    LeagueGroup @relation(fields: [groupId], references: [id])
+  groupId  String
+  team     Team        @relation(fields: [teamId], references: [id])
+  teamId   String
+  position Int?
+
+  @@unique([groupId, teamId])
   @@index([teamId])
 }

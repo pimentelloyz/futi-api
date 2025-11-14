@@ -44,6 +44,12 @@ class InMemoryAccessRepo implements AccessMembershipRepository {
   async listByUser(userId: string) {
     return this.items.filter((i) => i.userId === userId);
   }
+  // Minimal implementation to satisfy AccessMembershipRepository for tests
+  async listByUserWithTeam(userId: string) {
+    return this.items
+      .filter((i) => i.userId === userId)
+      .map((i) => ({ ...i, team: null }));
+  }
 }
 
 describe('AccessControlService', () => {
