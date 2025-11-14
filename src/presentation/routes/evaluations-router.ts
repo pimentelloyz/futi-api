@@ -240,6 +240,82 @@ evaluationsRouter.post('/:assignmentId/v2', async (req, res) => {
       data: { completedAt: new Date() },
     });
 
+    // Recalcular skills do jogador alvo (atualização incremental)
+    const alpha = 0.3; // suavização: 30% da nova avaliação, 70% do valor atual
+    type SkillKeys =
+      | 'attack'
+      | 'defense'
+      | 'shooting'
+      | 'ballControl'
+      | 'pace'
+      | 'passing'
+      | 'dribbling'
+      | 'physical';
+    const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
+    const itemsMap = new Map(parsed.data.items.map((i) => [i.key, i.value]));
+
+    const existing = await prisma.playerSkill.findUnique({
+      where: { playerId: assignment.targetPlayerId },
+    });
+    const base = {
+      attack: existing?.attack ?? 50,
+      defense: existing?.defense ?? 50,
+      shooting: existing?.shooting ?? 50,
+      ballControl: existing?.ballControl ?? 50,
+      pace: existing?.pace ?? 50,
+      passing: existing?.passing ?? 50,
+      dribbling: existing?.dribbling ?? 50,
+      physical: existing?.physical ?? 50,
+    } satisfies Record<SkillKeys, number>;
+
+    // Objetivos por atributo a partir dos critérios enviados
+    const targets: Partial<Record<SkillKeys, number>> = {};
+    if (positionType === 'LINE') {
+      if (itemsMap.has('PAC')) targets.pace = itemsMap.get('PAC')!;
+      if (itemsMap.has('SHO')) targets.shooting = itemsMap.get('SHO')!;
+      if (itemsMap.has('PAS')) targets.passing = itemsMap.get('PAS')!;
+      if (itemsMap.has('DRI')) {
+        const v = itemsMap.get('DRI')!;
+        targets.dribbling = v;
+        targets.ballControl = v;
+      }
+      if (itemsMap.has('DEF')) targets.defense = itemsMap.get('DEF')!;
+      if (itemsMap.has('PHY')) targets.physical = itemsMap.get('PHY')!;
+      // 'DIS' (disciplina) não mapeia diretamente em PlayerSkill; ignorado no skill
+    } else {
+      // GOALKEEPER
+      const defParts: number[] = [];
+      for (const k of ['REF', 'COL', 'MAO', 'MER'] as const)
+        if (itemsMap.has(k)) defParts.push(itemsMap.get(k)!);
+      if (defParts.length) targets.defense = defParts.reduce((a, b) => a + b, 0) / defParts.length;
+      if (itemsMap.has('JCP')) targets.passing = itemsMap.get('JCP')!;
+      if (itemsMap.has('PHY')) targets.physical = itemsMap.get('PHY')!;
+      // 'DIS' ignorado
+    }
+    // Sempre atualizar 'attack' com o overall (equilíbrio ofensivo geral)
+    targets.attack = Number(overall);
+
+    const next: Record<SkillKeys, number> = { ...base };
+    for (const key of Object.keys(targets) as SkillKeys[]) {
+      const t = targets[key]!;
+      next[key] = clamp(base[key] * (1 - alpha) + t * alpha);
+    }
+
+    if (existing) {
+      await prisma.playerSkill.update({
+        where: { playerId: assignment.targetPlayerId },
+        data: next,
+      });
+    } else {
+      await prisma.playerSkill.create({
+        data: {
+          playerId: assignment.targetPlayerId,
+          preferredFoot: 'RIGHT',
+          ...next,
+        },
+      });
+    }
+
     return res.status(201).json({ id: evalRec.id, overallScore: overall });
   } catch (e) {
     console.error('[submit_evaluation_v2_error]', (e as Error).message);
