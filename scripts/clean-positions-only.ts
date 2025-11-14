@@ -11,12 +11,21 @@ async function main() {
       '"PlayerSkill"',
       '"MatchLineupEntry"',
       '"MatchEvent"',
+      '"PlayerEvaluationItem"',
+      '"PlayerEvaluationAggregate"',
       '"PlayerEvaluation"',
       '"MatchPlayerEvaluationAssignment"',
       '"Match"',
+      '"PlayersOnTeams"',
       '"AccessMembership"',
+      '"LeagueGroupTeam"',
+      '"LeagueGroup"',
+      '"LeagueTeam"',
+      '"League"',
       '"Team"',
       '"Player"',
+      '"EvaluationCriteria"',
+      '"EvaluationForm"',
       '"User"'
     ];
     const sql = `TRUNCATE TABLE ${tables.join(', ')} RESTART IDENTITY CASCADE;`;
