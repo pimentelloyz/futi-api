@@ -5,7 +5,10 @@ import {
   createLeague,
   listLeagues,
   listMyLeagues,
+  getMyLeagueDetails,
   getLeague,
+  updateLeague,
+  deleteLeague,
   addTeamToLeague,
   createGroup,
   addTeamToGroup,
@@ -28,8 +31,20 @@ leaguesRouter.get('/me', async (req, res) => {
   return listMyLeagues(req, res);
 });
 
+leaguesRouter.get('/me/:id', async (req, res) => {
+  return getMyLeagueDetails(req, res);
+});
+
 leaguesRouter.get('/:id', async (req, res) => {
   return getLeague(req, res);
+});
+
+leaguesRouter.patch('/:id', async (req, res) => {
+  return updateLeague(req, res);
+});
+
+leaguesRouter.delete('/:id', async (req, res) => {
+  return deleteLeague(req, res);
 });
 
 leaguesRouter.post('/:id/teams', async (req, res) => {

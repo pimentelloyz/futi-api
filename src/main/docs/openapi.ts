@@ -61,14 +61,55 @@ export const openapi: OpenAPIObject = {
     },
   },
   paths: {
+    '/api/leagues': {
+      post: {
+        summary: 'Criar liga',
+        tags: ['Leagues'],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  slug: { type: 'string' },
+                  description: { type: 'string', nullable: true },
+                  startAt: { type: 'string', format: 'date-time', nullable: true },
+                  endAt: { type: 'string', format: 'date-time', nullable: true },
+                },
+                required: ['name', 'slug'],
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Liga criada',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { id: { type: 'string' } },
+                  required: ['id'],
+                },
+              },
+            },
+          },
+          '400': { description: 'Parâmetros ausentes' },
+          '409': { description: 'Slug já existente' },
+        },
+      },
+    },
     '/api/leagues/me': {
       get: {
-        summary: 'Listar ligas vinculadas ao usuário logado',
+        summary: 'Listar ligas vinculadas ao usuário (resumo)',
         tags: ['Leagues'],
         security: [{ bearerAuth: [] }],
         responses: {
           '200': {
-            description: 'Lista de ligas do usuário',
+            description: 'Lista de ligas do usuário (sem times/grupos)',
             content: {
               'application/json': {
                 schema: {
@@ -81,25 +122,6 @@ export const openapi: OpenAPIObject = {
                       slug: { type: 'string' },
                       description: { type: 'string', nullable: true },
                       isActive: { type: 'boolean', nullable: true },
-                      teams: {
-                        type: 'array',
-                        items: {
-                          type: 'object',
-                          properties: {
-                            team: {
-                              type: 'object',
-                              properties: {
-                                id: { type: 'string' },
-                                name: { type: 'string' },
-                                icon: { type: 'string', nullable: true },
-                                description: { type: 'string', nullable: true },
-                                isActive: { type: 'boolean' },
-                              },
-                              required: ['id', 'name', 'isActive'],
-                            },
-                          },
-                        },
-                      },
                     },
                     required: ['id', 'name', 'slug'],
                   },
@@ -108,6 +130,124 @@ export const openapi: OpenAPIObject = {
             },
           },
           '401': { description: 'Não autorizado' },
+        },
+      },
+    },
+    '/api/leagues/{id}': {
+      patch: {
+        summary: 'Editar liga (parcial)',
+        tags: ['Leagues'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  slug: { type: 'string' },
+                  description: { type: 'string', nullable: true },
+                  startAt: { type: 'string', format: 'date-time', nullable: true },
+                  endAt: { type: 'string', format: 'date-time', nullable: true },
+                  isActive: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Atualizado' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Liga não encontrada' },
+          '409': { description: 'Slug já existente' },
+        },
+      },
+      delete: {
+        summary: 'Excluir liga (soft delete: isActive=false)',
+        tags: ['Leagues'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '204': { description: 'Removida' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Liga não encontrada' },
+        },
+      },
+    },
+    '/api/leagues/me/{id}': {
+      get: {
+        summary: 'Detalhes de uma liga que pertenço (inclui times/grupos)',
+        tags: ['Leagues'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': {
+            description: 'Liga detalhada',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' },
+                    slug: { type: 'string' },
+                    description: { type: 'string', nullable: true },
+                    isActive: { type: 'boolean', nullable: true },
+                    teams: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          team: {
+                            type: 'object',
+                            properties: {
+                              id: { type: 'string' },
+                              name: { type: 'string' },
+                              icon: { type: 'string', nullable: true },
+                              description: { type: 'string', nullable: true },
+                              isActive: { type: 'boolean' },
+                            },
+                            required: ['id', 'name', 'isActive'],
+                          },
+                        },
+                      },
+                    },
+                    groups: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          name: { type: 'string' },
+                          teams: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              properties: {
+                                team: {
+                                  type: 'object',
+                                  properties: {
+                                    id: { type: 'string' },
+                                    name: { type: 'string' },
+                                  },
+                                  required: ['id', 'name'],
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                  required: ['id', 'name', 'slug'],
+                },
+              },
+            },
+          },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Liga não encontrada ou não vinculada' },
         },
       },
     },

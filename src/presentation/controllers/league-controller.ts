@@ -18,7 +18,7 @@ export async function createLeague(req: Request, res: Response) {
       endAt: endAt ? new Date(endAt) : undefined,
     },
   });
-  return res.status(201).json(league);
+  return res.status(201).json({ id: league.id });
 }
 
 export async function listLeagues(_req: Request, res: Response) {
@@ -61,10 +61,51 @@ export async function listMyLeagues(req: Request, res: Response) {
   if (teamIds.length === 0) return res.json([]);
   const leagues = await prisma.league.findMany({
     where: { teams: { some: { teamId: { in: teamIds } } } },
-    include: { teams: { include: { team: true } } },
+    select: { id: true, name: true, slug: true, description: true, isActive: true },
     orderBy: { name: 'asc' },
   });
   return res.json(leagues);
+}
+
+// Detailed league info for a league the current user belongs to
+export async function getMyLeagueDetails(req: Request, res: Response) {
+  const meUser = req.user as { id: string } | undefined;
+  if (!meUser) return res.status(401).json({ error: 'unauthorized' });
+  const { id } = req.params; // league id
+  if (!id) return res.status(400).json({ error: 'invalid_league_id' });
+  // Collect user's teamIds
+  const access = await prisma.accessMembership.findMany({
+    where: { userId: meUser.id, teamId: { not: null } },
+    select: { teamId: true },
+  });
+  const mePlayer = await prisma.player.findUnique({
+    where: { userId: meUser.id },
+    select: { id: true },
+  });
+  let playerTeams: Array<{ teamId: string }> = [];
+  if (mePlayer) {
+    playerTeams = await prisma.playersOnTeams.findMany({
+      where: { playerId: mePlayer.id },
+      select: { teamId: true },
+    });
+  }
+  const teamIds = Array.from(
+    new Set([
+      ...access.map((a) => a.teamId!).filter(Boolean),
+      ...playerTeams.map((p) => p.teamId).filter(Boolean),
+    ]),
+  );
+  if (teamIds.length === 0) return res.status(404).json({ error: 'league_not_found' });
+  // Fetch league only if the user is associated via any team
+  const league = await prisma.league.findFirst({
+    where: { id, teams: { some: { teamId: { in: teamIds } } } },
+    include: {
+      teams: { include: { team: true } },
+      groups: { include: { teams: { include: { team: true } } } },
+    },
+  });
+  if (!league) return res.status(404).json({ error: 'league_not_found' });
+  return res.json(league);
 }
 
 export async function getLeague(req: Request, res: Response) {
@@ -78,6 +119,56 @@ export async function getLeague(req: Request, res: Response) {
   });
   if (!league) return res.status(404).json({ message: 'league not found' });
   return res.json(league);
+}
+
+function toDateOrNull(v: unknown): Date | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (v instanceof Date) return v;
+  if (typeof v === 'string' || typeof v === 'number') {
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
+export async function updateLeague(req: Request, res: Response) {
+  const { id } = req.params;
+  const { name, slug, description, startAt, endAt, isActive } = req.body as Partial<{
+    name: string;
+    slug: string;
+    description: string | null;
+    startAt: string | Date | null;
+    endAt: string | Date | null;
+    isActive: boolean;
+  }>;
+  const league = await prisma.league.findUnique({ where: { id } });
+  if (!league) return res.status(404).json({ message: 'league not found' });
+  if (slug && slug !== league.slug) {
+    const exists = await prisma.league.findUnique({ where: { slug } });
+    if (exists) return res.status(409).json({ message: 'slug already exists' });
+  }
+  const updated = await prisma.league.update({
+    where: { id },
+    data: {
+      name: typeof name === 'string' ? name : undefined,
+      slug: typeof slug === 'string' ? slug : undefined,
+      description: description === undefined ? undefined : (description as string | null),
+      startAt: toDateOrNull(startAt),
+      endAt: toDateOrNull(endAt),
+      isActive: typeof isActive === 'boolean' ? isActive : undefined,
+    },
+  });
+  return res.json(updated);
+}
+
+export async function deleteLeague(req: Request, res: Response) {
+  const { id } = req.params;
+  const league = await prisma.league.findUnique({ where: { id } });
+  if (!league) return res.status(404).json({ message: 'league not found' });
+  // Soft delete to preserve relations
+  await prisma.league.update({ where: { id }, data: { isActive: false } });
+  return res.status(204).send();
 }
 
 export async function addTeamToLeague(req: Request, res: Response) {

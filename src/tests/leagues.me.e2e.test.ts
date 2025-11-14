@@ -11,7 +11,7 @@ describe('GET /api/leagues/me', () => {
     app = mod.app;
   });
 
-  it('should list leagues linked to my teams via my player memberships', async () => {
+  it('should list my leagues minimally and fetch details via /me/:id', async () => {
     // 1) Authenticate and get access token
     const exchange = await request(app)
       .post('/api/auth/firebase/exchange')
@@ -66,22 +66,25 @@ describe('GET /api/leagues/me', () => {
       .send({ teamId });
     expect(addTeam.status).toBe(201);
 
-    // 8) Now, GET /api/leagues/me and expect the league
+    // 8) Now, GET /api/leagues/me and expect the league with minimal fields (no teams)
     const myLeagues = await request(app)
       .get('/api/leagues/me')
       .set('Authorization', `Bearer ${accessToken}`);
     expect(myLeagues.status).toBe(200);
-    type MyLeague = { id: string; teams?: Array<{ team?: { id: string } }> };
+    type MyLeague = { id: string; name: string; slug: string };
     const arr = myLeagues.body as MyLeague[];
     expect(Array.isArray(arr)).toBe(true);
     const found = arr.find((l) => l.id === leagueId);
     expect(found).toBeTruthy();
-    const foundLeague = found!;
-    // should include teams with team
-    expect(foundLeague.teams && Array.isArray(foundLeague.teams)).toBe(true);
-    const teamFound = (foundLeague.teams || []).some(
-      (t: { team?: { id: string } }) => t.team?.id === teamId,
-    );
+
+    // 9) Fetch detailed league via /api/leagues/me/:id and expect teams included
+    const myLeagueDetails = await request(app)
+      .get(`/api/leagues/me/${leagueId}`)
+      .set('Authorization', `Bearer ${accessToken}`);
+    expect(myLeagueDetails.status).toBe(200);
+    const league = myLeagueDetails.body as { teams?: Array<{ team?: { id: string } }> };
+    expect(Array.isArray(league.teams)).toBe(true);
+    const teamFound = (league.teams || []).some((t) => t.team && t.team.id === teamId);
     expect(teamFound).toBe(true);
   });
 });
