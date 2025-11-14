@@ -586,6 +586,169 @@ async function main() {
   } else {
     console.log('[seed] skipped creating assignments (already exist or insufficient players)');
   }
+
+  // === Extra: Seed duas ligas com vários times, jogadores e calendário ===
+  // Helpers locais
+  function slugify(name: string) {
+    return name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+  }
+
+  async function ensureLeagueByName(name: string) {
+    const slug = slugify(name);
+    let league = await prisma.league.findFirst({ where: { slug } });
+    if (!league) {
+      league = await prisma.league.create({
+        data: { name, slug, description: `${name} (seeded)`, startAt: new Date(), isActive: true },
+      });
+      console.log('[seed][league] created', { id: league.id, name: league.name, slug: league.slug });
+    }
+    return league;
+  }
+
+  async function ensureTeamByName(name: string) {
+    let t = await prisma.team.findFirst({ where: { name } });
+    if (!t) {
+      t = await prisma.team.create({ data: { name, isActive: true } });
+      console.log('[seed][team] created', { id: t.id, name: t.name });
+    }
+    return t;
+  }
+
+  async function linkTeamToLeague(leagueId: string, teamId: string, division: string = 'A') {
+    const exists = await prisma.leagueTeam.findFirst({ where: { leagueId, teamId } });
+    if (!exists) {
+      await prisma.leagueTeam.create({ data: { leagueId, teamId, division } });
+      console.log('[seed][leagueTeam] linked', { leagueId, teamId });
+    }
+  }
+
+  async function ensurePlayersForTeam(teamId: string, desiredCount = 14) {
+    // Conta quantos jogadores já estão vinculados
+    const current = await prisma.playersOnTeams.findMany({ where: { teamId }, select: { playerId: true } });
+    const have = current.length;
+    const toCreate = Math.max(0, desiredCount - have);
+    if (toCreate === 0) return;
+    // Garante 1 goleiro se não houver
+    const allPlayerIds = current.map((x) => x.playerId);
+    let hasGK = false;
+    if (allPlayerIds.length > 0) {
+      const anyGK = await prisma.player.findFirst({
+        where: { id: { in: allPlayerIds }, positionSlug: 'GK' },
+        select: { id: true },
+      });
+      hasGK = Boolean(anyGK);
+    }
+    const positionPool = ['ST', 'CF', 'LW', 'RW', 'CAM', 'CM', 'CDM', 'LB', 'RB', 'CB'];
+    let created = 0;
+    if (!hasGK) {
+      const name = `GK ${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+      const p = await prisma.player.create({ data: { name, isActive: true, positionSlug: 'GK' } });
+      try {
+        await prisma.playersOnTeams.create({ data: { playerId: p.id, teamId } });
+      } catch {}
+      created += 1;
+    }
+    while (created < toCreate) {
+      const pos = positionPool[created % positionPool.length];
+      const name = `Player ${pos} ${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+      const p = await prisma.player.create({ data: { name, isActive: true, positionSlug: pos } });
+      try {
+        await prisma.playersOnTeams.create({ data: { playerId: p.id, teamId } });
+      } catch {}
+      created += 1;
+    }
+    console.log('[seed][players] ensured for team', { teamId, added: toCreate });
+  }
+
+  function roundRobinPairs(ids: string[]) {
+    const n = ids.length;
+    if (n < 2) return [] as Array<Array<[string, string]>>;
+    const arr = ids.slice();
+    if (n % 2 === 1) arr.push('__BYE__');
+    const m = arr.length;
+    const rounds: Array<Array<[string, string]>> = [];
+    for (let r = 0; r < m - 1; r++) {
+      const pairs: Array<[string, string]> = [];
+      for (let i = 0; i < m / 2; i++) {
+        const a = arr[i];
+        const b = arr[m - 1 - i];
+        if (a !== '__BYE__' && b !== '__BYE__') pairs.push([a, b]);
+      }
+      // rotate
+      arr.splice(1, 0, arr.pop()!);
+      rounds.push(pairs);
+    }
+    return rounds;
+  }
+
+  async function ensureLeagueCalendar(leagueName: string, teamNames: string[], startOffsetDays = 2) {
+    const league = await ensureLeagueByName(leagueName);
+    const teams = [] as Array<{ id: string; name: string }>;
+    for (const name of teamNames) {
+      const t = await ensureTeamByName(name);
+      await linkTeamToLeague(league.id, t.id);
+      await ensurePlayersForTeam(t.id, 14);
+      teams.push(t);
+    }
+    const teamIds = teams.map((t) => t.id);
+    const rounds = roundRobinPairs(teamIds);
+    if (rounds.length === 0) return;
+    const base = new Date();
+    base.setDate(base.getDate() + startOffsetDays);
+    // Cria partidas (sem scores) para o calendário futuro
+    let createdCount = 0;
+    for (let r = 0; r < rounds.length; r++) {
+      const day = new Date(base);
+      day.setDate(base.getDate() + r * 7); // semanal
+      for (const [home, away] of rounds[r]) {
+        const exists = await prisma.match.findFirst({
+          where: { leagueId: league.id, homeTeamId: home, awayTeamId: away, scheduledAt: day },
+          select: { id: true },
+        });
+        if (!exists) {
+          await prisma.match.create({
+            data: {
+              homeTeamId: home,
+              awayTeamId: away,
+              scheduledAt: day,
+              status: 'SCHEDULED',
+              leagueId: league.id,
+            },
+          });
+          createdCount += 1;
+        }
+      }
+    }
+    console.log('[seed][calendar] ensured for league', { name: league.name, rounds: rounds.length, matches: createdCount });
+  }
+
+  // Ligas solicitadas: "Refugio's Premiere" e "CTec League"
+  await ensureLeagueCalendar("Refugio's Premiere", [
+    'Refugio FC',
+    'Premiere United',
+    'Vale Verde',
+    'Porto Azul',
+    'Serra Negra',
+    'Atlético Refúgio',
+    'Estrela do Sul',
+    'Montanha Real',
+  ], 2);
+
+  await ensureLeagueCalendar('CTec League', [
+    'CTec Lions',
+    'CTec Hackers',
+    'CTec Wizards',
+    'Tech Valley',
+    'Code Warriors',
+    'Binary United',
+    'Pixel City',
+    'Quantum FC',
+  ], 3);
 }
 
 main()

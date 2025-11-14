@@ -40,6 +40,7 @@ export const openapi: OpenAPIObject = {
     { name: 'Teams', description: 'Times e composição' },
     { name: 'Matches', description: 'Partidas e placares' },
     { name: 'Access', description: 'Controle de acesso e roles' },
+    { name: 'Leagues', description: 'Ligas e campeonatos' },
   ],
   components: {
     schemas: {
@@ -60,6 +61,56 @@ export const openapi: OpenAPIObject = {
     },
   },
   paths: {
+    '/api/leagues/me': {
+      get: {
+        summary: 'Listar ligas vinculadas ao usuário logado',
+        tags: ['Leagues'],
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Lista de ligas do usuário',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      name: { type: 'string' },
+                      slug: { type: 'string' },
+                      description: { type: 'string', nullable: true },
+                      isActive: { type: 'boolean', nullable: true },
+                      teams: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            team: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'string' },
+                                name: { type: 'string' },
+                                icon: { type: 'string', nullable: true },
+                                description: { type: 'string', nullable: true },
+                                isActive: { type: 'boolean' },
+                              },
+                              required: ['id', 'name', 'isActive'],
+                            },
+                          },
+                        },
+                      },
+                    },
+                    required: ['id', 'name', 'slug'],
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Não autorizado' },
+        },
+      },
+    },
     '/health': {
       get: {
         summary: 'Health check',
