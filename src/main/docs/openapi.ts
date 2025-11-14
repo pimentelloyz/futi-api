@@ -31,44 +31,43 @@ export const openapi: OpenAPIObject = {
     description: 'Football matches control API',
   },
   servers: [{ url: 'http://localhost:3000' }],
-  tags: [
-    { name: 'Health', description: 'Verificação de status da API' },
-    { name: 'Auth', description: 'Fluxos de autenticação e tokens' },
-    { name: 'Positions', description: 'Posições de jogadores (tabela de referência)' },
-    { name: 'Users', description: 'Gestão de usuários' },
-    { name: 'Players', description: 'Jogadores e perfil do jogador' },
-    { name: 'Teams', description: 'Times e composição' },
-    { name: 'Matches', description: 'Partidas e placares' },
-    { name: 'Access', description: 'Controle de acesso e roles' },
-    { name: 'Leagues', description: 'Ligas e campeonatos' },
-  ],
-  components: {
-    schemas: {
-      ErrorResponse: {
-        type: 'object',
-        properties: {
-          error: { type: 'string' },
-          details: { type: 'object', additionalProperties: true },
-        },
-      },
-    },
-    securitySchemes: {
-      bearerAuth: {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-      },
-    },
-  },
   paths: {
     '/api/leagues': {
       post: {
         summary: 'Criar liga',
+        description:
+          'Aceita JSON ou multipart/form-data. Em multipart, envie arquivos binários para ícone e banner da liga nos campos "icon" e "banner".',
         tags: ['Leagues'],
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  slug: { type: 'string' },
+                  description: { type: 'string', nullable: true },
+                  startAt: { type: 'string', format: 'date-time', nullable: true },
+                  endAt: { type: 'string', format: 'date-time', nullable: true },
+                  icon: { type: 'string', format: 'binary' },
+                  banner: { type: 'string', format: 'binary' },
+                },
+                required: ['name', 'slug'],
+              },
+              examples: {
+                upload: {
+                  summary: 'Criar liga com upload de ícone e banner',
+                  value: {
+                    name: 'Nova Liga',
+                    slug: 'nova-liga',
+                    description: 'Liga de testes',
+                    // icon e banner são selecionados na UI do Swagger
+                  },
+                },
+              },
+            },
             'application/json': {
               schema: {
                 type: 'object',
@@ -78,8 +77,17 @@ export const openapi: OpenAPIObject = {
                   description: { type: 'string', nullable: true },
                   startAt: { type: 'string', format: 'date-time', nullable: true },
                   endAt: { type: 'string', format: 'date-time', nullable: true },
+                  icon: { type: 'string', format: 'uri', nullable: true },
+                  banner: { type: 'string', format: 'uri', nullable: true },
                 },
                 required: ['name', 'slug'],
+              },
+              example: {
+                name: 'Liga JSON',
+                slug: 'liga-json',
+                description: 'Sem upload, apenas URLs',
+                icon: 'https://example.com/league-icon.png',
+                banner: 'https://example.com/league-banner.png',
               },
             },
           },

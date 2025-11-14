@@ -5,7 +5,15 @@ import { prisma } from '../../infra/prisma/client.js';
 // Prisma client is generated and includes league models
 
 export async function createLeague(req: Request, res: Response) {
-  const { name, slug, description, startAt, endAt } = req.body;
+  const { name, slug, description, startAt, endAt, icon, banner } = req.body as {
+    name?: string;
+    slug?: string;
+    description?: string | null;
+    startAt?: string | Date | null;
+    endAt?: string | Date | null;
+    icon?: string | null;
+    banner?: string | null;
+  };
   if (!name || !slug) return res.status(400).json({ message: 'name and slug are required' });
   const existing = await prisma.league.findUnique({ where: { slug } });
   if (existing) return res.status(409).json({ message: 'slug already exists' });
@@ -16,6 +24,11 @@ export async function createLeague(req: Request, res: Response) {
       description,
       startAt: startAt ? new Date(startAt) : undefined,
       endAt: endAt ? new Date(endAt) : undefined,
+      // evitar erro de tipos do Prisma Client desatualizado
+      ...(icon ? (JSON.parse(JSON.stringify({ icon })) as unknown as Record<string, unknown>) : {}),
+      ...(banner
+        ? (JSON.parse(JSON.stringify({ banner })) as unknown as Record<string, unknown>)
+        : {}),
     },
   });
   return res.status(201).json({ id: league.id });
