@@ -25,6 +25,7 @@ interface PendingEvaluationsResponse {
     positionSlug: string | null;
     number: number | null;
     isActive: boolean;
+    assignmentId: string | null;
   }>;
 }
 
@@ -71,12 +72,20 @@ export class PendingEvaluationsController {
       ? recentMatch.homeTeamId
       : recentMatch.awayTeamId;
 
-    const pendingAssignments = await prisma.matchPlayerEvaluationAssignment.findMany({
-      where: { matchId: recentMatch.id, evaluatorPlayerId: mePlayer.id, completedAt: null },
-      select: { targetPlayerId: true },
+    // Carregar assignments existentes (pendentes ou não) para mapear/evitar duplicidade
+    const existingAssignments = await prisma.matchPlayerEvaluationAssignment.findMany({
+      where: { matchId: recentMatch.id, evaluatorPlayerId: mePlayer.id },
+      select: { id: true, targetPlayerId: true, completedAt: true },
     });
+    const byTarget = new Map<string, { id: string; completedAt: Date | null }>();
+    for (const a of existingAssignments)
+      byTarget.set(a.targetPlayerId, { id: a.id, completedAt: a.completedAt });
 
-    let targetPlayerIds = pendingAssignments.map((a) => a.targetPlayerId);
+    // Preferir pendentes; se nenhum, derivar da lineup/roster
+    const pendingTargets = existingAssignments
+      .filter((a) => !a.completedAt)
+      .map((a) => a.targetPlayerId);
+    let targetPlayerIds = pendingTargets;
 
     if (targetPlayerIds.length === 0) {
       const lineup = await prisma.matchLineupEntry.findMany({
@@ -91,6 +100,21 @@ export class PendingEvaluationsController {
       targetPlayerIds = rosterIds.filter((id: string) => id !== mePlayer.id);
     }
 
+    // Garantir que existe um assignment para cada alvo (caso ainda não exista)
+    for (const targetId of targetPlayerIds) {
+      if (!byTarget.has(targetId)) {
+        const created = await prisma.matchPlayerEvaluationAssignment.create({
+          data: {
+            matchId: recentMatch.id,
+            evaluatorPlayerId: mePlayer.id,
+            targetPlayerId: targetId,
+          },
+          select: { id: true },
+        });
+        byTarget.set(targetId, { id: created.id, completedAt: null });
+      }
+    }
+
     const players = await prisma.player.findMany({
       where: { id: { in: targetPlayerIds } },
       select: { id: true, name: true, positionSlug: true, number: true, isActive: true },
@@ -103,7 +127,10 @@ export class PendingEvaluationsController {
         teamId: myTeamId,
         evaluatorPlayerId: mePlayer.id,
         expiresAt: new Date(recentMatch.scheduledAt.getTime() + EVALUATION_WINDOW_MS).toISOString(),
-        players,
+        players: players.map((p) => ({
+          ...p,
+          assignmentId: byTarget.get(p.id)?.id ?? null,
+        })),
       },
     };
   }
