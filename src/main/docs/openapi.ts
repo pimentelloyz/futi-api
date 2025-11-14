@@ -848,6 +848,56 @@ export const openapi: OpenAPIObject = {
                         { type: 'null' },
                       ],
                     },
+                    evaluationBanner: {
+                      oneOf: [
+                        { type: 'null' },
+                        {
+                          type: 'object',
+                          properties: {
+                            match: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'string' },
+                                scheduledAt: { type: 'string', format: 'date-time' },
+                                status: { type: 'string' },
+                                venue: { type: 'string', nullable: true },
+                                homeTeamId: { type: 'string' },
+                                awayTeamId: { type: 'string' },
+                                homeScore: { type: 'integer' },
+                                awayScore: { type: 'integer' },
+                              },
+                              required: [
+                                'id',
+                                'scheduledAt',
+                                'status',
+                                'homeTeamId',
+                                'awayTeamId',
+                                'homeScore',
+                                'awayScore',
+                              ],
+                            },
+                            pendingCount: { type: 'integer', minimum: 0 },
+                            expiresAt: { type: 'string', format: 'date-time' },
+                            players: {
+                              type: 'array',
+                              nullable: true,
+                              items: {
+                                type: 'object',
+                                properties: {
+                                  id: { type: 'string' },
+                                  name: { type: 'string' },
+                                  positionSlug: { type: 'string', nullable: true },
+                                  number: { type: 'integer', nullable: true },
+                                  isActive: { type: 'boolean' },
+                                },
+                                required: ['id', 'name', 'isActive'],
+                              },
+                            },
+                          },
+                          required: ['match', 'pendingCount', 'expiresAt'],
+                        },
+                      ],
+                    },
                   },
                   required: ['team', 'players', 'recentMatches', 'next_game'],
                 },
@@ -887,12 +937,225 @@ export const openapi: OpenAPIObject = {
                     homeTeamId: 'team_1',
                     awayTeamId: 'team_2',
                   },
+                  evaluationBanner: {
+                    match: {
+                      id: 'match_10',
+                      scheduledAt: '2025-11-10T12:00:00.000Z',
+                      status: 'FINISHED',
+                      venue: null,
+                      homeTeamId: 'team_1',
+                      awayTeamId: 'team_2',
+                      homeScore: 2,
+                      awayScore: 1,
+                    },
+                    pendingCount: 2,
+                    expiresAt: '2025-11-11T12:00:00.000Z',
+                    players: [
+                      {
+                        id: 'player_11',
+                        name: 'Jogador 11',
+                        positionSlug: 'ST',
+                        number: 9,
+                        isActive: true,
+                      },
+                    ],
+                  },
                 },
               },
             },
           },
           '401': { description: 'Unauthorized' },
           '404': { description: 'Player not found / No team' },
+        },
+      },
+    },
+    '/api/players/me/evaluation/banner': {
+      get: {
+        summary: 'Get evaluation banner for my recent match (last 24h)',
+        tags: ['Players'],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'teamId', in: 'query', schema: { type: 'string' } },
+          { name: 'includePlayers', in: 'query', schema: { type: 'boolean' } },
+        ],
+        responses: {
+          '200': {
+            description: 'Evaluation banner or null',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    evaluationBanner: {
+                      oneOf: [
+                        { type: 'null' },
+                        {
+                          type: 'object',
+                          properties: {
+                            match: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'string' },
+                                scheduledAt: { type: 'string', format: 'date-time' },
+                                status: { type: 'string' },
+                                venue: { type: 'string', nullable: true },
+                                homeTeamId: { type: 'string' },
+                                awayTeamId: { type: 'string' },
+                                homeScore: { type: 'integer' },
+                                awayScore: { type: 'integer' },
+                              },
+                              required: [
+                                'id',
+                                'scheduledAt',
+                                'status',
+                                'homeTeamId',
+                                'awayTeamId',
+                                'homeScore',
+                                'awayScore',
+                              ],
+                            },
+                            pendingCount: { type: 'integer', minimum: 0 },
+                            expiresAt: { type: 'string', format: 'date-time' },
+                            players: {
+                              type: 'array',
+                              nullable: true,
+                              items: {
+                                type: 'object',
+                                properties: {
+                                  id: { type: 'string' },
+                                  name: { type: 'string' },
+                                  positionSlug: { type: 'string', nullable: true },
+                                  number: { type: 'integer', nullable: true },
+                                  isActive: { type: 'boolean' },
+                                },
+                                required: ['id', 'name', 'isActive'],
+                              },
+                            },
+                          },
+                          required: ['match', 'pendingCount', 'expiresAt'],
+                        },
+                      ],
+                    },
+                  },
+                },
+                example: {
+                  evaluationBanner: {
+                    match: {
+                      id: 'match_10',
+                      scheduledAt: '2025-11-14T12:00:00.000Z',
+                      status: 'FINISHED',
+                      venue: null,
+                      homeTeamId: 'team_1',
+                      awayTeamId: 'team_2',
+                      homeScore: 2,
+                      awayScore: 1,
+                    },
+                    pendingCount: 2,
+                    expiresAt: '2025-11-15T12:00:00.000Z',
+                    players: [
+                      {
+                        id: 'player_11',
+                        name: 'Jogador 11',
+                        positionSlug: 'ST',
+                        number: 9,
+                        isActive: true,
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Player not found / No team memberships' },
+        },
+      },
+    },
+    '/api/players/me/evaluations/pending': {
+      get: {
+        summary: 'List pending evaluations context (recent match within 24h)',
+        tags: ['Players'],
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Pending evaluations context',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    match: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        scheduledAt: { type: 'string', format: 'date-time' },
+                        status: { type: 'string' },
+                        venue: { type: 'string', nullable: true },
+                        homeTeamId: { type: 'string' },
+                        awayTeamId: { type: 'string' },
+                        homeScore: { type: 'integer' },
+                        awayScore: { type: 'integer' },
+                      },
+                      required: [
+                        'id',
+                        'scheduledAt',
+                        'status',
+                        'homeTeamId',
+                        'awayTeamId',
+                        'homeScore',
+                        'awayScore',
+                      ],
+                    },
+                    teamId: { type: 'string' },
+                    evaluatorPlayerId: { type: 'string' },
+                    expiresAt: { type: 'string', format: 'date-time' },
+                    players: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          name: { type: 'string' },
+                          positionSlug: { type: 'string', nullable: true },
+                          number: { type: 'integer', nullable: true },
+                          isActive: { type: 'boolean' },
+                        },
+                        required: ['id', 'name', 'isActive'],
+                      },
+                    },
+                  },
+                  required: ['match', 'teamId', 'evaluatorPlayerId', 'expiresAt', 'players'],
+                },
+                example: {
+                  match: {
+                    id: 'match_10',
+                    scheduledAt: '2025-11-14T12:00:00.000Z',
+                    status: 'FINISHED',
+                    venue: null,
+                    homeTeamId: 'team_1',
+                    awayTeamId: 'team_2',
+                    homeScore: 2,
+                    awayScore: 1,
+                  },
+                  teamId: 'team_1',
+                  evaluatorPlayerId: 'player_me',
+                  expiresAt: '2025-11-15T12:00:00.000Z',
+                  players: [
+                    {
+                      id: 'player_11',
+                      name: 'Jogador 11',
+                      positionSlug: 'ST',
+                      number: 9,
+                      isActive: true,
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Player not found / No team / No recent match' },
+          '410': { description: 'Evaluation expired' },
         },
       },
     },

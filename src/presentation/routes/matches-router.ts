@@ -1,15 +1,20 @@
 import { Router } from 'express';
-import { z } from 'zod';
 
 import { makeAddMatchController } from '../../main/factories/make-add-match-controller.js';
 import { makeListMatchesController } from '../../main/factories/make-list-matches-controller.js';
 import { makeUpdateMatchScoreController } from '../../main/factories/make-update-match-score-controller.js';
 import { makeUpdateMatchStatusController } from '../../main/factories/make-update-match-status-controller.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
-import { PrismaMatchEventRepository } from '../../infra/repositories/prisma-match-event-repository.js';
 import { PrismaMatchPlayerEvaluationRepository } from '../../infra/repositories/prisma-match-player-evaluation-repository.js';
 import { prisma } from '../../infra/prisma/client.js';
-import { ERROR_CODES } from '../../domain/constants.js';
+import {
+  MatchEventsListController,
+  MatchEventCreateController,
+} from '../controllers/match-events-controller.js';
+import {
+  MatchLineupSetController,
+  MatchLineupGetController,
+} from '../controllers/match-lineup-controller.js';
 
 export const matchesRouter = Router();
 
@@ -21,90 +26,29 @@ matchesRouter.post('/', async (req, res) => {
   res.status(response.statusCode).json(response.body);
 });
 
-// Match events endpoints will be mounted on /api/matches in setup-routes
-// Schema for match event creation
-const addEventSchema = z.object({
-  type: z.enum(['GOAL', 'FOUL', 'YELLOW_CARD', 'RED_CARD', 'OWN_GOAL']),
-  minute: z.number().int().min(0).max(130).optional(),
-  teamId: z.string().optional(),
-  playerId: z.string().optional(),
-});
-
 matchesRouter.get('/:id/events', async (req, res) => {
-  const repo = new PrismaMatchEventRepository();
-  const items = await repo.listByMatch(req.params.id);
-  res.json({ items });
+  const controller = new MatchEventsListController();
+  const response = await controller.handle({ matchId: req.params.id });
+  return res.status(response.statusCode).json(response.body);
 });
 
 matchesRouter.post('/:id/events', async (req, res) => {
-  const parsed = addEventSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: ERROR_CODES.INVALID_REQUEST });
-  const repo = new PrismaMatchEventRepository();
-  const created = await repo.add({
-    matchId: req.params.id,
-    type: parsed.data.type,
-    minute: parsed.data.minute,
-    teamId: parsed.data.teamId,
-    playerId: parsed.data.playerId,
-  });
-  res.status(201).json(created);
+  const controller = new MatchEventCreateController();
+  const response = await controller.handle({ matchId: req.params.id, body: req.body });
+  return res.status(response.statusCode).json(response.body);
 });
 
-// Lineup endpoints
-// Define toda a escalação de uma vez: { home: string[], away: string[] }
-const lineupSchema = z.object({
-  home: z.array(z.string()).default([]),
-  away: z.array(z.string()).default([]),
-});
 matchesRouter.post('/:id/lineup', async (req, res) => {
-  const matchId = req.params.id;
-  const parsed = lineupSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: ERROR_CODES.INVALID_REQUEST });
-  try {
-    const match = await prisma.match.findUnique({
-      where: { id: matchId },
-      select: { homeTeamId: true, awayTeamId: true },
-    });
-    if (!match) return res.status(404).json({ error: ERROR_CODES.MATCH_NOT_FOUND });
-    // remove lineup atual
-    await prisma.matchLineupEntry.deleteMany({ where: { matchId } });
-    // cria nova
-    const data: Array<{ matchId: string; teamId: string; playerId: string }> = [];
-    for (const pid of parsed.data.home)
-      data.push({ matchId, teamId: match.homeTeamId, playerId: pid });
-    for (const pid of parsed.data.away)
-      data.push({ matchId, teamId: match.awayTeamId, playerId: pid });
-    if (data.length) await prisma.matchLineupEntry.createMany({ data });
-    return res.status(204).send();
-  } catch (e) {
-    console.error('[set_lineup_error]', (e as Error).message);
-    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
-  }
+  const controller = new MatchLineupSetController();
+  const response = await controller.handle({ matchId: req.params.id, body: req.body });
+  if (response.statusCode === 204) return res.status(204).send();
+  return res.status(response.statusCode).json(response.body);
 });
 
 matchesRouter.get('/:id/lineup', async (req, res) => {
-  const matchId = req.params.id;
-  try {
-    const match = await prisma.match.findUnique({
-      where: { id: matchId },
-      select: { homeTeamId: true, awayTeamId: true },
-    });
-    if (!match) return res.status(404).json({ error: ERROR_CODES.MATCH_NOT_FOUND });
-    const entries = (await prisma.matchLineupEntry.findMany({
-      where: { matchId },
-      select: { playerId: true, teamId: true },
-    })) as Array<{ playerId: string; teamId: string }>;
-    const home = entries
-      .filter((e: { playerId: string; teamId: string }) => e.teamId === match.homeTeamId)
-      .map((e: { playerId: string; teamId: string }) => e.playerId);
-    const away = entries
-      .filter((e: { playerId: string; teamId: string }) => e.teamId === match.awayTeamId)
-      .map((e: { playerId: string; teamId: string }) => e.playerId);
-    res.json({ home, away });
-  } catch (e) {
-    console.error('[get_lineup_error]', (e as Error).message);
-    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
-  }
+  const controller = new MatchLineupGetController();
+  const response = await controller.handle({ matchId: req.params.id });
+  return res.status(response.statusCode).json(response.body);
 });
 
 matchesRouter.get('/', async (req, res) => {

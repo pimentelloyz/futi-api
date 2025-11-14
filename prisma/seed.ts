@@ -152,26 +152,23 @@ async function main() {
 
   // Ensure Player profile for seeded user and link to default team
   let player = await prisma.player.findUnique({ where: { userId: user.id } });
+  const prismaAny = prisma as any;
   if (!player) {
     const playerName = user.displayName || user.email?.split('@')[0] || 'Seed Player';
     player = await prisma.player.create({
-      data: {
-        name: playerName,
-        isActive: true,
-        user: { connect: { id: user.id } },
-        teams: { create: { teamId: team.id } },
-      },
+      data: { name: playerName, isActive: true, user: { connect: { id: user.id } } },
     });
+    // explicit join
+    try {
+      await prismaAny.playersOnTeams.create({ data: { playerId: player.id, teamId: team.id } });
+    } catch (e) {}
     console.log('[seed] created player for user:', { playerId: player.id, userId: user.id });
   } else {
-    // ensure linkage with team exists
-    const existingLink = await prisma.playersOnTeams.findUnique({
+    const existingLink = await prismaAny.playersOnTeams.findUnique({
       where: { playerId_teamId: { playerId: player.id, teamId: team.id } },
     });
     if (!existingLink) {
-      await prisma.playersOnTeams.create({
-        data: { playerId: player.id, teamId: team.id },
-      });
+      await prismaAny.playersOnTeams.create({ data: { playerId: player.id, teamId: team.id } });
       console.log('[seed] linked existing player to team:', { playerId: player.id, teamId: team.id });
     }
   }
@@ -183,22 +180,18 @@ async function main() {
     let createdOrExisting = existing;
     if (!existing) {
       createdOrExisting = await prisma.player.create({
-        data: {
-          name: opts.name,
-          isActive: true,
-          teams: { create: { teamId: team!.id } },
-        },
+        data: { name: opts.name, isActive: true },
       });
+      try {
+        await prismaAny.playersOnTeams.create({ data: { playerId: createdOrExisting.id, teamId: team!.id } });
+      } catch {}
       console.log('[seed] created player:', { id: createdOrExisting.id, name: opts.name });
     } else {
-      // Ensure team link
-      const existingLink = await prisma.playersOnTeams.findUnique({
+      const existingLink = await prismaAny.playersOnTeams.findUnique({
         where: { playerId_teamId: { playerId: existing.id, teamId: team!.id } },
       });
       if (!existingLink) {
-        await prisma.playersOnTeams.create({
-          data: { playerId: existing.id, teamId: team!.id },
-        });
+        await prismaAny.playersOnTeams.create({ data: { playerId: existing.id, teamId: team!.id } });
       }
       console.log('[seed] ensured link/updated player:', { id: existing.id, name: opts.name });
     }
@@ -432,47 +425,51 @@ async function main() {
   const tomorrow = new Date('2025-11-14T18:00:00');
 
   // Upsert to avoid duplicates on re-seed
-  const scheduledMatch = await prisma.match.upsert({
-    where: {
-      homeTeamId_awayTeamId_scheduledAt: {
+  let scheduledMatch = await prisma.match.findFirst({
+    where: { homeTeamId: team.id, awayTeamId: opponentTeam.id, scheduledAt: tomorrow },
+  });
+  if (scheduledMatch) {
+    scheduledMatch = await prisma.match.update({
+      where: { id: scheduledMatch.id },
+      data: { status: 'SCHEDULED' },
+    });
+  } else {
+    scheduledMatch = await prisma.match.create({
+      data: {
         homeTeamId: team.id,
         awayTeamId: opponentTeam.id,
         scheduledAt: tomorrow,
+        venue: 'Estádio Principal',
+        status: 'SCHEDULED',
       },
-    },
-    update: { status: 'SCHEDULED' },
-    create: {
-      homeTeamId: team.id,
-      awayTeamId: opponentTeam.id,
-      scheduledAt: tomorrow,
-      venue: 'Estádio Principal',
-      status: 'SCHEDULED',
-    },
-  });
-  console.log('[seed] upserted scheduled match for tomorrow:', { id: scheduledMatch.id });
+    });
+  }
+  console.log('[seed] ensured scheduled match for tomorrow:', { id: scheduledMatch.id });
 
   // 2. Match from yesterday (Nov 12, 2025, 18:00) with events
   const yesterday = new Date('2025-11-12T18:00:00');
-  const finishedMatch = await prisma.match.upsert({
-    where: {
-      homeTeamId_awayTeamId_scheduledAt: {
+  let finishedMatch = await prisma.match.findFirst({
+    where: { homeTeamId: team.id, awayTeamId: opponentTeam.id, scheduledAt: yesterday },
+  });
+  if (finishedMatch) {
+    finishedMatch = await prisma.match.update({
+      where: { id: finishedMatch.id },
+      data: { status: 'FINISHED', homeScore: 1, awayScore: 0 },
+    });
+  } else {
+    finishedMatch = await prisma.match.create({
+      data: {
         homeTeamId: team.id,
         awayTeamId: opponentTeam.id,
         scheduledAt: yesterday,
+        venue: 'Estádio Secundário',
+        status: 'FINISHED',
+        homeScore: 1,
+        awayScore: 0,
       },
-    },
-    update: { status: 'FINISHED', homeScore: 1, awayScore: 0 },
-    create: {
-      homeTeamId: team.id,
-      awayTeamId: opponentTeam.id,
-      scheduledAt: yesterday,
-      venue: 'Estádio Secundário',
-      status: 'FINISHED',
-      homeScore: 1,
-      awayScore: 0,
-    },
-  });
-  console.log('[seed] upserted finished match from yesterday:', { id: finishedMatch.id });
+    });
+  }
+  console.log('[seed] ensured finished match from yesterday:', { id: finishedMatch.id });
 
   // Create events for the finished match
   const playerForEvents = renan; // Use 'Renan Martins Moreira' for events
@@ -490,6 +487,69 @@ async function main() {
       });
     }
     console.log('[seed] created match events for finished match:', { matchId: finishedMatch.id, count: eventTypes.length });
+  }
+
+  // === Recent finished match (within last 24h) for evaluation banner/pending tests ===
+  const recentFinishedDate = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2h ago
+  let recentFinishedMatch = await prisma.match.findFirst({
+    where: {
+      homeTeamId: team.id,
+      awayTeamId: opponentTeam.id,
+      scheduledAt: recentFinishedDate,
+    },
+  });
+  if (recentFinishedMatch) {
+    recentFinishedMatch = await prisma.match.update({
+      where: { id: recentFinishedMatch.id },
+      data: { status: 'FINISHED', homeScore: 2, awayScore: 1 },
+    });
+  } else {
+    recentFinishedMatch = await prisma.match.create({
+      data: {
+        homeTeamId: team.id,
+        awayTeamId: opponentTeam.id,
+        scheduledAt: recentFinishedDate,
+        venue: 'Estádio Dinâmico',
+        status: 'FINISHED',
+        homeScore: 2,
+        awayScore: 1,
+      },
+    });
+  }
+  console.log('[seed] ensured recent finished match:', { id: recentFinishedMatch.id, scheduledAt: recentFinishedMatch.scheduledAt.toISOString() });
+
+  // Deterministic evaluation assignments for recent match
+  const pAnyPlayers = prisma as unknown as {
+    playersOnTeams: {
+      findMany: (args: { where: { teamId: string }; select: { playerId: true } }) => Promise<Array<{ playerId: string }>>;
+    };
+  };
+  const teamPlayersLinks = await pAnyPlayers.playersOnTeams.findMany({
+    where: { teamId: team.id },
+    select: { playerId: true },
+  });
+  const teamPlayerIds = teamPlayersLinks.map((l: { playerId: string }) => l.playerId).filter(Boolean);
+  // Simple logic: each of first up to 3 players evaluates the next player cyclically
+  const existingAssignments = await prisma.matchPlayerEvaluationAssignment.findMany({
+    where: { matchId: recentFinishedMatch.id },
+    select: { id: true, evaluatorPlayerId: true, targetPlayerId: true },
+  });
+  if (existingAssignments.length === 0 && teamPlayerIds.length >= 2) {
+    const toCreate: Array<{ matchId: string; evaluatorPlayerId: string; targetPlayerId: string }> = [];
+    const slice = teamPlayerIds.slice(0, Math.min(teamPlayerIds.length, 4));
+    for (let i = 0; i < slice.length; i++) {
+      const evaluator = slice[i];
+      const target = slice[(i + 1) % slice.length];
+      if (evaluator !== target) {
+        toCreate.push({ matchId: recentFinishedMatch.id, evaluatorPlayerId: evaluator, targetPlayerId: target });
+      }
+    }
+    for (const a of toCreate) {
+      await prisma.matchPlayerEvaluationAssignment.create({ data: a });
+    }
+    console.log('[seed] created evaluation assignments for recent match:', { count: toCreate.length });
+  } else {
+    console.log('[seed] skipped creating assignments (already exist or insufficient players)');
   }
 }
 
