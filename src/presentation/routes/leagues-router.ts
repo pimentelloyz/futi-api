@@ -1,8 +1,10 @@
 import { Router } from 'express';
+
 import { jwtAuth } from '../middlewares/jwt-auth.js';
 import {
   createLeague,
   listLeagues,
+  listMyLeagues,
   getLeague,
   addTeamToLeague,
   createGroup,
@@ -20,6 +22,10 @@ leaguesRouter.post('/', async (req, res) => {
 
 leaguesRouter.get('/', async (req, res) => {
   return listLeagues(req, res);
+});
+
+leaguesRouter.get('/me', async (req, res) => {
+  return listMyLeagues(req, res);
 });
 
 leaguesRouter.get('/:id', async (req, res) => {

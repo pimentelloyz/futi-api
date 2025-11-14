@@ -131,6 +131,11 @@ const mem = {
     string,
     { id: string; userId: string; token: string; platform: string | null; createdAt: Date }
   >(),
+  leaguesById: new Map<
+    string,
+    { id: string; name: string; slug: string; createdAt: Date; updatedAt: Date }
+  >(),
+  leagueTeamsByLeagueId: new Map<string, string[]>(),
 };
 let userSeq = 0;
 let tokenSeq = 0;
@@ -846,6 +851,109 @@ vi.mock('../infra/prisma/client.js', async () => {
           mem.userPushTokens.set(key, rec);
           return rec;
         }
+      },
+    },
+    accessMembership: {
+      findMany: async ({
+        where: _where,
+        select,
+      }: {
+        where: { userId: string; teamId?: { not: null } };
+        select?: { teamId?: boolean };
+      }) => {
+        void _where;
+        // Keep simple in tests: return empty unless explicitly populated by tests in future
+        const list: Array<{ teamId: string | null }> = [];
+        if (select?.teamId) return list.map((x) => ({ teamId: x.teamId }));
+        return list;
+      },
+    },
+    playersOnTeams: {
+      findMany: async ({
+        where,
+        select,
+      }: {
+        where: { playerId: string };
+        select?: { teamId?: boolean };
+      }) => {
+        const tids = mem.playerTeamsByPlayerId.get(where.playerId) ?? [];
+        const list = tids.map((teamId) => ({ teamId }));
+        if (select?.teamId) return list.map((x) => ({ teamId: x.teamId }));
+        return list;
+      },
+    },
+    league: {
+      create: async ({
+        data,
+      }: {
+        data: {
+          name: string;
+          slug: string;
+          description?: string | null;
+          startAt?: Date;
+          endAt?: Date;
+        };
+      }) => {
+        const id = `league_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const now = new Date();
+        const rec = { id, name: data.name, slug: data.slug, createdAt: now, updatedAt: now };
+        mem.leaguesById.set(id, rec);
+        return rec;
+      },
+      findUnique: async ({ where }: { where: { id?: string; slug?: string } }) => {
+        if (where.id) return mem.leaguesById.get(where.id) ?? null;
+        if (where.slug) {
+          return Array.from(mem.leaguesById.values()).find((l) => l.slug === where.slug) ?? null;
+        }
+        return null;
+      },
+      findMany: async ({
+        where,
+        include,
+        orderBy,
+      }: {
+        where?: { teams?: { some?: { teamId?: { in?: string[] } } } };
+        include?: { teams?: { include?: { team?: boolean } } };
+        orderBy?: { name?: 'asc' | 'desc' };
+      }) => {
+        let leagues = Array.from(mem.leaguesById.values());
+        const inTeamIds = where?.teams?.some?.teamId?.in ?? undefined;
+        if (inTeamIds && inTeamIds.length) {
+          leagues = leagues.filter((l) => {
+            const lteams = mem.leagueTeamsByLeagueId.get(l.id) ?? [];
+            return lteams.some((tid) => inTeamIds.includes(tid));
+          });
+        }
+        if (orderBy?.name === 'asc') leagues.sort((a, b) => a.name.localeCompare(b.name));
+        if (orderBy?.name === 'desc') leagues.sort((a, b) => b.name.localeCompare(a.name));
+        if (include?.teams?.include?.team) {
+          return leagues.map((l) => {
+            const tids = mem.leagueTeamsByLeagueId.get(l.id) ?? [];
+            const teams = tids
+              .map((tid) => mem.teamsById.get(tid))
+              .filter(Boolean)
+              .map((t) => ({ team: t! }));
+            return { ...l, teams };
+          });
+        }
+        return leagues;
+      },
+    },
+    leagueTeam: {
+      create: async ({
+        data,
+      }: {
+        data: { leagueId: string; teamId: string; division?: string | null };
+      }) => {
+        const tids = mem.leagueTeamsByLeagueId.get(data.leagueId) ?? [];
+        if (tids.includes(data.teamId)) throw new Error('already linked');
+        mem.leagueTeamsByLeagueId.set(data.leagueId, [...tids, data.teamId]);
+        return {
+          id: `lt_${Date.now()}`,
+          leagueId: data.leagueId,
+          teamId: data.teamId,
+          division: data.division ?? null,
+        };
       },
     },
   };
