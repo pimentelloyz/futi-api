@@ -176,6 +176,80 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/leagues/{id}/icon': {
+      post: {
+        summary: 'Upload de ícone da liga (multipart/form-data)',
+        description:
+          'Substitui o ícone anterior desta liga. O arquivo é salvo com nome determinístico em leagues/{id}/{id}-icon.{ext} (ext: png/jpg/webp) e uma URL estável é retornada. Para evitar cache agressivo no cliente, usamos cache-control: no-cache, max-age=0. Envie o arquivo no campo multipart "file" (PNG/JPEG/WEBP, até 2MB).',
+        tags: ['Leagues'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: { file: { type: 'string', format: 'binary' } },
+                required: ['file'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Upload concluído',
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { iconUrl: { type: 'string' } } },
+              },
+            },
+          },
+          '400': { description: 'Arquivo ausente' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Liga não encontrada' },
+          '415': { description: 'Tipo de mídia não suportado' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+    },
+    '/api/leagues/{id}/banner': {
+      post: {
+        summary: 'Upload de banner da liga (multipart/form-data)',
+        description:
+          'Substitui o banner anterior desta liga. O arquivo é salvo com nome determinístico em leagues/{id}/{id}-banner.{ext} (ext: png/jpg/webp) e uma URL estável é retornada. Para evitar cache agressivo no cliente, usamos cache-control: no-cache, max-age=0. Envie o arquivo no campo multipart "file" (PNG/JPEG/WEBP, até 2MB).',
+        tags: ['Leagues'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: { file: { type: 'string', format: 'binary' } },
+                required: ['file'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Upload concluído',
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { bannerUrl: { type: 'string' } } },
+              },
+            },
+          },
+          '400': { description: 'Arquivo ausente' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Liga não encontrada' },
+          '415': { description: 'Tipo de mídia não suportado' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+    },
     '/api/leagues/me/{id}': {
       get: {
         summary: 'Detalhes de uma liga que pertenço (inclui times/grupos)',

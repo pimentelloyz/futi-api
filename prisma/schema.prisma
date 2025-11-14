@@ -321,6 +321,8 @@ model League {
   name        String    @db.VarChar(191)
   slug        String    @unique @db.VarChar(191)
   description String?   @db.VarChar(255)
+  icon        String?   @db.VarChar(255)
+  banner      String?   @db.VarChar(255)
   startAt     DateTime?
   endAt       DateTime?
   isActive    Boolean   @default(true)
