@@ -304,4 +304,5 @@ model PlayersOnTeams {
   assignedBy String? // Could be a user ID
 
   @@id([playerId, teamId])
+  @@index([teamId])
 }

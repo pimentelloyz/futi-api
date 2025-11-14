@@ -495,10 +495,18 @@ playersRouter.get('/me/team/overview', async (req, res) => {
     });
     if (!mePlayer) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
 
-    // Descobrir times em que estou. Preferimos uma consulta que funcione com o client atual.
-    // Assumindo relação implícita (Team.players: Player[]), filtramos por players.some.id = mePlayer.id
-    const myTeams = await prisma.team.findMany({
-      where: { players: { some: { id: mePlayer.id } } },
+    // Descobrir times em que estou via relação explícita PlayersOnTeams
+    const prismaAny = prisma as unknown as {
+      team: {
+        findMany: (args: {
+          where: { players: { some: { playerId: string } } };
+          select: { id: true; name: true };
+        }) => Promise<Array<{ id: string; name: string }>>;
+        findUnique: (args: Record<string, unknown>) => Promise<unknown>;
+      };
+    };
+    const myTeams = await prismaAny.team.findMany({
+      where: { players: { some: { playerId: mePlayer.id } } },
       select: { id: true, name: true },
     });
     if (!myTeams.length) return res.status(404).json({ error: 'no_team' });
@@ -520,24 +528,42 @@ playersRouter.get('/me/team/overview', async (req, res) => {
       return res.status(404).json({ error: ERROR_CODES.TEAM_NOT_FOUND });
     }
 
-    // Jogadores do time (seguindo a mesma abordagem do teamsRouter)
-    const teamWithPlayers = (await prisma.team.findUnique({
+    // Jogadores do time via join explícito
+    const teamWithPlayers = (await prismaAny.team.findUnique({
       where: { id: team.id },
       select: {
         players: {
-          select: { id: true, name: true, positionSlug: true, number: true, isActive: true },
+          include: {
+            player: {
+              select: { id: true, name: true, positionSlug: true, number: true, isActive: true },
+            },
+          },
         },
       },
     })) as unknown as {
       players: Array<{
-        id: string;
-        name: string;
-        positionSlug: string | null;
-        number: number | null;
-        isActive: boolean;
+        player: {
+          id: string;
+          name: string;
+          positionSlug: string | null;
+          number: number | null;
+          isActive: boolean;
+        } | null;
       }>;
     } | null;
-    const teamPlayers = teamWithPlayers?.players ?? [];
+    const teamPlayers = (teamWithPlayers?.players ?? [])
+      .map((p) => p.player)
+      .filter(
+        (
+          p,
+        ): p is {
+          id: string;
+          name: string;
+          positionSlug: string | null;
+          number: number | null;
+          isActive: boolean;
+        } => Boolean(p),
+      );
 
     // Partidas recentes e próximo jogo
     const recent = await prisma.match.findMany({

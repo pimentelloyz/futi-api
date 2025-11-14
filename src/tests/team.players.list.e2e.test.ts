@@ -55,26 +55,17 @@ describe('teams players list e2e', () => {
     expect(p2.status).toBe(201);
     teammateId = p2.body.id as string;
 
-    // Vincular ambos ao time via prisma mock
-    type PrismaMock = {
-      player: {
-        update(args: {
-          where: { id: string };
-          data: { teams?: { connect?: Array<{ id: string }> } };
-        }): Promise<unknown>;
-      };
-    };
-    const prismaMod = (await import('../infra/prisma/client.js')) as unknown as {
-      prisma: PrismaMock;
-    };
-    await prismaMod.prisma.player.update({
-      where: { id: myPlayerId },
-      data: { teams: { connect: [{ id: teamId }] } },
-    });
-    await prismaMod.prisma.player.update({
-      where: { id: teammateId },
-      data: { teams: { connect: [{ id: teamId }] } },
-    });
+    // Vincular ambos ao time via API
+    await request(app)
+      .post(`/api/teams/${teamId}/players`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ playerId: myPlayerId })
+      .expect(204);
+    await request(app)
+      .post(`/api/teams/${teamId}/players`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ playerId: teammateId })
+      .expect(204);
   });
 
   it('should return players of the team', async () => {

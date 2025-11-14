@@ -150,11 +150,19 @@ matchesRouter.patch('/:id/status', async (req, res) => {
     if (byTeam.size === 0) {
       // fallback: todos os players dos times
       for (const tid of [match.homeTeamId, match.awayTeamId]) {
-        const t = await prisma.team.findUnique({
-          where: { id: tid },
-          select: { players: { select: { id: true } } },
+        const pAny = prisma as unknown as {
+          playersOnTeams: {
+            findMany: (args: {
+              where: { teamId: string };
+              select: { playerId: true };
+            }) => Promise<Array<{ playerId: string }>>;
+          };
+        };
+        const links = await pAny.playersOnTeams.findMany({
+          where: { teamId: tid },
+          select: { playerId: true },
         });
-        const ids = (t?.players ?? []).map((p: { id: string }) => p.id);
+        const ids = links.map((l) => l.playerId);
         byTeam.set(tid, ids);
       }
     }
