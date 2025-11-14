@@ -11,6 +11,8 @@ import { HttpRequest } from '../protocols/http.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
 import { PrismaPlayerSkillRepository } from '../../infra/repositories/prisma-player-skill-repository.js';
 import { prisma } from '../../infra/prisma/client.js';
+import { EvaluationBannerController } from '../controllers/evaluation-banner-controller.js';
+import { PendingEvaluationsController } from '../controllers/pending-evaluations-controller.js';
 import { ERROR_CODES } from '../../domain/constants.js';
 
 export const playersRouter = Router();
@@ -661,187 +663,21 @@ playersRouter.get('/me/team/overview', async (req, res) => {
   }
 });
 
-// Endpoint para carregar lista de jogadores a serem avaliados na partida das últimas 24h
 playersRouter.get('/me/evaluations/pending', async (req, res) => {
-  try {
-    const meUser = req.user as { id: string } | undefined;
-    if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
-
-    // Meu player
-    const mePlayer = await prisma.player.findUnique({
-      where: { userId: meUser.id },
-      select: { id: true },
-    });
-    if (!mePlayer) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
-
-    const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-    // Times do jogador (via join explícito)
-    const prismaExt = prisma as unknown as {
-      playersOnTeams: {
-        findMany: (args: {
-          where: { playerId?: string; teamId?: string };
-          select: { teamId?: true; playerId?: true };
-        }) => Promise<Array<{ teamId?: string; playerId?: string }>>;
-      };
-    };
-    const memberships = await prismaExt.playersOnTeams.findMany({
-      where: { playerId: mePlayer.id },
-      select: { teamId: true },
-    });
-    const teamIds = memberships
-      .map((m: { teamId?: string }) => m.teamId!)
-      .filter((id): id is string => Boolean(id));
-    if (teamIds.length === 0) return res.status(404).json({ error: 'no_team' });
-
-    // Última partida das últimas 24h envolvendo algum time do jogador
-    const recentMatch = await prisma.match.findFirst({
-      where: {
-        scheduledAt: { gte: twentyFourHoursAgo, lte: now },
-        OR: [{ homeTeamId: { in: teamIds } }, { awayTeamId: { in: teamIds } }],
-      },
-      orderBy: { scheduledAt: 'desc' },
-      select: {
-        id: true,
-        scheduledAt: true,
-        status: true,
-        venue: true,
-        homeTeamId: true,
-        awayTeamId: true,
-        homeScore: true,
-        awayScore: true,
-      },
-    });
-    if (!recentMatch) return res.status(404).json({ error: 'no_recent_match' });
-
-    // Verifica expiração (redundante, mas explícita)
-    if (recentMatch.scheduledAt.getTime() < twentyFourHoursAgo.getTime()) {
-      return res.status(410).json({ error: 'evaluation_expired' });
-    }
-
-    // Determina time do jogador nesta partida
-    const myTeamId = teamIds.includes(recentMatch.homeTeamId)
-      ? recentMatch.homeTeamId
-      : recentMatch.awayTeamId;
-
-    // Coletar assignments pendentes como fonte primária
-    const pendingAssignments = await prisma.matchPlayerEvaluationAssignment.findMany({
-      where: { matchId: recentMatch.id, evaluatorPlayerId: mePlayer.id, completedAt: null },
-      select: { targetPlayerId: true },
-    });
-
-    let targetPlayerIds = pendingAssignments.map((a) => a.targetPlayerId);
-
-    // Fallback: lineup do time na partida
-    if (targetPlayerIds.length === 0) {
-      const lineup = await prisma.matchLineupEntry.findMany({
-        where: { matchId: recentMatch.id, teamId: myTeamId },
-        select: { playerId: true },
-      });
-      targetPlayerIds = lineup.map((l) => l.playerId).filter((id) => id !== mePlayer.id);
-    }
-
-    // Fallback final: roster atual do time
-    if (targetPlayerIds.length === 0) {
-      const roster = await prismaExt.playersOnTeams.findMany({
-        where: { teamId: myTeamId },
-        select: { playerId: true },
-      });
-      targetPlayerIds = roster
-        .map((r: { playerId?: string }) => r.playerId!)
-        .filter((id: string) => id && id !== mePlayer.id);
-    }
-
-    // Carregar dados dos jogadores-alvo
-    const players = await prisma.player.findMany({
-      where: { id: { in: targetPlayerIds } },
-      select: { id: true, name: true, positionSlug: true, number: true, isActive: true },
-    });
-
-    return res.json({
-      match: recentMatch,
-      teamId: myTeamId,
-      evaluatorPlayerId: mePlayer.id,
-      expiresAt: new Date(recentMatch.scheduledAt.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-      players,
-    });
-  } catch (e) {
-    console.error('[pending_evaluations_error]', (e as Error).message);
-    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
-  }
+  const controller = new PendingEvaluationsController();
+  const meUser = req.user as { id: string } | undefined;
+  const response = await controller.handle({ userId: meUser?.id });
+  return res.status(response.statusCode).json(response.body);
 });
 
-// Endpoint enxuto apenas para o banner de avaliação (sem carregar jogadores/time completo)
 playersRouter.get('/me/evaluation/banner', async (req, res) => {
-  try {
-    const meUser = req.user as { id: string } | undefined;
-    if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
-    const { teamId } = req.query as { teamId?: string };
-
-    const mePlayer = await prisma.player.findUnique({
-      where: { userId: meUser.id },
-      select: { id: true },
-    });
-    if (!mePlayer) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
-
-    // Times do jogador via PlayersOnTeams
-    const prismaExt = prisma as unknown as {
-      playersOnTeams: {
-        findMany: (args: {
-          where: { playerId?: string; teamId?: string };
-          select: { teamId?: true };
-        }) => Promise<Array<{ teamId?: string }>>;
-      };
-    };
-    const memberships = await prismaExt.playersOnTeams.findMany({
-      where: { playerId: mePlayer.id },
-      select: { teamId: true },
-    });
-    const allTeamIds = memberships.map((m) => m.teamId!).filter(Boolean);
-    if (!allTeamIds.length) return res.status(404).json({ error: 'no_team' });
-    const focusTeamIds = teamId && allTeamIds.includes(teamId) ? [teamId] : allTeamIds;
-
-    const now = new Date();
-    const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-    // Buscar a partida mais recente nas últimas 24h envolvendo qualquer time focado
-    const recentMatch = await prisma.match.findFirst({
-      where: {
-        scheduledAt: { gte: windowStart, lte: now },
-        OR: [{ homeTeamId: { in: focusTeamIds } }, { awayTeamId: { in: focusTeamIds } }],
-      },
-      orderBy: { scheduledAt: 'desc' },
-      select: {
-        id: true,
-        scheduledAt: true,
-        status: true,
-        venue: true,
-        homeTeamId: true,
-        awayTeamId: true,
-        homeScore: true,
-        awayScore: true,
-      },
-    });
-
-    if (!recentMatch) return res.json({ evaluationBanner: null });
-
-    // Verificar pendências (assignments não concluídos para este jogador)
-    const pendingCount = await prisma.matchPlayerEvaluationAssignment.count({
-      where: { matchId: recentMatch.id, evaluatorPlayerId: mePlayer.id, completedAt: null },
-    });
-
-    if (pendingCount === 0) return res.json({ evaluationBanner: null });
-
-    return res.json({
-      evaluationBanner: {
-        match: recentMatch,
-        pendingCount,
-        expiresAt: new Date(recentMatch.scheduledAt.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-      },
-    });
-  } catch (e) {
-    console.error('[evaluation_banner_error]', (e as Error).message);
-    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
-  }
+  const controller = new EvaluationBannerController();
+  const meUser = req.user as { id: string } | undefined;
+  const { teamId, includePlayers } = req.query as { teamId?: string; includePlayers?: string };
+  const response = await controller.handle({
+    userId: meUser?.id,
+    teamId,
+    includePlayers: includePlayers === 'true',
+  });
+  return res.status(response.statusCode).json(response.body);
 });
