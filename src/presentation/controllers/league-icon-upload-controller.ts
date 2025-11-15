@@ -43,9 +43,7 @@ export class LeagueIconUploadController {
         await gcsFile.makePublic();
       } catch {}
       const publicUrl = `https://storage.googleapis.com/${bucket.name}/${objectPath}`;
-      // Evita erro de tipos caso o client não tenha sido regenerado ainda
-      const data = JSON.parse(JSON.stringify({ icon: publicUrl }));
-      await prisma.league.update({ where: { id: leagueId }, data: data as unknown as never });
+      await prisma.league.update({ where: { id: leagueId }, data: { icon: publicUrl } });
       return { statusCode: 200, body: { iconUrl: publicUrl } };
     } catch (e) {
       console.error('[league_icon_upload_ctrl_error]', (e as Error).message);
@@ -89,8 +87,7 @@ export class LeagueBannerUploadController {
         await gcsFile.makePublic();
       } catch {}
       const publicUrl = `https://storage.googleapis.com/${bucket.name}/${objectPath}`;
-      const data = JSON.parse(JSON.stringify({ banner: publicUrl }));
-      await prisma.league.update({ where: { id: leagueId }, data: data as unknown as never });
+      await prisma.league.update({ where: { id: leagueId }, data: { banner: publicUrl } });
       return { statusCode: 200, body: { bannerUrl: publicUrl } };
     } catch (e) {
       console.error('[league_banner_upload_ctrl_error]', (e as Error).message);
