@@ -14,6 +14,7 @@ import {
   updateLeague,
   deleteLeague,
   addTeamToLeague,
+  listLeagueTeams,
   createGroup,
   addTeamToGroup,
   generateFixturesForGroup,
@@ -129,6 +130,11 @@ leaguesRouter.get('/me/:id', async (req, res) => {
 
 leaguesRouter.get('/:id', async (req, res) => {
   return getLeague(req, res);
+});
+
+// Listar times da liga
+leaguesRouter.get('/:id/teams', async (req, res) => {
+  return listLeagueTeams(req, res);
 });
 
 leaguesRouter.patch('/:id', async (req, res) => {

@@ -288,6 +288,51 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/leagues/{id}/teams': {
+      get: {
+        summary: 'Listar times de uma liga',
+        description:
+          'Retorna os vínculos de times (LeagueTeam) da liga, incluindo os dados do Team.',
+        tags: ['Leagues'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': {
+            description: 'Lista de times vinculados à liga',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      leagueId: { type: 'string' },
+                      teamId: { type: 'string' },
+                      division: { type: 'string', nullable: true },
+                      team: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          name: { type: 'string' },
+                          icon: { type: 'string', nullable: true },
+                          description: { type: 'string', nullable: true },
+                          isActive: { type: 'boolean' },
+                        },
+                        required: ['id', 'name', 'isActive'],
+                      },
+                    },
+                    required: ['id', 'leagueId', 'teamId', 'team'],
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Liga não encontrada' },
+        },
+      },
+    },
     '/api/leagues/{id}/icon': {
       post: {
         summary: 'Upload de ícone da liga (multipart/form-data)',

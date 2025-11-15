@@ -248,6 +248,19 @@ export async function deleteLeague(req: Request, res: Response) {
   return res.status(204).send();
 }
 
+export async function listLeagueTeams(req: Request, res: Response) {
+  const { id } = req.params; // league id
+  if (!id) return res.status(400).json({ message: 'invalid league id' });
+  const exists = await prisma.league.findUnique({ where: { id }, select: { id: true } });
+  if (!exists) return res.status(404).json({ message: 'league not found' });
+  const teams = await prisma.leagueTeam.findMany({
+    where: { leagueId: id },
+    include: { team: true },
+    orderBy: { team: { name: 'asc' } },
+  });
+  return res.json(teams);
+}
+
 export async function addTeamToLeague(req: Request, res: Response) {
   const { id } = req.params; // league id
   const { teamId, division } = req.body;
