@@ -34,14 +34,78 @@ export async function createLeague(req: Request, res: Response) {
   return res.status(201).json({ id: league.id });
 }
 
-export async function listLeagues(_req: Request, res: Response) {
-  const leagues = await prisma.league.findMany({
-    include: {
-      teams: { include: { team: true } },
-      groups: { include: { teams: { include: { team: true } } } },
+export async function listLeagues(req: Request, res: Response) {
+  // Query params: q, name, slug, isActive, startAtFrom, startAtTo, endAtFrom, endAtTo, page, pageSize, orderBy, order
+  const qp = req.query as Record<string, string | undefined>;
+  const q = qp.q?.toString().trim();
+  const name = qp.name?.toString().trim();
+  const slug = qp.slug?.toString().trim();
+  const isActiveParam = qp.isActive?.toString().toLowerCase();
+  const startAtFrom = qp.startAtFrom ? new Date(qp.startAtFrom) : undefined;
+  const startAtTo = qp.startAtTo ? new Date(qp.startAtTo) : undefined;
+  const endAtFrom = qp.endAtFrom ? new Date(qp.endAtFrom) : undefined;
+  const endAtTo = qp.endAtTo ? new Date(qp.endAtTo) : undefined;
+  const page = Math.max(parseInt(qp.page ?? '1', 10) || 1, 1);
+  const pageSizeRaw = Math.max(parseInt(qp.pageSize ?? '20', 10) || 20, 1);
+  const pageSize = Math.min(pageSizeRaw, 20); // enforce max 20 per request
+  const skip = (page - 1) * pageSize;
+  const orderByField = (qp.orderBy as string) || 'createdAt';
+  const order: 'asc' | 'desc' =
+    qp.order === 'asc' || qp.order === 'desc'
+      ? (qp.order as 'asc' | 'desc')
+      : orderByField === 'name'
+        ? 'asc'
+        : 'desc';
+
+  const where: Record<string, unknown> = {};
+  const andClauses: Array<Record<string, unknown>> = [];
+  if (q) {
+    andClauses.push({
+      OR: [
+        { name: { contains: q, mode: 'insensitive' } },
+        { slug: { contains: q, mode: 'insensitive' } },
+      ],
+    });
+  }
+  if (name) andClauses.push({ name: { contains: name, mode: 'insensitive' } });
+  if (slug) andClauses.push({ slug: { contains: slug, mode: 'insensitive' } });
+  if (isActiveParam === 'true' || isActiveParam === 'false')
+    andClauses.push({ isActive: isActiveParam === 'true' });
+  if (startAtFrom || startAtTo) {
+    const range: Record<string, Date> = {};
+    if (startAtFrom && !isNaN(startAtFrom.getTime())) range.gte = startAtFrom;
+    if (startAtTo && !isNaN(startAtTo.getTime())) range.lte = startAtTo;
+    if (Object.keys(range).length) andClauses.push({ startAt: range });
+  }
+  if (endAtFrom || endAtTo) {
+    const range: Record<string, Date> = {};
+    if (endAtFrom && !isNaN(endAtFrom.getTime())) range.gte = endAtFrom;
+    if (endAtTo && !isNaN(endAtTo.getTime())) range.lte = endAtTo;
+    if (Object.keys(range).length) andClauses.push({ endAt: range });
+  }
+  if (andClauses.length) (where as Record<string, unknown>).AND = andClauses;
+
+  const total = await prisma.league.count({ where: where as never });
+  const items = await prisma.league.findMany({
+    where: where as never,
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      icon: true,
+      banner: true,
+      startAt: true,
+      endAt: true,
+      isActive: true,
+      createdAt: true,
+      updatedAt: true,
     },
+    orderBy: { [orderByField]: order } as never,
+    skip,
+    take: pageSize,
   });
-  return res.json(leagues);
+  return res.json({ items, page, pageSize, total, hasNext: skip + items.length < total });
 }
 
 // List leagues linked to the logged-in user (via team memberships)

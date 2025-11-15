@@ -42,6 +42,101 @@ export const openapi: OpenAPIObject = {
   },
   paths: {
     '/api/leagues': {
+      get: {
+        summary: 'Listar ligas cadastradas (com filtros e paginação)',
+        description:
+          'Retorna uma lista paginada (máximo 20 por página) de ligas. Permite filtros por texto (q), nome, slug, status (isActive) e intervalos de datas (startAt, endAt).',
+        tags: ['Leagues'],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'q',
+            in: 'query',
+            schema: { type: 'string' },
+            description: 'Busca por nome/slug',
+          },
+          {
+            name: 'name',
+            in: 'query',
+            schema: { type: 'string' },
+            description: 'Filtro: name contains (case-insensitive)',
+          },
+          {
+            name: 'slug',
+            in: 'query',
+            schema: { type: 'string' },
+            description: 'Filtro: slug contains (case-insensitive)',
+          },
+          { name: 'isActive', in: 'query', schema: { type: 'boolean' }, description: 'true/false' },
+          { name: 'startAtFrom', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'startAtTo', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'endAtFrom', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'endAtTo', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          {
+            name: 'page',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1 },
+            description: 'Página atual (default 1)',
+          },
+          {
+            name: 'pageSize',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 20 },
+            description: 'Itens por página (máximo 20, default 20)',
+          },
+          {
+            name: 'orderBy',
+            in: 'query',
+            schema: { type: 'string', enum: ['name', 'createdAt', 'startAt', 'endAt'] },
+            description: 'Campo para ordenação (default createdAt)',
+          },
+          {
+            name: 'order',
+            in: 'query',
+            schema: { type: 'string', enum: ['asc', 'desc'] },
+            description: 'Direção (default depende do campo)',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Lista paginada de ligas',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          name: { type: 'string' },
+                          slug: { type: 'string' },
+                          description: { type: 'string', nullable: true },
+                          icon: { type: 'string', nullable: true },
+                          banner: { type: 'string', nullable: true },
+                          startAt: { type: 'string', format: 'date-time', nullable: true },
+                          endAt: { type: 'string', format: 'date-time', nullable: true },
+                          isActive: { type: 'boolean' },
+                          createdAt: { type: 'string', format: 'date-time' },
+                          updatedAt: { type: 'string', format: 'date-time' },
+                        },
+                        required: ['id', 'name', 'slug', 'isActive', 'createdAt', 'updatedAt'],
+                      },
+                    },
+                    page: { type: 'integer' },
+                    pageSize: { type: 'integer' },
+                    total: { type: 'integer' },
+                    hasNext: { type: 'boolean' },
+                  },
+                  required: ['items', 'page', 'pageSize', 'total', 'hasNext'],
+                },
+              },
+            },
+          },
+        },
+      },
       post: {
         summary: 'Criar liga',
         description:
