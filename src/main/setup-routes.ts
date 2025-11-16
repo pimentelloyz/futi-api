@@ -10,6 +10,7 @@ import { authRouter } from '../presentation/routes/auth-router.js';
 import { accessRouter } from '../presentation/routes/access-router.js';
 import { positionsRouter } from '../presentation/routes/positions-router.js';
 import { leaguesRouter } from '../presentation/routes/leagues-router.js';
+import { invitationCodesRouter } from '../presentation/routes/invitation-codes-router.js';
 
 import { openapi } from './docs/openapi.js';
 
@@ -23,6 +24,7 @@ export function setupRoutes(app: Express) {
   app.use('/api/access', accessRouter);
   app.use('/api/positions', positionsRouter);
   app.use('/api/leagues', leaguesRouter);
+  app.use('/api/invites', invitationCodesRouter);
   app.get('/health', (_req, res) =>
     res.json({ status: 'ok', timestamp: new Date().toISOString() }),
   );

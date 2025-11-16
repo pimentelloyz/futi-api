@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
+import { prisma } from '../prisma/client.js';
 import type {
   InvitationCodeCreate,
   InvitationCodeModel,
@@ -9,8 +10,9 @@ import type {
 export class PrismaInvitationCodeRepository implements InvitationCodeRepository {
   private prisma: PrismaClient;
 
-  constructor(prisma?: PrismaClient) {
-    this.prisma = prisma ?? new PrismaClient();
+  constructor(prismaClient?: PrismaClient) {
+    // Use shared prisma instance by default to avoid multiple clients
+    this.prisma = prismaClient ?? prisma;
   }
 
   async create(data: InvitationCodeCreate): Promise<InvitationCodeModel> {
