@@ -9,7 +9,11 @@ import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
 import { BadRequestError, UnauthorizedError, ServerError } from '../errors/http-errors.js';
 import { ERROR_CODES } from '../../domain/constants.js';
 
-const schema = z.object({ idToken: z.string().min(10), role: z.enum(['PLAYER']).optional() });
+const schema = z.object({
+  idToken: z.string().min(10),
+  role: z.enum(['PLAYER']).optional(),
+  inviteCode: z.string().min(3).optional(),
+});
 
 export class ExchangeFirebaseTokenController implements Controller {
   async handle(request: HttpRequest): Promise<HttpResponse> {
@@ -46,7 +50,45 @@ export class ExchangeFirebaseTokenController implements Controller {
         // Nome default: displayName/email/localpart; sem times inicialmente
         const defaultName =
           decoded.name || (decoded.email ? decoded.email.split('@')[0] : 'Player');
-        await ensurePlayer.ensure({ userId: user.id, name: defaultName });
+        const ensured = await ensurePlayer.ensure({ userId: user.id, name: defaultName });
+        const playerId = ensured.id;
+        // If invite code provided, try to join the team
+        if (parsed.data.inviteCode) {
+          try {
+            const { PrismaInvitationCodeRepository } = await import(
+              '../../infra/repositories/prisma-invitation-code-repository.js'
+            );
+            const { prisma } = await import('../../infra/prisma/client.js');
+            const inviteRepo = new PrismaInvitationCodeRepository();
+            const code = await inviteRepo.findByCode(parsed.data.inviteCode);
+            if (!code) {
+              throw new Error('invalid_invite_code');
+            }
+            const now = new Date();
+            if (!code.isActive || (code.expiresAt && code.expiresAt <= now)) {
+              throw new Error('invite_expired');
+            }
+            if (code.uses >= code.maxUses) {
+              throw new Error('invite_maxed');
+            }
+            // Attempt to add player to team and increment uses atomically
+            await prisma.$transaction([
+              prisma.playersOnTeams.create({ data: { playerId, teamId: code.teamId } }),
+              prisma.invitationCode.update({
+                where: { id: code.id },
+                data: { uses: { increment: 1 } },
+              }),
+            ]);
+            // If after increment uses reached maxUses, deactivate the code
+            const updated = await inviteRepo.findByCode(code.code);
+            if (updated && updated.uses >= updated.maxUses) {
+              await inviteRepo.revoke(updated.id);
+            }
+          } catch (err) {
+            // Non-fatal: log and continue without joining team
+            console.warn('[invite_code_error]', (err as Error).message);
+          }
+        }
       }
       // Issue access + refresh
       const refreshRepo = new PrismaRefreshTokenRepository();

@@ -26,6 +26,7 @@ model Team {
   // Relations for league structures
   leagueTeams LeagueTeam[]
   leagueGroupTeams LeagueGroupTeam[]
+  invitationCodes InvitationCode[]
 }
 
 model User {
@@ -374,5 +375,23 @@ model LeagueGroupTeam {
   position Int?
 
   @@unique([groupId, teamId])
+  @@index([teamId])
+}
+
+// Invitation codes for teams: a team can have multiple codes; each code
+// can be used up to `maxUses` times. When `uses >= maxUses` the code is
+// considered expired/disabled.
+model InvitationCode {
+  id         String   @id @default(uuid())
+  code       String   @unique @db.VarChar(64)
+  team       Team     @relation(fields: [teamId], references: [id])
+  teamId     String
+  createdBy  String?  @db.VarChar(191)
+  maxUses    Int      @default(1)
+  uses       Int      @default(0)
+  isActive   Boolean  @default(true)
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
+
   @@index([teamId])
 }
