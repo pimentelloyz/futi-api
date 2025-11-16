@@ -32,11 +32,11 @@ export class AccessControlService {
     return this.repo.hasRole(userId, 'MANAGER', teamId);
   }
 
-  async grant(userId: string, role: AccessRole, teamId?: string | null) {
-    return this.repo.grant(userId, role, teamId);
+  async grant(userId: string, role: AccessRole, teamId?: string | null, leagueId?: string | null) {
+    return this.repo.grant(userId, role, teamId, leagueId);
   }
 
-  async revoke(userId: string, role: AccessRole, teamId?: string | null) {
-    return this.repo.revoke(userId, role, teamId);
+  async revoke(userId: string, role: AccessRole, teamId?: string | null, leagueId?: string | null) {
+    return this.repo.revoke(userId, role, teamId, leagueId);
   }
 }

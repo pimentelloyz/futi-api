@@ -5,11 +5,14 @@ import { PrismaAccessMembershipRepository } from '../../infra/repositories/prism
 import { ERROR_CODES } from '../../domain/constants.js';
 
 type TeamIdResolver = (req: Request) => string | null | undefined;
+type LeagueIdResolver = (req: Request) => string | null | undefined;
 
 export interface RequireRoleOptions {
   // How to resolve teamId when role is team-scoped (MANAGER, ASSISTANT, PLAYER)
   // Defaults: try req.params.teamId -> req.query.teamId -> req.body.teamId
   resolveTeamId?: TeamIdResolver;
+  // Defaults: try req.params.leagueId -> req.query.leagueId -> req.body.leagueId
+  resolveLeagueId?: LeagueIdResolver;
   // If true, users with ADMIN are auto-authorized even if role list doesn't include ADMIN (default: true)
   allowAdminBypass?: boolean;
 }
@@ -31,11 +34,21 @@ function defaultTeamIdResolver(req: Request): string | null {
   );
 }
 
+function defaultLeagueIdResolver(req: Request): string | null {
+  return (
+    getStringProp(req.params, 'leagueId') ||
+    getStringProp(req.query, 'leagueId') ||
+    getStringProp(req.body, 'leagueId') ||
+    null
+  );
+}
+
 async function userHasAnyRole(
   userId: string,
   roles: AccessRole[],
   teamId: string | null,
   allowAdminBypass: boolean,
+  leagueId?: string | null,
 ): Promise<boolean> {
   const repo = new PrismaAccessMembershipRepository();
   if (allowAdminBypass) {
@@ -43,20 +56,22 @@ async function userHasAnyRole(
     if (isAdmin) return true;
   }
   for (const role of roles) {
-    if (await repo.hasRole(userId, role, teamId ?? undefined)) return true;
+    if (await repo.hasRole(userId, role, teamId ?? undefined, leagueId ?? undefined)) return true;
   }
   return false;
 }
 
 export function requireAnyRole(roles: AccessRole[], options: RequireRoleOptions = {}) {
   const resolveTeamId = options.resolveTeamId ?? defaultTeamIdResolver;
+  const resolveLeagueId = options.resolveLeagueId ?? defaultLeagueIdResolver;
   const allowAdminBypass = options.allowAdminBypass ?? true;
   return async (req: Request, res: Response, next: NextFunction) => {
     const user = req.user as { id?: string } | undefined;
     if (!user?.id) return res.status(401).json({ error: 'unauthorized' });
     try {
       const teamId = resolveTeamId(req) ?? null;
-      const ok = await userHasAnyRole(user.id, roles, teamId, allowAdminBypass);
+      const leagueId = resolveLeagueId(req) ?? null;
+      const ok = await userHasAnyRole(user.id, roles, teamId, allowAdminBypass, leagueId);
       if (!ok) return res.status(403).json({ error: ERROR_CODES.NOT_AUTHORIZED });
       return next();
     } catch {

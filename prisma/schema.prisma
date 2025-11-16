@@ -128,12 +128,16 @@ model AccessMembership {
   userId    String
   team      Team?      @relation(fields: [teamId], references: [id])
   teamId    String?
+  // Optional relation to a League - membership can be scoped to a league
+  league    League?    @relation(fields: [leagueId], references: [id])
+  leagueId  String?
   role      AccessRole
   createdAt DateTime   @default(now())
 
   @@index([userId, role])
   @@index([teamId])
-  @@unique([userId, teamId])
+  @@index([leagueId])
+  @@unique([userId, teamId, leagueId])
 }
 
 enum MatchEventType {
@@ -331,6 +335,7 @@ model League {
 
   teams       LeagueTeam[]
   groups      LeagueGroup[]
+  accessMemberships AccessMembership[]
   // Matches that belong to this league (optional relation from Match)
   matches     Match[]
 }

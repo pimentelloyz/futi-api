@@ -6,20 +6,22 @@ import {
   AccessMembershipWithTeam,
 } from '../../data/protocols/access-membership-repository.js';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export class PrismaAccessMembershipRepository implements AccessMembershipRepository {
-  async grant(userId: string, role: AccessRole, teamId?: string | null): Promise<AccessMembership> {
-    const team = teamId ?? null;
-    // Upsert via unique composto só funciona com campos não nulos em Prisma
-    if (team !== null) {
-      const rec = await prisma.accessMembership.upsert({
-        where: { userId_teamId: { userId, teamId: team } },
-        update: { role },
-        create: { userId, teamId: team, role },
-      });
-      return rec as AccessMembership;
-    }
-    // Para teamId nulo (ADMIN global), fazer findFirst -> update/create
-    const existing = await prisma.accessMembership.findFirst({ where: { userId, teamId: null } });
+  async grant(
+    userId: string,
+    role: AccessRole,
+    teamId?: string | null,
+    leagueId?: string | null,
+  ): Promise<AccessMembership> {
+    const t = teamId ?? null;
+    const l = leagueId ?? null;
+    // Try to find existing membership with same keys
+
+    const existing = await prisma.accessMembership.findFirst({
+      where: { userId, teamId: t, leagueId: l } as any,
+    });
     if (existing) {
       const updated = await prisma.accessMembership.update({
         where: { id: existing.id },
@@ -27,18 +29,35 @@ export class PrismaAccessMembershipRepository implements AccessMembershipReposit
       });
       return updated as AccessMembership;
     }
-    const created = await prisma.accessMembership.create({ data: { userId, teamId: null, role } });
+
+    const created = await prisma.accessMembership.create({
+      data: { userId, teamId: t, leagueId: l, role } as any,
+    });
     return created as AccessMembership;
   }
 
-  async revoke(userId: string, role: AccessRole, teamId?: string | null): Promise<void> {
-    await prisma.accessMembership.deleteMany({ where: { userId, teamId: teamId ?? null, role } });
+  async revoke(
+    userId: string,
+    role: AccessRole,
+    teamId?: string | null,
+    leagueId?: string | null,
+  ): Promise<void> {
+    await prisma.accessMembership.deleteMany({
+      where: { userId, teamId: teamId ?? null, leagueId: leagueId ?? null, role } as any,
+    });
   }
 
-  async hasRole(userId: string, role: AccessRole, teamId?: string | null): Promise<boolean> {
-    const rec = await prisma.accessMembership.findFirst({
-      where: { userId, teamId: teamId ?? null, role },
-    });
+  async hasRole(
+    userId: string,
+    role: AccessRole,
+    teamId?: string | null,
+    leagueId?: string | null,
+  ): Promise<boolean> {
+    const where: Record<string, unknown> = { userId, role };
+    if (teamId !== undefined) where.teamId = teamId ?? null;
+    if (leagueId !== undefined) where.leagueId = leagueId ?? null;
+
+    const rec = await prisma.accessMembership.findFirst({ where: where as any });
     return !!rec;
   }
 
@@ -48,7 +67,8 @@ export class PrismaAccessMembershipRepository implements AccessMembershipReposit
 
   async listByUserWithTeam(userId: string): Promise<AccessMembershipWithTeam[]> {
     const rows = await prisma.accessMembership.findMany({
-      where: { userId },
+      where: { userId } as any,
+      // include typed as any until Prisma Client is regenerated after migration
       include: {
         team: {
           select: {
@@ -59,9 +79,18 @@ export class PrismaAccessMembershipRepository implements AccessMembershipReposit
             isActive: true,
           },
         },
-      },
-      orderBy: [{ createdAt: 'asc' }],
+        league: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      } as any,
+      orderBy: [{ createdAt: 'asc' } as any],
     });
     return rows as unknown as AccessMembershipWithTeam[];
   }
 }
+
+/* eslint-enable @typescript-eslint/no-explicit-any */

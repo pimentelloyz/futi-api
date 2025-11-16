@@ -14,6 +14,7 @@ const schema = z.object({
   userId: z.string().min(1),
   role: z.enum(['ADMIN', 'MANAGER', 'ASSISTANT', 'PLAYER']),
   teamId: z.string().min(1).optional(),
+  leagueId: z.string().min(1).optional(),
 });
 
 export class GrantAccessController implements Controller {
@@ -35,18 +36,21 @@ export class GrantAccessController implements Controller {
       });
     }
 
-    const { userId, role, teamId } = parsed.data;
+    const { userId, role, teamId, leagueId } = parsed.data;
+    // Validation rules:
+    // - ADMIN: can be global (no leagueId) or scoped to a league (leagueId provided). teamId must NOT be provided.
+    // - MANAGER/ASSISTANT/PLAYER: must include both leagueId and teamId.
     if (role === 'ADMIN' && teamId)
-      throw new BadRequestError(
-        'admin_is_global',
-        'admin role is global and cannot be tied to a team',
-      );
-    if ((role === 'MANAGER' || role === 'ASSISTANT' || role === 'PLAYER') && !teamId) {
-      throw new BadRequestError('team_required', 'teamId required for non-admin roles');
+      throw new BadRequestError('admin_no_team', 'admin role cannot be tied to a team');
+    if (role !== 'ADMIN') {
+      if (!leagueId)
+        throw new BadRequestError('league_required', 'leagueId required for non-admin roles');
+      if (!teamId)
+        throw new BadRequestError('team_required', 'teamId required for non-admin roles');
     }
 
     try {
-      const membership = await access.grant(userId, role, teamId ?? null);
+      const membership = await access.grant(userId, role, teamId ?? null, leagueId ?? null);
       return { statusCode: 200, body: { membership } };
     } catch (err) {
       if (
