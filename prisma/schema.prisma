@@ -331,14 +331,33 @@ model League {
   startAt     DateTime?
   endAt       DateTime?
   isActive    Boolean   @default(true)
+  isPublic    Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   teams       LeagueTeam[]
   groups      LeagueGroup[]
+  invitations LeagueInvitation[]
   accessMemberships AccessMembership[]
   // Matches that belong to this league (optional relation from Match)
   matches     Match[]
+}
+
+// Invitations for leagues: allows admin/managers to create invite codes
+// that team owners/managers can use to enroll their team into the league.
+model LeagueInvitation {
+  id        String   @id @default(uuid())
+  code      String   @unique @db.VarChar(64)
+  league    League   @relation(fields: [leagueId], references: [id])
+  leagueId  String
+  createdBy String?  @db.VarChar(191)
+  maxUses   Int      @default(1)
+  uses      Int      @default(0)
+  isActive  Boolean  @default(true)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([leagueId])
 }
 
 model LeagueTeam {

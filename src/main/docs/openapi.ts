@@ -842,6 +842,230 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/invites': {
+      post: {
+        summary: 'Criar código de convite',
+        tags: ['Invites'],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  teamId: { type: 'string' },
+                  maxUses: { type: 'integer', nullable: true },
+                  expiresAt: { type: 'string', format: 'date-time', nullable: true },
+                },
+                required: ['teamId'],
+              },
+              example: { teamId: 'team_1', maxUses: 5, expiresAt: '2025-12-31T23:59:59Z' },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Criado',
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { id: { type: 'string' } } },
+              },
+            },
+          },
+          '400': { description: 'Parâmetros inválidos' },
+          '401': { description: 'Não autorizado' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+      get: {
+        summary: 'Listar códigos de convite por time',
+        tags: ['Invites'],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'teamId', in: 'query', required: true, schema: { type: 'string' } },
+          {
+            name: 'isActive',
+            in: 'query',
+            required: false,
+            schema: { type: 'string', enum: ['true', 'false'] },
+            description: 'Filtrar por ativo/inativo',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'OK',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          code: { type: 'string' },
+                          teamId: { type: 'string' },
+                          createdBy: { type: 'string', nullable: true },
+                          maxUses: { type: 'integer' },
+                          uses: { type: 'integer' },
+                          isActive: { type: 'boolean' },
+                          expiresAt: { type: 'string', format: 'date-time', nullable: true },
+                          createdAt: { type: 'string', format: 'date-time' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Parâmetros inválidos' },
+          '401': { description: 'Não autorizado' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+    },
+    '/api/invites/accept': {
+      post: {
+        summary: 'Aceitar código de convite (vincular jogador ao time)',
+        tags: ['Invites'],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { code: { type: 'string' } },
+                required: ['code'],
+              },
+              example: { code: 'ABC123' },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Vinculado com sucesso',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { message: { type: 'string' }, teamId: { type: 'string' } },
+                },
+              },
+            },
+          },
+          '400': { description: 'Código inválido / expirado' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Código não encontrado / jogador não encontrado' },
+          '409': { description: 'Jogador já pertence ao time' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+    },
+    '/api/invites/league': {
+      post: {
+        summary: 'Criar código de convite para liga',
+        tags: ['Invites'],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  leagueId: { type: 'string' },
+                  maxUses: { type: 'integer' },
+                  expiresAt: { type: 'string', format: 'date-time', nullable: true },
+                },
+                required: ['leagueId'],
+              },
+              example: { leagueId: 'league_1', maxUses: 3 },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Criado' },
+          '400': { description: 'Parâmetros inválidos' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Liga não encontrada' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+      get: {
+        summary: 'Listar códigos de convite de uma liga',
+        tags: ['Invites'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'leagueId', in: 'query', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'OK' },
+          '400': { description: 'Parâmetros inválidos' },
+          '401': { description: 'Não autorizado' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+    },
+    '/api/invites/league/{id}': {
+      delete: {
+        summary: 'Revogar código de convite de liga',
+        tags: ['Invites'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '204': { description: 'Revogado com sucesso' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Código não encontrado' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+    },
+    '/api/invites/league/accept': {
+      post: {
+        summary: 'Aceitar convite de liga (vincular time à liga)',
+        tags: ['Invites'],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { code: { type: 'string' }, teamId: { type: 'string' } },
+                required: ['code', 'teamId'],
+              },
+              example: { code: 'XYZ789', teamId: 'team_1' },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Time vinculado' },
+          '400': { description: 'Código inválido/expirado' },
+          '401': { description: 'Não autorizado' },
+          '403': { description: 'Usuário não é manager do time' },
+          '404': { description: 'Código não encontrado' },
+          '409': { description: 'Time já na liga' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+    },
+    '/api/invites/{id}': {
+      delete: {
+        summary: 'Revogar código de convite',
+        tags: ['Invites'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '204': { description: 'Revogado com sucesso' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Código não encontrado' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+    },
     '/api/players': {
       post: {
         summary: 'Create a player',
