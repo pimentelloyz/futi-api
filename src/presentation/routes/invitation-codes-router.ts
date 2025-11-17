@@ -2,10 +2,10 @@ import express from 'express';
 
 import {
   makeCreateInvitationCodeController,
+  makeAcceptInvitationCodeController,
   makeListInvitationCodesController,
   makeRevokeInvitationCodeController,
 } from '../../main/factories/make-invitation-code-controllers.js';
-import { makeAcceptInvitationCodeController } from '../../main/factories/make-accept-invitation-code-controller.js';
 import {
   makeCreateLeagueInvitationController,
   makeListLeagueInvitationsController,

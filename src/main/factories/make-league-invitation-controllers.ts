@@ -3,12 +3,20 @@ import { ListLeagueInvitationsController } from '../../presentation/controllers/
 import { RevokeLeagueInvitationController } from '../../presentation/controllers/revoke-league-invitation-controller.js';
 import { AcceptLeagueInvitationController } from '../../presentation/controllers/accept-league-invitation-controller.js';
 
+import {
+  makeCreateLeagueInvitationUseCase,
+  makeAcceptLeagueInvitationUseCase,
+  makeListLeagueInvitationsUseCase,
+} from './make-league-invitation-usecases.js';
+
 export function makeCreateLeagueInvitationController() {
-  return new CreateLeagueInvitationController();
+  const useCase = makeCreateLeagueInvitationUseCase();
+  return new CreateLeagueInvitationController(useCase);
 }
 
 export function makeListLeagueInvitationsController() {
-  return new ListLeagueInvitationsController();
+  const useCase = makeListLeagueInvitationsUseCase();
+  return new ListLeagueInvitationsController(useCase);
 }
 
 export function makeRevokeLeagueInvitationController() {
@@ -16,5 +24,6 @@ export function makeRevokeLeagueInvitationController() {
 }
 
 export function makeAcceptLeagueInvitationController() {
-  return new AcceptLeagueInvitationController();
+  const useCase = makeAcceptLeagueInvitationUseCase();
+  return new AcceptLeagueInvitationController(useCase);
 }

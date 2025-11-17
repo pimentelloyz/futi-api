@@ -8,6 +8,6 @@ export class RevokeInvitationCodeController implements Controller {
     const id = request.params?.id as string | undefined;
     if (!id) return { statusCode: 400, body: { error: 'missing_id' } };
     await this.repo.revoke(id);
-    return { statusCode: 204 };
+    return { statusCode: 204, body: { message: 'revoked' } };
   }
 }

@@ -1,10 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 
 import { prisma } from '../prisma/client.js';
-import { IInvitationCodeRepository } from '../../domain/repositories/invitation-code.repository.interface.js';
-import { InvitationCode } from '../../domain/entities/invitation-code.entity.js';
+import { ILeagueInvitationRepository } from '../../domain/repositories/league-invitation.repository.interface.js';
+import { LeagueInvitation } from '../../domain/entities/league-invitation.entity.js';
 
-export class PrismaInvitationCodeRepository implements IInvitationCodeRepository {
+export class PrismaLeagueInvitationRepository implements ILeagueInvitationRepository {
   private prisma: PrismaClient;
 
   constructor(prismaClient?: PrismaClient) {
@@ -13,15 +13,15 @@ export class PrismaInvitationCodeRepository implements IInvitationCodeRepository
 
   async create(data: {
     code: string;
-    teamId: string;
+    leagueId: string;
     createdBy: string | null;
     maxUses: number;
     expiresAt: Date | null;
-  }): Promise<InvitationCode> {
-    const rec = await this.prisma.invitationCode.create({
+  }): Promise<LeagueInvitation> {
+    const rec = await this.prisma.leagueInvitation.create({
       data: {
         code: data.code,
-        teamId: data.teamId,
+        leagueId: data.leagueId,
         createdBy: data.createdBy,
         maxUses: data.maxUses,
         expiresAt: data.expiresAt,
@@ -30,22 +30,22 @@ export class PrismaInvitationCodeRepository implements IInvitationCodeRepository
     return this.toDomain(rec);
   }
 
-  async findByCode(code: string): Promise<InvitationCode | null> {
-    const rec = await this.prisma.invitationCode.findUnique({ where: { code } });
+  async findByCode(code: string): Promise<LeagueInvitation | null> {
+    const rec = await this.prisma.leagueInvitation.findUnique({ where: { code } });
     if (!rec) return null;
     return this.toDomain(rec);
   }
 
-  async findById(id: string): Promise<InvitationCode | null> {
-    const rec = await this.prisma.invitationCode.findUnique({ where: { id } });
+  async findById(id: string): Promise<LeagueInvitation | null> {
+    const rec = await this.prisma.leagueInvitation.findUnique({ where: { id } });
     if (!rec) return null;
     return this.toDomain(rec);
   }
 
-  async listByTeam(teamId: string, isActive?: boolean): Promise<InvitationCode[]> {
-    const rows = await this.prisma.invitationCode.findMany({
+  async listByLeague(leagueId: string, isActive?: boolean): Promise<LeagueInvitation[]> {
+    const rows = await this.prisma.leagueInvitation.findMany({
       where: {
-        teamId,
+        leagueId,
         ...(isActive !== undefined && { isActive }),
       },
     });
@@ -53,14 +53,14 @@ export class PrismaInvitationCodeRepository implements IInvitationCodeRepository
   }
 
   async incrementUse(id: string): Promise<void> {
-    await this.prisma.invitationCode.update({
+    await this.prisma.leagueInvitation.update({
       where: { id },
       data: { uses: { increment: 1 } },
     });
   }
 
   async revoke(id: string): Promise<void> {
-    await this.prisma.invitationCode.update({
+    await this.prisma.leagueInvitation.update({
       where: { id },
       data: { isActive: false },
     });
@@ -69,18 +69,18 @@ export class PrismaInvitationCodeRepository implements IInvitationCodeRepository
   private toDomain(rec: {
     id: string;
     code: string;
-    teamId: string;
+    leagueId: string;
     createdBy: string | null;
     maxUses: number;
     uses: number;
     isActive: boolean;
     expiresAt: Date | null;
     createdAt: Date;
-  }): InvitationCode {
-    return new InvitationCode(
+  }): LeagueInvitation {
+    return new LeagueInvitation(
       rec.id,
       rec.code,
-      rec.teamId,
+      rec.leagueId,
       rec.createdBy,
       rec.maxUses,
       rec.uses,

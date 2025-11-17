@@ -1,11 +1,20 @@
+import { PrismaClient } from '@prisma/client';
+
 import { prisma } from '../prisma/client.js';
 import { PlayerRepository } from '../../data/protocols/player-repository.js';
 import { AddPlayerInput } from '../../domain/usecases/add-player.js';
+import { IPlayerRepository } from '../../domain/repositories/player.repository.interface.js';
 
-export class PrismaPlayerRepository implements PlayerRepository {
+export class PrismaPlayerRepository implements PlayerRepository, IPlayerRepository {
+  private prisma: PrismaClient;
+
+  constructor(prismaClient?: PrismaClient) {
+    this.prisma = prismaClient ?? prisma;
+  }
+
   async add(data: AddPlayerInput): Promise<{ id: string }> {
     const connectTeams = (data.teamIds ?? []).map((id) => ({ id }));
-    const db = prisma as unknown as {
+    const db = this.prisma as unknown as {
       player: {
         create: (args: {
           data: {
@@ -36,7 +45,7 @@ export class PrismaPlayerRepository implements PlayerRepository {
 
   async addForUser(userId: string, data: AddPlayerInput): Promise<{ id: string }> {
     const connectTeams = (data.teamIds ?? []).map((id) => ({ id }));
-    const db = prisma as unknown as {
+    const db = this.prisma as unknown as {
       player: {
         create: (args: {
           data: {
@@ -66,8 +75,15 @@ export class PrismaPlayerRepository implements PlayerRepository {
     });
   }
 
-  async findByUserId(userId: string) {
-    const db = prisma as unknown as {
+  async findByUserId(userId: string): Promise<{
+    id: string;
+    name: string;
+    positionSlug?: string | null;
+    position?: { slug: string; name: string; description?: string | null } | null;
+    number?: number | null;
+    isActive: boolean;
+  } | null> {
+    const db = this.prisma as unknown as {
       player: {
         findUnique: (args: {
           where: { userId: string };
@@ -91,7 +107,7 @@ export class PrismaPlayerRepository implements PlayerRepository {
         } | null>;
       };
     };
-    return db.player.findUnique({
+    const player = await db.player.findUnique({
       where: { userId },
       select: {
         id: true,
@@ -101,6 +117,25 @@ export class PrismaPlayerRepository implements PlayerRepository {
         number: true,
         isActive: true,
         position: { select: { slug: true, name: true, description: true } },
+      },
+    });
+    return player;
+  }
+
+  async getTeamIds(playerId: string): Promise<string[]> {
+    const playerTeams = await this.prisma.playersOnTeams.findMany({
+      where: { playerId },
+      select: { teamId: true },
+    });
+    return playerTeams.map((pt) => pt.teamId);
+  }
+
+  async linkToTeam(playerId: string, teamId: string, assignedBy: string): Promise<void> {
+    await this.prisma.playersOnTeams.create({
+      data: {
+        playerId,
+        teamId,
+        assignedBy,
       },
     });
   }

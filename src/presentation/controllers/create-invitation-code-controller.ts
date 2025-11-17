@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
 import { BadRequestError, ServerError } from '../errors/http-errors.js';
 import { ERROR_CODES } from '../../domain/constants.js';
-import { PrismaInvitationCodeRepository } from '../../infra/repositories/prisma-invitation-code-repository.js';
+import { CreateInvitationCodeUseCase } from '../../domain/usecases/create-invitation-code/create-invitation-code.usecase.js';
 
 const schema = z.object({
   teamId: z.string().uuid(),
@@ -12,7 +12,7 @@ const schema = z.object({
 });
 
 export class CreateInvitationCodeController implements Controller {
-  constructor(private readonly repo = new PrismaInvitationCodeRepository()) {}
+  constructor(private readonly createInvitationCodeUseCase: CreateInvitationCodeUseCase) {}
 
   async handle(request: HttpRequest): Promise<HttpResponse> {
     try {
@@ -24,16 +24,17 @@ export class CreateInvitationCodeController implements Controller {
           fieldErrors: flat.fieldErrors,
         });
       }
-      const code = Math.random().toString(36).slice(2, 10).toUpperCase();
+
       const expiresAt = parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : undefined;
-      const created = await this.repo.create({
-        code,
+
+      const result = await this.createInvitationCodeUseCase.execute({
         teamId: parsed.data.teamId,
+        createdBy: request.user?.id ?? null,
         maxUses: parsed.data.maxUses,
         expiresAt,
-        createdBy: request.auth?.userId ?? null,
       });
-      return { statusCode: 201, body: created };
+
+      return { statusCode: 201, body: result };
     } catch (err: unknown) {
       if (err instanceof BadRequestError) {
         return { statusCode: err.statusCode, body: { error: err.code, details: err.details } };

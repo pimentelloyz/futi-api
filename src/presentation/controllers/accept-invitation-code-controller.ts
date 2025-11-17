@@ -2,19 +2,20 @@ import { z } from 'zod';
 
 import { Controller, HttpRequest, HttpResponse } from '../protocols/http.js';
 import { BadRequestError, UnauthorizedError } from '../errors/http-errors.js';
-import { PrismaInvitationCodeRepository } from '../../infra/repositories/prisma-invitation-code-repository.js';
-import { PrismaPlayerRepository } from '../../infra/repositories/prisma-player-repository.js';
-import { prisma } from '../../infra/prisma/client.js';
 import { ERROR_CODES } from '../../domain/constants.js';
+import { AcceptInvitationCodeUseCase } from '../../domain/usecases/accept-invitation-code/accept-invitation-code.usecase.js';
 
 const schema = z.object({
   code: z.string().min(3),
 });
 
 export class AcceptInvitationCodeController implements Controller {
+  constructor(private readonly acceptInvitationCodeUseCase: AcceptInvitationCodeUseCase) {}
+
   async handle(request: HttpRequest): Promise<HttpResponse> {
     const userId = (request as HttpRequest & { user?: { id: string } }).user?.id;
     if (!userId) throw new UnauthorizedError();
+
     const parsed = schema.safeParse(request.body);
     if (!parsed.success) {
       const flat = parsed.error.flatten();
@@ -25,47 +26,38 @@ export class AcceptInvitationCodeController implements Controller {
     }
 
     try {
-      const playerRepo = new PrismaPlayerRepository();
-      const player = await playerRepo.findByUserId(userId);
-      if (!player) return { statusCode: 404, body: { error: 'player_not_found' } };
-      const playerId = player.id;
-
-      const inviteRepo = new PrismaInvitationCodeRepository();
-      const code = await inviteRepo.findByCode(parsed.data.code);
-      if (!code) return { statusCode: 404, body: { error: 'invite_not_found' } };
-
-      const now = new Date();
-      if (!code.isActive || (code.expiresAt && code.expiresAt <= now)) {
-        return { statusCode: 400, body: { error: 'invite_expired' } };
-      }
-      if (code.uses >= code.maxUses) {
-        return { statusCode: 400, body: { error: 'invite_maxed' } };
-      }
-
-      // Prevent duplicate linking
-      const existingLink = await prisma.playersOnTeams.findUnique({
-        where: { playerId_teamId: { playerId, teamId: code.teamId } },
+      const result = await this.acceptInvitationCodeUseCase.execute({
+        code: parsed.data.code,
+        userId,
       });
-      if (existingLink) return { statusCode: 409, body: { error: 'already_member' } };
 
-      // Atomic create link + increment uses
-      await prisma.$transaction([
-        prisma.playersOnTeams.create({
-          data: { playerId, teamId: code.teamId, assignedBy: userId },
-        }),
-        prisma.invitationCode.update({ where: { id: code.id }, data: { uses: { increment: 1 } } }),
-      ]);
-
-      // If reached max uses, revoke
-      const updated = await inviteRepo.findByCode(code.code);
-      if (updated && updated.uses >= updated.maxUses) {
-        await inviteRepo.revoke(updated.id);
-      }
-
-      return { statusCode: 200, body: { message: 'joined', teamId: code.teamId } };
+      return {
+        statusCode: 200,
+        body: {
+          message: result.message,
+          teamId: result.teamId,
+        },
+      };
     } catch (err) {
-      console.error('[accept_invite_error]', (err as Error).message);
-      return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
+      const error = err as Error;
+      console.error('[accept_invite_error]', error.message);
+
+      switch (error.message) {
+        case 'PLAYER_NOT_FOUND':
+          return { statusCode: 404, body: { error: 'player_not_found' } };
+        case 'INVITE_NOT_FOUND':
+          return { statusCode: 404, body: { error: 'invite_not_found' } };
+        case 'INVITE_EXPIRED':
+          return { statusCode: 400, body: { error: 'invite_expired' } };
+        case 'INVITE_MAXED':
+          return { statusCode: 400, body: { error: 'invite_maxed' } };
+        case 'INVITE_INVALID':
+          return { statusCode: 400, body: { error: 'invite_invalid' } };
+        case 'ALREADY_MEMBER':
+          return { statusCode: 409, body: { error: 'already_member' } };
+        default:
+          return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
+      }
     }
   }
 }
