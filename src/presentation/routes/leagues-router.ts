@@ -4,20 +4,22 @@ import { Router } from 'express';
 import multer from 'multer';
 
 import { ERROR_CODES } from '../../domain/constants.js';
+import {
+  makeCreateLeagueController,
+  makeDeleteLeagueController,
+  makeGetLeagueController,
+  makeListLeaguesController,
+  makeListMyLeaguesController,
+  makeUpdateLeagueController,
+} from '../../main/factories/make-league-controllers.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
 import {
-  createLeague,
-  listLeagues,
-  listMyLeagues,
-  getMyLeagueDetails,
-  getLeague,
-  updateLeague,
-  deleteLeague,
-  addTeamToLeague,
-  listLeagueTeams,
-  createGroup,
   addTeamToGroup,
+  addTeamToLeague,
+  createGroup,
   generateFixturesForGroup,
+  getMyLeagueDetails,
+  listLeagueTeams,
 } from '../controllers/league-controller.js';
 import {
   LeagueBannerUploadController,
@@ -107,7 +109,8 @@ leaguesRouter.post('/', async (req, res) => {
       if (iconUrlFromUpload) body.icon = iconUrlFromUpload;
       if (bannerUrlFromUpload) body.banner = bannerUrlFromUpload;
     }
-    return createLeague(req, res);
+    const controller = makeCreateLeagueController();
+    return controller.handleExpress(req, res);
   } catch (e) {
     console.error('[league_create_error]', (e as Error).message);
     if ((e as Error).message?.toLowerCase().includes('multipart'))
@@ -117,11 +120,13 @@ leaguesRouter.post('/', async (req, res) => {
 });
 
 leaguesRouter.get('/', async (req, res) => {
-  return listLeagues(req, res);
+  const controller = makeListLeaguesController();
+  return controller.handleExpress(req, res);
 });
 
 leaguesRouter.get('/me', async (req, res) => {
-  return listMyLeagues(req, res);
+  const controller = makeListMyLeaguesController();
+  return controller.handleExpress(req, res);
 });
 
 leaguesRouter.get('/me/:id', async (req, res) => {
@@ -129,7 +134,8 @@ leaguesRouter.get('/me/:id', async (req, res) => {
 });
 
 leaguesRouter.get('/:id', async (req, res) => {
-  return getLeague(req, res);
+  const controller = makeGetLeagueController();
+  return controller.handleExpress(req, res);
 });
 
 // Listar times da liga
@@ -138,11 +144,13 @@ leaguesRouter.get('/:id/teams', async (req, res) => {
 });
 
 leaguesRouter.patch('/:id', async (req, res) => {
-  return updateLeague(req, res);
+  const controller = makeUpdateLeagueController();
+  return controller.handleExpress(req, res);
 });
 
 leaguesRouter.delete('/:id', async (req, res) => {
-  return deleteLeague(req, res);
+  const controller = makeDeleteLeagueController();
+  return controller.handleExpress(req, res);
 });
 
 leaguesRouter.post('/:id/teams', async (req, res) => {
