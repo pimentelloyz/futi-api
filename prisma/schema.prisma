@@ -91,6 +91,7 @@ model Match {
   events      MatchEvent[]
   lineup      MatchLineupEntry[]
   playerEvaluationAssignments MatchPlayerEvaluationAssignment[]
+  managers    AccessMembership[]
 
   @@unique([homeTeamId, awayTeamId, scheduledAt])
 }
@@ -136,13 +137,17 @@ model AccessMembership {
   // Optional relation to a League - membership can be scoped to a league
   league    League?    @relation(fields: [leagueId], references: [id])
   leagueId  String?
+  // Optional relation to a Match - membership can be scoped to a match (MATCH_MANAGER)
+  match     Match?     @relation(fields: [matchId], references: [id])
+  matchId   String?
   role      AccessRole
   createdAt DateTime   @default(now())
 
   @@index([userId, role])
   @@index([teamId])
   @@index([leagueId])
-  @@unique([userId, teamId, leagueId])
+  @@index([matchId])
+  @@unique([userId, teamId, leagueId, matchId])
 }
 
 enum MatchEventType {

@@ -4,12 +4,22 @@ import { PrismaMatchEventRepository } from '../../infra/repositories/prisma-matc
 import { ERROR_CODES } from '../../domain/constants.js';
 
 export class MatchEventsListController {
-  async handle(params: { matchId: string }): Promise<{ statusCode: number; body: unknown }> {
-    const { matchId } = params;
+  async handle(params: {
+    matchId: string;
+    type?: string;
+  }): Promise<{ statusCode: number; body: unknown }> {
+    const { matchId, type } = params;
     if (!matchId) return { statusCode: 400, body: { error: ERROR_CODES.INVALID_REQUEST } };
     try {
       const repo = new PrismaMatchEventRepository();
-      const items = await repo.listByMatch(matchId);
+      let items = await repo.listByMatch(matchId);
+
+      // Filtrar por tipo se fornecido
+      if (type) {
+        const types = type.split(',').map((t) => t.trim());
+        items = items.filter((item) => types.includes(item.type));
+      }
+
       return { statusCode: 200, body: { items } };
     } catch (e) {
       console.error('[match_events_list_ctrl_error]', (e as Error).message);

@@ -1,15 +1,40 @@
 import { prisma } from '../../infra/prisma/client.js';
 import { ERROR_CODES } from '../../domain/constants.js';
+import { RBACService } from '../../domain/services/rbac.service.js';
+import { AccessRole } from '../../domain/constants/access-roles.js';
+import { RBAC_ERRORS } from '../../domain/constants/rbac-errors.js';
 
 interface TeamUpdateParams {
   teamId: string;
   data: { name?: string; icon?: string | null; description?: string | null; isActive?: boolean };
+  userId?: string;
 }
 
 export class TeamUpdateController {
   async handle(params: TeamUpdateParams): Promise<{ statusCode: number; body: unknown }> {
-    const { teamId, data } = params;
+    const { teamId, data, userId } = params;
     if (!teamId) return { statusCode: 400, body: { error: ERROR_CODES.INVALID_TEAM_ID } };
+
+    // Validação de contexto: apenas MANAGER do time ou ADMIN podem atualizar
+    if (userId) {
+      const rbacService = new RBACService(prisma);
+      const hasAccess = await rbacService.hasPermission(
+        userId,
+        [AccessRole.MANAGER, AccessRole.ADMIN],
+        { teamId },
+      );
+
+      if (!hasAccess) {
+        return {
+          statusCode: 403,
+          body: {
+            error: RBAC_ERRORS.WRONG_CONTEXT.code,
+            message: 'Você não tem permissão para editar este time',
+          },
+        };
+      }
+    }
+
     const updateData: Record<string, unknown> = {};
     if (typeof data.name === 'string') updateData.name = data.name;
     if (typeof data.icon === 'string' || data.icon === null) updateData.icon = data.icon;

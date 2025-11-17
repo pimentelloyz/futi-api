@@ -6,6 +6,8 @@ import multer from 'multer';
 import { makeAddTeamController } from '../../main/factories/make-add-team-controller.js';
 import { makeListTeamsController } from '../../main/factories/make-list-teams-controller.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
+import { requireRole } from '../middlewares/rbac.middleware.js';
+import { AccessRole } from '../../domain/constants/access-roles.js';
 import { ERROR_CODES } from '../../domain/constants.js';
 import { TeamIconUploadController } from '../controllers/team-icon-upload-controller.js';
 import { TeamUpdateController } from '../controllers/team-update-controller.js';
@@ -24,7 +26,8 @@ const upload = multer({
   limits: { fileSize: 2 * 1024 * 1024 },
 });
 
-teamsRouter.post('/', async (req, res) => {
+// Criar time - Apenas MANAGER e ADMIN
+teamsRouter.post('/', requireRole([AccessRole.MANAGER, AccessRole.ADMIN]), async (req, res) => {
   const isMultipart = req.is('multipart/form-data');
   try {
     let iconUrlFromUpload: string | undefined;
@@ -94,45 +97,66 @@ teamsRouter.get('/', async (req, res) => {
   return res.status(response.statusCode).json(response.body);
 });
 
-// Upload de ícone do time via controller
-teamsRouter.post('/:id/icon', upload.single('file'), async (req, res) => {
-  const teamId = req.params.id;
-  const controller = new TeamIconUploadController();
-  const response = await controller.handle({ teamId, file: req.file });
-  return res.status(response.statusCode).json(response.body);
-});
+// Upload de ícone do time via controller - MANAGER e ADMIN
+teamsRouter.post(
+  '/:id/icon',
+  requireRole([AccessRole.MANAGER, AccessRole.ADMIN]),
+  upload.single('file'),
+  async (req, res) => {
+    const teamId = req.params.id;
+    const controller = new TeamIconUploadController();
+    const response = await controller.handle({ teamId, file: req.file });
+    return res.status(response.statusCode).json(response.body);
+  },
+);
 
-// Editar um time
-teamsRouter.patch('/:id', async (req, res) => {
+// Editar um time - MANAGER e ADMIN
+teamsRouter.patch('/:id', requireRole([AccessRole.MANAGER, AccessRole.ADMIN]), async (req, res) => {
   const controller = new TeamUpdateController();
-  const response = await controller.handle({ teamId: req.params.id, data: req.body || {} });
-  return res.status(response.statusCode).json(response.body);
-});
-
-// Listar jogadores de um time (join explícito)
-teamsRouter.get('/:id/players', async (req, res) => {
-  const controller = new TeamPlayersController();
+  const userId = (req.user as { id: string })?.id;
   const response = await controller.handle({
     teamId: req.params.id,
-    page: Math.max(parseInt(String(req.query.page ?? '1'), 10) || 1, 1),
-    limit: Math.min(Math.max(parseInt(String(req.query.limit ?? '20'), 10) || 20, 1), 100),
-    sort: String(req.query.sort ?? 'name') as 'name' | 'number' | 'positionSlug' | 'isActive',
-    order: String(req.query.order ?? 'asc') === 'desc' ? 'desc' : 'asc',
-    includeTeam: String(req.query.includeTeam ?? 'false') === 'true',
+    data: req.body || {},
+    userId,
   });
   return res.status(response.statusCode).json(response.body);
 });
 
-// Vincular jogador a um time
-teamsRouter.post('/:id/players', async (req, res) => {
-  const controller = new TeamAddPlayerController();
-  const response = await controller.handle({ teamId: req.params.id, playerId: req.body?.playerId });
-  if (response.statusCode === 204) return res.status(204).send();
-  return res.status(response.statusCode).json(response.body);
-});
+// Listar jogadores de um time (join explícito) - PLAYER, MANAGER, ASSISTANT, ADMIN
+teamsRouter.get(
+  '/:id/players',
+  requireRole([AccessRole.PLAYER, AccessRole.MANAGER, AccessRole.ASSISTANT, AccessRole.ADMIN]),
+  async (req, res) => {
+    const controller = new TeamPlayersController();
+    const response = await controller.handle({
+      teamId: req.params.id,
+      page: Math.max(parseInt(String(req.query.page ?? '1'), 10) || 1, 1),
+      limit: Math.min(Math.max(parseInt(String(req.query.limit ?? '20'), 10) || 20, 1), 100),
+      sort: String(req.query.sort ?? 'name') as 'name' | 'number' | 'positionSlug' | 'isActive',
+      order: String(req.query.order ?? 'asc') === 'desc' ? 'desc' : 'asc',
+      includeTeam: String(req.query.includeTeam ?? 'false') === 'true',
+    });
+    return res.status(response.statusCode).json(response.body);
+  },
+);
 
-// Soft delete de um time
-teamsRouter.delete('/:id', async (req, res) => {
+// Vincular jogador a um time - MANAGER e ADMIN
+teamsRouter.post(
+  '/:id/players',
+  requireRole([AccessRole.MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    const controller = new TeamAddPlayerController();
+    const response = await controller.handle({
+      teamId: req.params.id,
+      playerId: req.body?.playerId,
+    });
+    if (response.statusCode === 204) return res.status(204).send();
+    return res.status(response.statusCode).json(response.body);
+  },
+);
+
+// Soft delete de um time - ADMIN apenas
+teamsRouter.delete('/:id', requireRole([AccessRole.ADMIN]), async (req, res) => {
   const controller = new TeamSoftDeleteController();
   const response = await controller.handle({ teamId: req.params.id });
   if (response.statusCode === 204) return res.status(204).send();
