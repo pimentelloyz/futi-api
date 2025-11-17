@@ -117,10 +117,14 @@ model RefreshToken {
 }
 
 enum AccessRole {
-  ADMIN
-  MANAGER
-  ASSISTANT
-  PLAYER
+  ADMIN              // Acesso total ao sistema
+  MANAGER            // Gerencia time: jogadores, convites, escalações
+  ASSISTANT          // Auxiliar técnico: mesmos acessos do MANAGER mas somente leitura
+  PLAYER             // Visualiza dados do próprio time
+  LEAGUE_MANAGER     // Gerencia liga: times, grupos, convites para técnicos
+  MATCH_MANAGER      // Gerencia partida: gols, cartões, eventos
+  REFEREE_COMMISSION // Visualiza calendário e questões disciplinares
+  FAN                // Torcedor: visualiza ligas públicas (role default quando não tem membership)
 }
 
 model AccessMembership {

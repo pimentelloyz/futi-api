@@ -19,6 +19,8 @@ import {
   makeUpdateLeagueController,
 } from '../../main/factories/make-league-controllers.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
+import { requireRole } from '../middlewares/rbac.middleware.js';
+import { AccessRole } from '../../domain/constants/access-roles.js';
 import {
   LeagueBannerUploadController,
   LeagueIconUploadController,
@@ -34,7 +36,7 @@ const upload = multer({
   limits: { fileSize: 2 * 1024 * 1024 },
 });
 
-leaguesRouter.post('/', async (req, res) => {
+leaguesRouter.post('/', requireRole([AccessRole.ADMIN]), async (req, res) => {
   const isMultipart = req.is('multipart/form-data');
   try {
     let iconUrlFromUpload: string | undefined;
@@ -117,73 +119,133 @@ leaguesRouter.post('/', async (req, res) => {
   }
 });
 
+// Listar todas as ligas (público)
 leaguesRouter.get('/', async (req, res) => {
   const controller = makeListLeaguesController();
   return controller.handleExpress(req, res);
 });
 
-leaguesRouter.get('/me', async (req, res) => {
-  const controller = makeListMyLeaguesController();
-  return controller.handleExpress(req, res);
-});
+// Listar minhas ligas (requer qualquer role)
+leaguesRouter.get(
+  '/me',
+  requireRole([
+    AccessRole.PLAYER,
+    AccessRole.MANAGER,
+    AccessRole.ASSISTANT,
+    AccessRole.LEAGUE_MANAGER,
+    AccessRole.ADMIN,
+  ]),
+  async (req, res) => {
+    const controller = makeListMyLeaguesController();
+    return controller.handleExpress(req, res);
+  },
+);
 
-leaguesRouter.get('/me/:id', async (req, res) => {
-  const controller = makeGetMyLeagueDetailsController();
-  return controller.handleExpress(req, res);
-});
+// Detalhes da minha liga específica
+leaguesRouter.get(
+  '/me/:id',
+  requireRole([
+    AccessRole.PLAYER,
+    AccessRole.MANAGER,
+    AccessRole.ASSISTANT,
+    AccessRole.LEAGUE_MANAGER,
+    AccessRole.ADMIN,
+  ]),
+  async (req, res) => {
+    const controller = makeGetMyLeagueDetailsController();
+    return controller.handleExpress(req, res);
+  },
+);
 
+// Obter liga por ID (público)
 leaguesRouter.get('/:id', async (req, res) => {
   const controller = makeGetLeagueController();
   return controller.handleExpress(req, res);
 });
 
-// Listar times da liga
+// Listar times da liga (público)
 leaguesRouter.get('/:id/teams', async (req, res) => {
   const controller = makeListLeagueTeamsController();
   return controller.handleExpress(req, res);
 });
 
-leaguesRouter.patch('/:id', async (req, res) => {
-  const controller = makeUpdateLeagueController();
-  return controller.handleExpress(req, res);
-});
+// Atualizar liga
+leaguesRouter.patch(
+  '/:id',
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    const controller = makeUpdateLeagueController();
+    return controller.handleExpress(req, res);
+  },
+);
 
-leaguesRouter.delete('/:id', async (req, res) => {
+// Deletar liga
+leaguesRouter.delete('/:id', requireRole([AccessRole.ADMIN]), async (req, res) => {
   const controller = makeDeleteLeagueController();
   return controller.handleExpress(req, res);
 });
 
-leaguesRouter.post('/:id/teams', async (req, res) => {
-  const controller = makeAddTeamToLeagueController();
-  return controller.handleExpress(req, res);
-});
+// Adicionar time à liga
+leaguesRouter.post(
+  '/:id/teams',
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    const controller = makeAddTeamToLeagueController();
+    return controller.handleExpress(req, res);
+  },
+);
 
 // Uploads de imagens da liga (ícone e banner)
-leaguesRouter.post('/:id/icon', upload.single('file'), async (req, res) => {
-  const leagueId = req.params.id;
-  const controller = new LeagueIconUploadController();
-  const response = await controller.handle({ leagueId, file: req.file });
-  return res.status(response.statusCode).json(response.body);
-});
+leaguesRouter.post(
+  '/:id/icon',
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  upload.single('file'),
+  async (req, res) => {
+    const leagueId = req.params.id;
+    const controller = new LeagueIconUploadController();
+    const response = await controller.handle({ leagueId, file: req.file });
+    return res.status(response.statusCode).json(response.body);
+  },
+);
 
-leaguesRouter.post('/:id/banner', upload.single('file'), async (req, res) => {
-  const leagueId = req.params.id;
-  const controller = new LeagueBannerUploadController();
-  const response = await controller.handle({ leagueId, file: req.file });
-  return res.status(response.statusCode).json(response.body);
-});
+leaguesRouter.post(
+  '/:id/banner',
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  upload.single('file'),
+  async (req, res) => {
+    const leagueId = req.params.id;
+    const controller = new LeagueBannerUploadController();
+    const response = await controller.handle({ leagueId, file: req.file });
+    return res.status(response.statusCode).json(response.body);
+  },
+);
 
-leaguesRouter.post('/:id/groups', async (req, res) => {
-  const controller = makeCreateGroupController();
-  return controller.handleExpress(req, res);
-});
+// Criar grupo na liga
+leaguesRouter.post(
+  '/:id/groups',
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    const controller = makeCreateGroupController();
+    return controller.handleExpress(req, res);
+  },
+);
 
-leaguesRouter.post('/:id/groups/:groupId/teams', async (req, res) => {
-  const controller = makeAddTeamToGroupController();
-  return controller.handleExpress(req, res);
-});
+// Adicionar time ao grupo
+leaguesRouter.post(
+  '/:id/groups/:groupId/teams',
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    const controller = makeAddTeamToGroupController();
+    return controller.handleExpress(req, res);
+  },
+);
 
-leaguesRouter.post('/:id/groups/:groupId/fixtures', async (req, res) => {
-  const controller = makeGenerateFixturesController();
-  return controller.handleExpress(req, res);
-});
+// Gerar jogos para grupo
+leaguesRouter.post(
+  '/:id/groups/:groupId/fixtures',
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    const controller = makeGenerateFixturesController();
+    return controller.handleExpress(req, res);
+  },
+);
