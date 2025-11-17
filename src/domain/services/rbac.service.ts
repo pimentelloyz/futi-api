@@ -16,7 +16,16 @@ export interface UserAccess {
   matchId?: string | null;
 }
 
+interface CacheEntry<T> {
+  value: T;
+  expiresAt: number;
+}
+
 export class RBACService {
+  private permissionCache = new Map<string, CacheEntry<boolean>>();
+  private membershipsCache = new Map<string, CacheEntry<UserAccess[]>>();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
   constructor(private readonly prisma: PrismaClient) {}
 
   /**
@@ -27,13 +36,24 @@ export class RBACService {
     allowedRoles: AccessRole[],
     context?: AccessContext,
   ): Promise<boolean> {
+    // Gera chave de cache
+    const cacheKey = this.generatePermissionCacheKey(userId, allowedRoles, context);
+
+    // Verifica cache
+    const cached = this.permissionCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value;
+    }
+
     // ADMIN sempre tem permissão
     if (await this.isAdmin(userId)) {
+      this.cachePermission(cacheKey, true);
       return true;
     }
 
     // Se FAN está nas roles permitidas e não há context, permite
     if (allowedRoles.includes(AccessRole.FAN) && !context) {
+      this.cachePermission(cacheKey, true);
       return true;
     }
 
@@ -41,7 +61,10 @@ export class RBACService {
     const memberships = await this.getUserMemberships(userId, context);
 
     // Verifica se tem alguma role permitida
-    return memberships.some((m) => allowedRoles.includes(m.role as AccessRole));
+    const hasPermission = memberships.some((m) => allowedRoles.includes(m.role as AccessRole));
+
+    this.cachePermission(cacheKey, hasPermission);
+    return hasPermission;
   }
 
   /**
@@ -70,6 +93,15 @@ export class RBACService {
    * Busca todas as memberships do usuário
    */
   async getUserMemberships(userId: string, context?: AccessContext): Promise<UserAccess[]> {
+    // Gera chave de cache
+    const cacheKey = this.generateMembershipsCacheKey(userId, context);
+
+    // Verifica cache
+    const cached = this.membershipsCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value;
+    }
+
     const where: Record<string, unknown> = { userId };
 
     if (context?.teamId) {
@@ -89,13 +121,21 @@ export class RBACService {
       },
     });
 
-    return memberships.map((m) => ({
+    const result = memberships.map((m) => ({
       userId: m.userId,
       role: m.role as AccessRole,
       teamId: m.teamId,
       leagueId: m.leagueId,
       matchId: undefined, // TODO: Implementar quando adicionar matchId ao schema
     }));
+
+    // Cacheia resultado
+    this.membershipsCache.set(cacheKey, {
+      value: result,
+      expiresAt: Date.now() + this.CACHE_TTL,
+    });
+
+    return result;
   }
 
   /**
@@ -167,5 +207,83 @@ export class RBACService {
     });
 
     return memberships.map((m) => m.leagueId!).filter(Boolean);
+  }
+
+  // ========== MÉTODOS DE CACHE ==========
+
+  /**
+   * Gera chave de cache para verificação de permissão
+   */
+  private generatePermissionCacheKey(
+    userId: string,
+    allowedRoles: AccessRole[],
+    context?: AccessContext,
+  ): string {
+    const rolesList = allowedRoles.sort().join(',');
+    const contextStr = context
+      ? JSON.stringify({ t: context.teamId, l: context.leagueId, m: context.matchId })
+      : 'null';
+    return `perm:${userId}:${rolesList}:${contextStr}`;
+  }
+
+  /**
+   * Gera chave de cache para memberships
+   */
+  private generateMembershipsCacheKey(userId: string, context?: AccessContext): string {
+    const contextStr = context
+      ? JSON.stringify({ t: context.teamId, l: context.leagueId, m: context.matchId })
+      : 'null';
+    return `memb:${userId}:${contextStr}`;
+  }
+
+  /**
+   * Armazena resultado de permissão no cache
+   */
+  private cachePermission(key: string, value: boolean): void {
+    this.permissionCache.set(key, {
+      value,
+      expiresAt: Date.now() + this.CACHE_TTL,
+    });
+  }
+
+  /**
+   * Invalida todo o cache de um usuário
+   * Deve ser chamado quando as memberships do usuário mudarem
+   */
+  public invalidateUserCache(userId: string): void {
+    // Remove todas as entradas que começam com o userId
+    for (const key of this.permissionCache.keys()) {
+      if (key.includes(`:${userId}:`)) {
+        this.permissionCache.delete(key);
+      }
+    }
+    for (const key of this.membershipsCache.keys()) {
+      if (key.includes(`:${userId}:`)) {
+        this.membershipsCache.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Limpa todo o cache (útil para testes ou troubleshooting)
+   */
+  public clearCache(): void {
+    this.permissionCache.clear();
+    this.membershipsCache.clear();
+  }
+
+  /**
+   * Retorna estatísticas do cache
+   */
+  public getCacheStats(): {
+    permissionsSize: number;
+    membershipsSize: number;
+    totalEntries: number;
+  } {
+    return {
+      permissionsSize: this.permissionCache.size,
+      membershipsSize: this.membershipsCache.size,
+      totalEntries: this.permissionCache.size + this.membershipsCache.size,
+    };
   }
 }

@@ -5,9 +5,11 @@ import type { AccessContext } from '../../domain/services/rbac.service.js';
 import { RBACService } from '../../domain/services/rbac.service.js';
 import { AccessRole } from '../../domain/constants/access-roles.js';
 import { RBAC_ERRORS } from '../../domain/constants/rbac-errors.js';
+import { RBACAuditLogger } from '../../domain/services/rbac-audit-logger.js';
 
 const prisma = new PrismaClient();
 const rbacService = new RBACService(prisma);
+const auditLogger = RBACAuditLogger.getInstance();
 
 /**
  * Middleware para verificar se o usuário tem uma das roles permitidas
@@ -37,6 +39,20 @@ export function requireRole(allowedRoles: AccessRole[]) {
       if (!hasPermission) {
         const userRole = await rbacService.getHighestRole(userId, context);
 
+        // Log de acesso negado para auditoria
+        auditLogger.logDenied({
+          userId,
+          userEmail: (req as Request & { user?: { email?: string } }).user?.email,
+          endpoint: req.path,
+          method: req.method,
+          requiredRoles: allowedRoles,
+          userRole: userRole || undefined,
+          reason: 'INSUFFICIENT_ROLE',
+          context,
+          ip: req.ip,
+          userAgent: req.get('user-agent'),
+        });
+
         return res.status(RBAC_ERRORS.INSUFFICIENT_ROLE.statusCode).json({
           error: RBAC_ERRORS.INSUFFICIENT_ROLE.code,
           message: RBAC_ERRORS.INSUFFICIENT_ROLE.message,
@@ -46,6 +62,20 @@ export function requireRole(allowedRoles: AccessRole[]) {
           },
         });
       }
+
+      // Log de acesso permitido (apenas em modo verbose)
+      const userRole = await rbacService.getHighestRole(userId, context);
+      auditLogger.logGranted({
+        userId,
+        userEmail: (req as Request & { user?: { email?: string } }).user?.email,
+        endpoint: req.path,
+        method: req.method,
+        requiredRoles: allowedRoles,
+        userRole: userRole!,
+        context,
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+      });
 
       next();
     } catch (error) {
@@ -82,6 +112,22 @@ export function requireWrite() {
       const canWrite = await rbacService.canWrite(userId, context);
 
       if (!canWrite) {
+        const userRole = await rbacService.getHighestRole(userId, context);
+
+        // Log de acesso negado para write
+        auditLogger.logDenied({
+          userId,
+          userEmail: (req as Request & { user?: { email?: string } }).user?.email,
+          endpoint: req.path,
+          method: req.method,
+          requiredRoles: [],
+          userRole: userRole || undefined,
+          reason: 'READ_ONLY_ROLE',
+          context,
+          ip: req.ip,
+          userAgent: req.get('user-agent'),
+        });
+
         return res.status(RBAC_ERRORS.READ_ONLY_ROLE.statusCode).json({
           error: RBAC_ERRORS.READ_ONLY_ROLE.code,
           message: RBAC_ERRORS.READ_ONLY_ROLE.message,
