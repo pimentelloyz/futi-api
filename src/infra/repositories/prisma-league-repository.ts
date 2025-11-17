@@ -154,6 +154,71 @@ export class PrismaLeagueRepository implements ILeagueRepository {
     return count > 0;
   }
 
+  async findByIdWithDetails(id: string, teamIds: string[]) {
+    const league = await this.prisma.league.findFirst({
+      where: {
+        id,
+        teams: { some: { teamId: { in: teamIds } } },
+      },
+      include: {
+        teams: {
+          include: {
+            team: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        groups: {
+          include: {
+            teams: {
+              include: {
+                team: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!league) return null;
+
+    return {
+      id: league.id,
+      name: league.name,
+      slug: league.slug,
+      description: league.description,
+      icon: league.icon,
+      banner: league.banner,
+      startAt: league.startAt,
+      endAt: league.endAt,
+      isActive: league.isActive,
+      isPublic: league.isPublic,
+      teams: league.teams.map((lt) => ({
+        id: lt.id,
+        teamId: lt.teamId,
+        division: lt.division,
+        team: lt.team,
+      })),
+      groups: league.groups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        teams: g.teams.map((t) => ({
+          id: t.id,
+          teamId: t.teamId,
+          team: t.team,
+        })),
+      })),
+    };
+  }
+
   private toDomain(league: {
     id: string;
     name: string;

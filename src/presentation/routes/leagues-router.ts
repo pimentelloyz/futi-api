@@ -5,22 +5,20 @@ import multer from 'multer';
 
 import { ERROR_CODES } from '../../domain/constants.js';
 import {
+  makeAddTeamToGroupController,
+  makeAddTeamToLeagueController,
+  makeCreateGroupController,
   makeCreateLeagueController,
   makeDeleteLeagueController,
+  makeGenerateFixturesController,
   makeGetLeagueController,
+  makeGetMyLeagueDetailsController,
   makeListLeaguesController,
+  makeListLeagueTeamsController,
   makeListMyLeaguesController,
   makeUpdateLeagueController,
 } from '../../main/factories/make-league-controllers.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
-import {
-  addTeamToGroup,
-  addTeamToLeague,
-  createGroup,
-  generateFixturesForGroup,
-  getMyLeagueDetails,
-  listLeagueTeams,
-} from '../controllers/league-controller.js';
 import {
   LeagueBannerUploadController,
   LeagueIconUploadController,
@@ -130,7 +128,8 @@ leaguesRouter.get('/me', async (req, res) => {
 });
 
 leaguesRouter.get('/me/:id', async (req, res) => {
-  return getMyLeagueDetails(req, res);
+  const controller = makeGetMyLeagueDetailsController();
+  return controller.handleExpress(req, res);
 });
 
 leaguesRouter.get('/:id', async (req, res) => {
@@ -140,7 +139,8 @@ leaguesRouter.get('/:id', async (req, res) => {
 
 // Listar times da liga
 leaguesRouter.get('/:id/teams', async (req, res) => {
-  return listLeagueTeams(req, res);
+  const controller = makeListLeagueTeamsController();
+  return controller.handleExpress(req, res);
 });
 
 leaguesRouter.patch('/:id', async (req, res) => {
@@ -154,7 +154,8 @@ leaguesRouter.delete('/:id', async (req, res) => {
 });
 
 leaguesRouter.post('/:id/teams', async (req, res) => {
-  return addTeamToLeague(req, res);
+  const controller = makeAddTeamToLeagueController();
+  return controller.handleExpress(req, res);
 });
 
 // Uploads de imagens da liga (ícone e banner)
@@ -173,13 +174,16 @@ leaguesRouter.post('/:id/banner', upload.single('file'), async (req, res) => {
 });
 
 leaguesRouter.post('/:id/groups', async (req, res) => {
-  return createGroup(req, res);
+  const controller = makeCreateGroupController();
+  return controller.handleExpress(req, res);
 });
 
 leaguesRouter.post('/:id/groups/:groupId/teams', async (req, res) => {
-  return addTeamToGroup(req, res);
+  const controller = makeAddTeamToGroupController();
+  return controller.handleExpress(req, res);
 });
 
 leaguesRouter.post('/:id/groups/:groupId/fixtures', async (req, res) => {
-  return generateFixturesForGroup(req, res);
+  const controller = makeGenerateFixturesController();
+  return controller.handleExpress(req, res);
 });
