@@ -7,6 +7,7 @@ import {
   makeCreateInvitationCodeUseCase,
   makeAcceptInvitationCodeUseCase,
   makeListInvitationCodesUseCase,
+  makeRevokeInvitationCodeUseCase,
 } from './make-invitation-code-usecases.js';
 
 export function makeCreateInvitationCodeController() {
@@ -25,5 +26,6 @@ export function makeListInvitationCodesController() {
 }
 
 export function makeRevokeInvitationCodeController() {
-  return new RevokeInvitationCodeController();
+  const useCase = makeRevokeInvitationCodeUseCase();
+  return new RevokeInvitationCodeController(useCase);
 }

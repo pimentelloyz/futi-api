@@ -5,6 +5,7 @@ import { SecureCodeGenerator } from '../../application/services/code-generator.s
 import { CreateLeagueInvitationUseCase } from '../../domain/usecases/create-league-invitation/create-league-invitation.usecase.js';
 import { AcceptLeagueInvitationUseCase } from '../../domain/usecases/accept-league-invitation/accept-league-invitation.usecase.js';
 import { ListLeagueInvitationsUseCase } from '../../domain/usecases/list-league-invitations/list-league-invitations.usecase.js';
+import { RevokeLeagueInvitationUseCase } from '../../domain/usecases/revoke-league-invitation/revoke-league-invitation.usecase.js';
 
 export const makeCreateLeagueInvitationUseCase = () => {
   const leagueInvitationRepository = new PrismaLeagueInvitationRepository();
@@ -26,4 +27,9 @@ export const makeAcceptLeagueInvitationUseCase = () => {
 export const makeListLeagueInvitationsUseCase = () => {
   const leagueInvitationRepository = new PrismaLeagueInvitationRepository();
   return new ListLeagueInvitationsUseCase(leagueInvitationRepository);
+};
+
+export const makeRevokeLeagueInvitationUseCase = () => {
+  const leagueInvitationRepository = new PrismaLeagueInvitationRepository();
+  return new RevokeLeagueInvitationUseCase(leagueInvitationRepository);
 };

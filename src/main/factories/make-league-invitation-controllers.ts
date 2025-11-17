@@ -7,6 +7,7 @@ import {
   makeCreateLeagueInvitationUseCase,
   makeAcceptLeagueInvitationUseCase,
   makeListLeagueInvitationsUseCase,
+  makeRevokeLeagueInvitationUseCase,
 } from './make-league-invitation-usecases.js';
 
 export function makeCreateLeagueInvitationController() {
@@ -20,7 +21,8 @@ export function makeListLeagueInvitationsController() {
 }
 
 export function makeRevokeLeagueInvitationController() {
-  return new RevokeLeagueInvitationController();
+  const useCase = makeRevokeLeagueInvitationUseCase();
+  return new RevokeLeagueInvitationController(useCase);
 }
 
 export function makeAcceptLeagueInvitationController() {
