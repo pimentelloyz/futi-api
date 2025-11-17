@@ -1,4 +1,5 @@
 import { PrismaClient, MatchEventType } from '@prisma/client';
+import { seedLeagues } from './seeds/leagues.seed.js';
 
 // Prefer DIRECT_URL (5432) para evitar problemas de PgBouncer (porta 6543) em seeds pesados.
 // Se DIRECT_URL não estiver definido, cai no DATABASE_URL.
@@ -749,6 +750,14 @@ async function main() {
     'Pixel City',
     'Quantum FC',
   ], 3);
+
+  // Seed de 10 ligas (3 públicas, 7 privadas) com times, jogadores e partidas
+  const shouldSeedLeagues = process.env.SEED_LEAGUES !== 'false';
+  if (shouldSeedLeagues) {
+    await seedLeagues(prisma);
+  } else {
+    console.log('[seed] Pulando seed de ligas (SEED_LEAGUES=false)');
+  }
 }
 
 main()

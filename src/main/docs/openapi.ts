@@ -67,7 +67,19 @@ export const openapi: OpenAPIObject = {
             schema: { type: 'string' },
             description: 'Filtro: slug contains (case-insensitive)',
           },
-          { name: 'isActive', in: 'query', schema: { type: 'boolean' }, description: 'true/false' },
+          {
+            name: 'isActive',
+            in: 'query',
+            schema: { type: 'boolean' },
+            description: 'Filtrar por status ativo/inativo (true/false)',
+          },
+          {
+            name: 'isPublic',
+            in: 'query',
+            schema: { type: 'boolean' },
+            description:
+              'Filtrar por ligas públicas/privadas (true=públicas, false=privadas). Ligas públicas são abertas ao público, ligas privadas são fechadas/por convite.',
+          },
           { name: 'startAtFrom', in: 'query', schema: { type: 'string', format: 'date-time' } },
           { name: 'startAtTo', in: 'query', schema: { type: 'string', format: 'date-time' } },
           { name: 'endAtFrom', in: 'query', schema: { type: 'string', format: 'date-time' } },
@@ -119,10 +131,23 @@ export const openapi: OpenAPIObject = {
                           startAt: { type: 'string', format: 'date-time', nullable: true },
                           endAt: { type: 'string', format: 'date-time', nullable: true },
                           isActive: { type: 'boolean' },
+                          isPublic: {
+                            type: 'boolean',
+                            description:
+                              'Indica se a liga é pública (aberta) ou privada (fechada/por convite)',
+                          },
                           createdAt: { type: 'string', format: 'date-time' },
                           updatedAt: { type: 'string', format: 'date-time' },
                         },
-                        required: ['id', 'name', 'slug', 'isActive', 'createdAt', 'updatedAt'],
+                        required: [
+                          'id',
+                          'name',
+                          'slug',
+                          'isActive',
+                          'isPublic',
+                          'createdAt',
+                          'updatedAt',
+                        ],
                       },
                     },
                     page: { type: 'integer' },
@@ -155,6 +180,15 @@ export const openapi: OpenAPIObject = {
                   description: { type: 'string', nullable: true },
                   startAt: { type: 'string', format: 'date-time', nullable: true },
                   endAt: { type: 'string', format: 'date-time', nullable: true },
+                  isPublic: {
+                    type: 'boolean',
+                    description:
+                      'Define se a liga é pública (true=aberta ao público) ou privada (false=fechada/por convite). Default: false',
+                  },
+                  isActive: {
+                    type: 'boolean',
+                    description: 'Define se a liga está ativa. Default: true',
+                  },
                   icon: { type: 'string', format: 'binary' },
                   banner: { type: 'string', format: 'binary' },
                 },
@@ -181,17 +215,43 @@ export const openapi: OpenAPIObject = {
                   description: { type: 'string', nullable: true },
                   startAt: { type: 'string', format: 'date-time', nullable: true },
                   endAt: { type: 'string', format: 'date-time', nullable: true },
+                  isPublic: {
+                    type: 'boolean',
+                    description:
+                      'Define se a liga é pública (true=aberta) ou privada (false=fechada). Default: false',
+                  },
+                  isActive: {
+                    type: 'boolean',
+                    description: 'Define se a liga está ativa. Default: true',
+                  },
                   icon: { type: 'string', format: 'uri', nullable: true },
                   banner: { type: 'string', format: 'uri', nullable: true },
                 },
                 required: ['name', 'slug'],
               },
-              example: {
-                name: 'Liga JSON',
-                slug: 'liga-json',
-                description: 'Sem upload, apenas URLs',
-                icon: 'https://example.com/league-icon.png',
-                banner: 'https://example.com/league-banner.png',
+              examples: {
+                publicLeague: {
+                  summary: 'Liga Pública',
+                  value: {
+                    name: 'Copa Brasil Amateur',
+                    slug: 'copa-brasil-amateur',
+                    description: 'Liga aberta ao público',
+                    isPublic: true,
+                    isActive: true,
+                    icon: 'https://example.com/league-icon.png',
+                    banner: 'https://example.com/league-banner.png',
+                  },
+                },
+                privateLeague: {
+                  summary: 'Liga Privada',
+                  value: {
+                    name: 'Liga VIP',
+                    slug: 'liga-vip',
+                    description: 'Liga fechada por convite',
+                    isPublic: false,
+                    isActive: true,
+                  },
+                },
               },
             },
           },
