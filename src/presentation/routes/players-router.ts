@@ -14,6 +14,7 @@ import { prisma } from '../../infra/prisma/client.js';
 import { EvaluationBannerController } from '../controllers/evaluation-banner-controller.js';
 import { PendingEvaluationsController } from '../controllers/pending-evaluations-controller.js';
 import { ERROR_CODES } from '../../domain/constants.js';
+import { PLAYER_LITE_SELECT } from '../../infra/prisma/selects.js';
 
 export const playersRouter = Router();
 
@@ -195,32 +196,7 @@ playersRouter.patch('/me', async (req, res) => {
       position: { slug: string; name: string; description: string | null } | null;
     };
     try {
-      const db = prisma as unknown as {
-        player: {
-          update: (args: {
-            where: { id: string };
-            data: { name?: string; positionSlug?: string | null; number?: number | null };
-            select: {
-              id: true;
-              name: true;
-              photo: true;
-              positionSlug: true;
-              number: true;
-              isActive: true;
-              position: { select: { slug: true; name: true; description: true } };
-            };
-          }) => Promise<{
-            id: string;
-            name: string;
-            photo: string | null;
-            positionSlug: string | null;
-            number: number | null;
-            isActive: boolean;
-            position: { slug: string; name: string; description: string | null } | null;
-          }>;
-        };
-      };
-      updated = await db.player.update({
+      updated = await prisma.player.update({
         where: { id: player.id },
         data,
         select: {
@@ -245,31 +221,7 @@ playersRouter.patch('/me', async (req, res) => {
     }
     // Recarrega do banco para garantir consistência (alguns clients podem não refletir update imediato)
     try {
-      const db2 = prisma as unknown as {
-        player: {
-          findUnique: (args: {
-            where: { id: string };
-            select: {
-              id: true;
-              name: true;
-              photo: true;
-              positionSlug: true;
-              number: true;
-              isActive: true;
-              position: { select: { slug: true; name: true; description: true } };
-            };
-          }) => Promise<{
-            id: string;
-            name: string;
-            photo: string | null;
-            positionSlug: string | null;
-            number: number | null;
-            isActive: boolean;
-            position: { slug: string; name: string; description: string | null } | null;
-          } | null>;
-        };
-      };
-      const reloaded = await db2.player.findUnique({
+      const reloaded = await prisma.player.findUnique({
         where: { id: player.id },
         select: {
           id: true,
@@ -498,16 +450,7 @@ playersRouter.get('/me/team/overview', async (req, res) => {
     if (!mePlayer) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
 
     // Descobrir times em que estou via relação explícita PlayersOnTeams
-    const prismaAny = prisma as unknown as {
-      team: {
-        findMany: (args: {
-          where: { players: { some: { playerId: string } } };
-          select: { id: true; name: true };
-        }) => Promise<Array<{ id: string; name: string }>>;
-        findUnique: (args: Record<string, unknown>) => Promise<unknown>;
-      };
-    };
-    const myTeams = await prismaAny.team.findMany({
+    const myTeams = await prisma.team.findMany({
       where: { players: { some: { playerId: mePlayer.id } } },
       select: { id: true, name: true },
     });
@@ -517,55 +460,19 @@ playersRouter.get('/me/team/overview', async (req, res) => {
     const team = myTeams.find((t) => t.id === selectedTeamId) || myTeams[0];
 
     // Carregar dados básicos do time
-    const fullTeam = (await prisma.team.findUnique({
+    const fullTeam = await prisma.team.findUnique({
       where: { id: team.id },
-    })) as unknown as {
-      id: string;
-      name: string;
-      icon: string | null;
-      description: string | null;
-      isActive: boolean;
-    } | null;
+      select: { id: true, name: true, icon: true, description: true, isActive: true },
+    });
     if (!fullTeam || (fullTeam as { isActive?: boolean }).isActive === false) {
       return res.status(404).json({ error: ERROR_CODES.TEAM_NOT_FOUND });
     }
 
-    // Jogadores do time via join explícito
-    const teamWithPlayers = (await prismaAny.team.findUnique({
-      where: { id: team.id },
-      select: {
-        players: {
-          include: {
-            player: {
-              select: { id: true, name: true, positionSlug: true, number: true, isActive: true },
-            },
-          },
-        },
-      },
-    })) as unknown as {
-      players: Array<{
-        player: {
-          id: string;
-          name: string;
-          positionSlug: string | null;
-          number: number | null;
-          isActive: boolean;
-        } | null;
-      }>;
-    } | null;
-    const teamPlayers = (teamWithPlayers?.players ?? [])
-      .map((p) => p.player)
-      .filter(
-        (
-          p,
-        ): p is {
-          id: string;
-          name: string;
-          positionSlug: string | null;
-          number: number | null;
-          isActive: boolean;
-        } => Boolean(p),
-      );
+    // Jogadores do time com filtro direto na relação
+    const teamPlayers = await prisma.player.findMany({
+      where: { teams: { some: { teamId: team.id } } },
+      select: PLAYER_LITE_SELECT,
+    });
 
     // Partidas recentes e próximo jogo
     const recent = await prisma.match.findMany({

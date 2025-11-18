@@ -1,5 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
+import { prisma } from '../../infra/prisma/client.js';
 import { AddTeamToGroupUseCase } from '../../domain/usecases/add-team-to-group/add-team-to-group.usecase.js';
 import { AddTeamToLeagueUseCase } from '../../domain/usecases/add-team-to-league/add-team-to-league.usecase.js';
 import { CreateGroupUseCase } from '../../domain/usecases/create-group/create-group.usecase.js';
@@ -18,7 +17,6 @@ import { PrismaLeagueRepository } from '../../infra/repositories/prisma-league-r
 import { PrismaLeagueTeamRepository } from '../../infra/repositories/prisma-league-team-repository.js';
 import { PrismaUserAccessRepository } from '../../infra/repositories/prisma-user-access-repository.js';
 
-const prisma = new PrismaClient();
 const leagueRepository = new PrismaLeagueRepository(prisma);
 const userAccessRepository = new PrismaUserAccessRepository(prisma);
 const leagueTeamRepository = new PrismaLeagueTeamRepository(prisma);

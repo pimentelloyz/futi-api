@@ -13,6 +13,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { describe, it } from 'vitest';
 
 const prisma = new PrismaClient();
 
@@ -26,6 +27,11 @@ export const rbacTestsTemplate = {
     'Configurar banco de teste',
   ],
 };
+
+// Vitest placeholder to avoid "No test suite found"
+describe.skip('RBAC E2E Tests (template)', () => {
+  it('placeholder', () => {});
+});
 
 /*
 // EXEMPLO DE ESTRUTURA DE TESTES (DESCOMENTADO QUANDO PRONTO)

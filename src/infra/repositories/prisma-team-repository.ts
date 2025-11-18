@@ -53,4 +53,13 @@ export class PrismaTeamRepository implements TeamRepository, ITeamRepository {
       data: { teamId, leagueId },
     });
   }
+
+  // Clean Arch adapter: obter metadados mínimos do time
+  async getMeta(teamId: string): Promise<{ id: string; name: string; isActive: boolean } | null> {
+    const row = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      select: { id: true, name: true, isActive: true },
+    });
+    return row ? { id: row.id, name: row.name, isActive: row.isActive } : null;
+  }
 }

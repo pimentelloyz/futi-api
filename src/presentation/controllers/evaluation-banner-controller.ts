@@ -39,7 +39,7 @@ export class EvaluationBannerController {
     if (!mePlayer) return { statusCode: 404, body: { error: ERROR_CODES.PLAYER_NOT_FOUND } };
 
     const allTeamIds = await listTeamIdsForPlayer(mePlayer.id);
-    if (!allTeamIds.length) return { statusCode: 404, body: { evaluationBanner: null } };
+    if (!allTeamIds.length) return { statusCode: 200, body: { evaluationBanner: null } };
     const focusTeamIds = teamId && allTeamIds.includes(teamId) ? [teamId] : allTeamIds;
 
     const now = new Date();

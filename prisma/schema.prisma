@@ -94,6 +94,8 @@ model Match {
   managers    AccessMembership[]
 
   @@unique([homeTeamId, awayTeamId, scheduledAt])
+  @@index([homeTeamId, scheduledAt])
+  @@index([awayTeamId, scheduledAt])
 }
 
 model UserPushToken {

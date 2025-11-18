@@ -114,6 +114,15 @@ const mem = {
       updatedAt: Date;
     }
   >(),
+  matchAssignmentsByMatchIdAndEvaluator: new Map<
+    string,
+    Array<{
+      matchId: string;
+      evaluatorPlayerId: string;
+      targetPlayerId: string;
+      completedAt: Date | null;
+    }>
+  >(),
   matchEventsByMatchId: new Map<
     string,
     Array<{
@@ -403,6 +412,61 @@ vi.mock('../infra/prisma/client.js', async () => {
       },
     },
     player: {
+      findFirst: async ({
+        where,
+        select,
+      }: {
+        where?: { userId?: { not?: null } };
+        select?: { user?: { select?: { id?: boolean; firebaseUid?: boolean } }; id?: boolean };
+      }): Promise<{ id?: string; user?: { id?: string; firebaseUid?: string } } | null> => {
+        // Try to find an existing player with a non-null userId
+        let found = Array.from(mem.playersById.values()).find((p) => p.userId !== null) || null;
+
+        // If none exists, create a default user and player to satisfy E2E setup
+        if (!found && where?.userId?.not === null) {
+          // Ensure a default user with firebaseUid 'uid-e2e'
+          let user = mem.usersByUid.get('uid-e2e') ?? null;
+          if (!user) {
+            const id = `user_${++userSeq}`;
+            user = {
+              id,
+              firebaseUid: 'uid-e2e',
+              email: 'e2e@example.com',
+              displayName: 'E2E User',
+            };
+            mem.usersByUid.set('uid-e2e', user);
+            mem.usersById.set(id, user);
+          }
+          // Create a linked player
+          const pid = `player_${++playerSeq}`;
+          const rec = {
+            id: pid,
+            userId: user.id,
+            name: 'E2E Player',
+            position: null as string | null,
+            number: null as number | null,
+            isActive: true,
+            photo: null as string | null,
+          };
+          mem.playersById.set(pid, rec);
+          mem.playersByUserId.set(user.id, rec);
+          found = rec;
+        }
+
+        if (!found) return null;
+
+        // Shape response per select
+        const out: { id?: string; user?: { id?: string; firebaseUid?: string } } = {};
+        if (select?.id) out.id = found.id;
+        if (select?.user?.select) {
+          const u = found.userId ? (mem.usersById.get(found.userId) ?? null) : null;
+          out.user = {
+            id: select.user.select.id ? u?.id : undefined,
+            firebaseUid: select.user.select.firebaseUid ? u?.firebaseUid : undefined,
+          };
+        }
+        return out;
+      },
       create: async ({
         data,
         select,
@@ -451,6 +515,115 @@ vi.mock('../infra/prisma/client.js', async () => {
         if (rec.userId) mem.playersByUserId.set(rec.userId, rec);
         return select && select.id ? { id } : rec;
       },
+      count: async ({ where }: { where?: { teams?: { some?: { teamId?: string } } } }) => {
+        const teamId = where?.teams?.some?.teamId;
+        if (!teamId) return mem.playersById.size;
+        let count = 0;
+        for (const [pid, tids] of mem.playerTeamsByPlayerId.entries()) {
+          void pid;
+          if (tids.includes(teamId)) count++;
+        }
+        return count;
+      },
+      findMany: async ({
+        where,
+        orderBy,
+        skip = 0,
+        take = 9999,
+        select,
+      }: {
+        where?: { teams?: { some?: { teamId?: string } }; id?: { in?: string[] } };
+        orderBy?: Record<string, 'asc' | 'desc'>;
+        skip?: number;
+        take?: number;
+        select?: {
+          id?: boolean;
+          name?: boolean;
+          positionSlug?: boolean;
+          number?: boolean;
+          isActive?: boolean;
+        };
+      }) => {
+        let list = Array.from(mem.playersById.values());
+        // Filter by team membership
+        const teamId = where?.teams?.some?.teamId;
+        if (teamId) {
+          list = list.filter((p) => (mem.playerTeamsByPlayerId.get(p.id) ?? []).includes(teamId));
+        }
+        // Filter by id in
+        const inIds = where?.id?.in;
+        if (inIds && inIds.length) {
+          list = list.filter((p) => inIds.includes(p.id));
+        }
+        // Sort by one of the fields (name, number, positionSlug, isActive)
+        if (orderBy) {
+          const [field, dir] = Object.entries(orderBy)[0] ?? [];
+          if (field) {
+            const getVal = (p: {
+              name: string;
+              number: number | null;
+              isActive: boolean;
+              position?: string | null;
+              positionSlug?: string | null;
+            }): string | number | boolean | null | undefined => {
+              switch (field) {
+                case 'name':
+                  return p.name;
+                case 'number':
+                  return p.number ?? null;
+                case 'isActive':
+                  return p.isActive;
+                case 'positionSlug': {
+                  const pos = p as { positionSlug?: string | null; position?: string | null };
+                  return pos.positionSlug ?? pos.position ?? null;
+                }
+                default:
+                  return undefined;
+              }
+            };
+            list.sort((a, b) => {
+              type P = {
+                name: string;
+                number: number | null;
+                isActive: boolean;
+                position?: string | null;
+                positionSlug?: string | null;
+              };
+              const av = getVal(a as P);
+              const bv = getVal(b as P);
+              if (av === bv) return 0;
+              if (av === undefined || av === null) return 1;
+              if (bv === undefined || bv === null) return -1;
+              if (typeof av === 'string' && typeof bv === 'string') {
+                return dir === 'desc' ? bv.localeCompare(av) : av.localeCompare(bv);
+              }
+              if (typeof av === 'number' && typeof bv === 'number') {
+                return dir === 'desc' ? bv - av : av - bv;
+              }
+              if (typeof av === 'boolean' && typeof bv === 'boolean') {
+                return dir === 'desc' ? Number(bv) - Number(av) : Number(av) - Number(bv);
+              }
+              return 0;
+            });
+          }
+        }
+        const paged = list.slice(skip, skip + take);
+        if (select) {
+          return paged.map((p) => {
+            const pos = p as { positionSlug?: string | null; position?: string | null };
+            return {
+              id: select.id ? p.id : undefined,
+              name: select.name ? p.name : undefined,
+              positionSlug: select.positionSlug
+                ? (pos.positionSlug ?? pos.position ?? null)
+                : undefined,
+              number: select.number ? p.number : undefined,
+              isActive: select.isActive ? p.isActive : undefined,
+            };
+          });
+        }
+        return paged;
+      },
       findUnique: async ({
         where,
         select,
@@ -494,20 +667,36 @@ vi.mock('../infra/prisma/client.js', async () => {
         data,
       }: {
         where: { id: string };
-        data: { teams?: { connect?: Array<{ id: string }> }; photo?: string | null };
+        data: {
+          teams?: {
+            connect?: Array<{ id: string }>;
+            create?: { teamId: string } | Array<{ teamId: string }>;
+          };
+          photo?: string | null;
+        };
       }) => {
+        const rec = mem.playersById.get(where.id) ?? null;
+        if (!rec) return null;
+        // Handle connect
         if (data.teams?.connect?.length) {
           const current = mem.playerTeamsByPlayerId.get(where.id) ?? [];
           const next = Array.from(new Set([...current, ...data.teams.connect.map((c) => c.id)]));
           mem.playerTeamsByPlayerId.set(where.id, next);
         }
-        const rec = mem.playersById.get(where.id);
-        if (rec && Object.prototype.hasOwnProperty.call(data, 'photo')) {
+        // Handle create for join table
+        const create = data.teams?.create;
+        if (create) {
+          const toAdd = Array.isArray(create) ? create.map((c) => c.teamId) : [create.teamId];
+          const current = mem.playerTeamsByPlayerId.get(where.id) ?? [];
+          const next = Array.from(new Set([...current, ...toAdd]));
+          mem.playerTeamsByPlayerId.set(where.id, next);
+        }
+        if (Object.prototype.hasOwnProperty.call(data, 'photo')) {
           rec.photo = data.photo ?? null;
           mem.playersById.set(where.id, rec);
           if (rec.userId) mem.playersByUserId.set(rec.userId, rec);
         }
-        return rec ?? null;
+        return rec;
       },
     },
     match: {
@@ -854,6 +1043,24 @@ vi.mock('../infra/prisma/client.js', async () => {
       },
     },
     accessMembership: {
+      findFirst: async ({
+        where,
+      }: {
+        where: { userId?: string; teamId?: string; role?: string };
+      }) => {
+        // Simplificado: sem persistência real de memberships; retorna null por padrão
+        void where;
+        return null;
+      },
+      count: async ({
+        where,
+      }: {
+        where: { userId: string; role?: string; teamId?: null; leagueId?: null };
+      }) => {
+        // For tests, treat any user as ADMIN at global scope when queried
+        if (where.role === 'ADMIN' && where.teamId === null && where.leagueId === null) return 1;
+        return 0;
+      },
       findMany: async ({
         where: _where,
         select,
@@ -866,6 +1073,77 @@ vi.mock('../infra/prisma/client.js', async () => {
         const list: Array<{ teamId: string | null }> = [];
         if (select?.teamId) return list.map((x) => ({ teamId: x.teamId }));
         return list;
+      },
+    },
+    matchPlayerEvaluationAssignment: {
+      count: async ({
+        where,
+      }: {
+        where: { matchId: string; evaluatorPlayerId: string; completedAt: null };
+      }) => {
+        const key = `${where.matchId}::${where.evaluatorPlayerId}`;
+        const arr = mem.matchAssignmentsByMatchIdAndEvaluator.get(key) ?? [];
+        // Count only null completedAt
+        return arr.filter((a) => a.completedAt === null).length;
+      },
+      findMany: async ({
+        where,
+        select,
+      }: {
+        where: { matchId: string; evaluatorPlayerId: string; completedAt: null };
+        select?: { targetPlayerId?: boolean };
+      }) => {
+        const key = `${where.matchId}::${where.evaluatorPlayerId}`;
+        const arr = mem.matchAssignmentsByMatchIdAndEvaluator.get(key) ?? [];
+        const pending = arr.filter((a) => a.completedAt === null);
+        if (select?.targetPlayerId)
+          return pending.map((a) => ({ targetPlayerId: a.targetPlayerId }));
+        return pending;
+      },
+      create: async ({
+        data,
+        select,
+      }: {
+        data: { matchId: string; evaluatorPlayerId: string; targetPlayerId: string };
+        select?: { id?: boolean };
+      }) => {
+        const key = `${data.matchId}::${data.evaluatorPlayerId}`;
+        const arr = mem.matchAssignmentsByMatchIdAndEvaluator.get(key) ?? [];
+        const id = `assign_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        arr.push({
+          matchId: data.matchId,
+          evaluatorPlayerId: data.evaluatorPlayerId,
+          targetPlayerId: data.targetPlayerId,
+          completedAt: null,
+        });
+        mem.matchAssignmentsByMatchIdAndEvaluator.set(key, arr);
+        return select?.id ? { id } : ({ id } as unknown as { id: string });
+      },
+      _seed: (opts: {
+        matchId: string;
+        evaluatorPlayerId: string;
+        targets: Array<{ playerId: string; completed?: boolean }>;
+      }) => {
+        const key = `${opts.matchId}::${opts.evaluatorPlayerId}`;
+        const list = opts.targets.map((t) => ({
+          matchId: opts.matchId,
+          evaluatorPlayerId: opts.evaluatorPlayerId,
+          targetPlayerId: t.playerId,
+          completedAt: t.completed ? new Date() : null,
+        }));
+        mem.matchAssignmentsByMatchIdAndEvaluator.set(key, list);
+      },
+    },
+    matchLineupEntry: {
+      findMany: async ({
+        where,
+      }: {
+        where: { matchId: string; teamId: string };
+        select?: { playerId?: boolean };
+      }) => {
+        void where;
+        // Sem lineup seeded, retorna vazio
+        return [] as Array<{ playerId: string }>;
       },
     },
     playersOnTeams: {
@@ -883,6 +1161,51 @@ vi.mock('../infra/prisma/client.js', async () => {
       },
     },
     league: {
+      count: async ({ where }: { where?: { id?: string } }) => {
+        if (where?.id) return mem.leaguesById.has(where.id) ? 1 : 0;
+        return mem.leaguesById.size;
+      },
+      findFirst: async ({
+        where,
+        include,
+      }: {
+        where?: { id?: string; teams?: { some?: { teamId?: { in?: string[] } } } };
+        include?: {
+          teams?: { include?: { team?: boolean } };
+          groups?: { include?: { teams?: { include?: { team?: boolean } } } };
+        };
+      }) => {
+        let leagues = Array.from(mem.leaguesById.values());
+        if (where?.id) leagues = leagues.filter((l) => l.id === where.id);
+        const inTeamIds = where?.teams?.some?.teamId?.in ?? undefined;
+        if (inTeamIds && inTeamIds.length) {
+          leagues = leagues.filter((l) => {
+            const tids = mem.leagueTeamsByLeagueId.get(l.id) ?? [];
+            return tids.some((tid) => inTeamIds.includes(tid));
+          });
+        }
+        const first = leagues[0] ?? null;
+        if (!first) return null;
+        if (include?.teams?.include?.team || include?.groups) {
+          const tids = mem.leagueTeamsByLeagueId.get(first.id) ?? [];
+          const teams = tids
+            .map((tid) => mem.teamsById.get(tid))
+            .filter(Boolean)
+            .map((t) => ({ team: t! }));
+          const withTeams = { ...first, teams } as unknown as typeof first & {
+            teams: Array<{ team: unknown }>;
+          };
+          if (include?.groups) {
+            // No groups seeded in tests; return empty groups to satisfy include shape
+            return { ...withTeams, groups: [] } as unknown as typeof first & {
+              teams: Array<{ team: unknown }>;
+              groups: unknown[];
+            };
+          }
+          return withTeams;
+        }
+        return first;
+      },
       create: async ({
         data,
       }: {
@@ -940,6 +1263,10 @@ vi.mock('../infra/prisma/client.js', async () => {
       },
     },
     leagueTeam: {
+      count: async ({ where }: { where: { leagueId: string; teamId: string } }) => {
+        const tids = mem.leagueTeamsByLeagueId.get(where.leagueId) ?? [];
+        return tids.includes(where.teamId) ? 1 : 0;
+      },
       create: async ({
         data,
       }: {

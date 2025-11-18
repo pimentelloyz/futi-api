@@ -4,6 +4,7 @@ import { prisma } from '../prisma/client.js';
 import { PlayerRepository } from '../../data/protocols/player-repository.js';
 import { AddPlayerInput } from '../../domain/usecases/add-player.js';
 import { IPlayerRepository } from '../../domain/repositories/player.repository.interface.js';
+import { PLAYER_LITE_SELECT } from '../prisma/selects.js';
 
 export class PrismaPlayerRepository implements PlayerRepository, IPlayerRepository {
   private prisma: PrismaClient;
@@ -13,30 +14,15 @@ export class PrismaPlayerRepository implements PlayerRepository, IPlayerReposito
   }
 
   async add(data: AddPlayerInput): Promise<{ id: string }> {
-    const connectTeams = (data.teamIds ?? []).map((id) => ({ id }));
-    const db = this.prisma as unknown as {
-      player: {
-        create: (args: {
-          data: {
-            name: string;
-            number: number | null;
-            isActive: boolean;
-            photo: string | null;
-            positionSlug: string | null;
-            teams?: { connect: Array<{ id: string }> };
-          };
-          select: { id: true };
-        }) => Promise<{ id: string }>;
-      };
-    };
-    const created = await db.player.create({
+    const teamIds = (data.teamIds ?? []).filter(Boolean);
+    const created = await this.prisma.player.create({
       data: {
         name: data.name,
         number: data.number ?? null,
         isActive: data.isActive ?? true,
         photo: data.photo ?? null,
         positionSlug: data.positionSlug ?? null,
-        teams: connectTeams.length ? { connect: connectTeams } : undefined,
+        teams: teamIds.length ? { create: teamIds.map((teamId) => ({ teamId })) } : undefined,
       },
       select: { id: true },
     });
@@ -44,24 +30,8 @@ export class PrismaPlayerRepository implements PlayerRepository, IPlayerReposito
   }
 
   async addForUser(userId: string, data: AddPlayerInput): Promise<{ id: string }> {
-    const connectTeams = (data.teamIds ?? []).map((id) => ({ id }));
-    const db = this.prisma as unknown as {
-      player: {
-        create: (args: {
-          data: {
-            name: string;
-            positionSlug: string | null;
-            number: number | null;
-            isActive: boolean;
-            userId: string;
-            photo: string | null;
-            teams?: { connect: Array<{ id: string }> };
-          };
-          select: { id: true };
-        }) => Promise<{ id: string }>;
-      };
-    };
-    return db.player.create({
+    const teamIds = (data.teamIds ?? []).filter(Boolean);
+    return this.prisma.player.create({
       data: {
         name: data.name,
         positionSlug: data.positionSlug ?? null,
@@ -69,7 +39,7 @@ export class PrismaPlayerRepository implements PlayerRepository, IPlayerReposito
         isActive: data.isActive ?? true,
         userId,
         photo: data.photo ?? null,
-        teams: connectTeams.length ? { connect: connectTeams } : undefined,
+        teams: teamIds.length ? { create: teamIds.map((teamId) => ({ teamId })) } : undefined,
       },
       select: { id: true },
     });
@@ -83,31 +53,7 @@ export class PrismaPlayerRepository implements PlayerRepository, IPlayerReposito
     number?: number | null;
     isActive: boolean;
   } | null> {
-    const db = this.prisma as unknown as {
-      player: {
-        findUnique: (args: {
-          where: { userId: string };
-          select: {
-            id: true;
-            name: true;
-            photo: true;
-            positionSlug: true;
-            number: true;
-            isActive: true;
-            position: { select: { slug: true; name: true; description: true } };
-          };
-        }) => Promise<{
-          id: string;
-          name: string;
-          photo: string | null;
-          positionSlug: string | null;
-          number: number | null;
-          isActive: boolean;
-          position: { slug: string; name: string; description: string | null } | null;
-        } | null>;
-      };
-    };
-    const player = await db.player.findUnique({
+    const player = await this.prisma.player.findUnique({
       where: { userId },
       select: {
         id: true,
@@ -138,5 +84,39 @@ export class PrismaPlayerRepository implements PlayerRepository, IPlayerReposito
         assignedBy,
       },
     });
+  }
+
+  // Clean Arch adapter: listagem/paginação por time
+  async countByTeam(teamId: string): Promise<number> {
+    return this.prisma.player.count({ where: { teams: { some: { teamId } } } });
+  }
+
+  async listByTeam(query: {
+    teamId: string;
+    page: number;
+    limit: number;
+    sort: 'name' | 'number' | 'positionSlug' | 'isActive';
+    order: 'asc' | 'desc';
+  }): Promise<
+    {
+      id: string;
+      name: string;
+      positionSlug: string | null;
+      number: number | null;
+      isActive: boolean;
+    }[]
+  > {
+    const { teamId, page, limit, sort, order } = query;
+    const skip = (page - 1) * limit;
+    const orderBy = { [sort]: order } as Record<string, 'asc' | 'desc'>;
+    const where = { teams: { some: { teamId } } } as const;
+    const rows = await this.prisma.player.findMany({
+      where,
+      orderBy,
+      skip,
+      take: limit,
+      select: PLAYER_LITE_SELECT,
+    });
+    return rows;
   }
 }

@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { LeagueFormatType, PhaseType, TiebreakCriterion } from '@prisma/client';
 
 import { prisma } from '../../infra/prisma/client.js';
 import { LeagueFormatService } from '../../domain/services/league-format.service.js';
@@ -46,16 +47,30 @@ export async function createFormat(req: Request, res: Response) {
         .json({ message: 'phases é obrigatório e deve conter ao menos 1 fase' });
     }
 
+    // Mapear enums com tolerância a case
+    const toEnum = <T extends Record<string, string>>(
+      e: T,
+      v: string,
+      name: string,
+    ): T[keyof T] => {
+      const direct = (Object.values(e) as string[]).find((x) => x === v);
+      if (direct) return direct as T[keyof T];
+      const upper = String(v).toUpperCase();
+      const fromUpper = (Object.values(e) as string[]).find((x) => x === upper);
+      if (fromUpper) return fromUpper as T[keyof T];
+      throw new Error(`${name} inválido: ${v}`);
+    };
+
     const format = await leagueFormatService.createFormat({
       name,
       slug,
-      type,
+      type: toEnum(LeagueFormatType, type, 'LeagueFormatType'),
       description: description ?? undefined,
       isTemplate: isTemplate ?? true,
       phases: phases.map((phase) => ({
         name: phase.name,
         order: phase.order,
-        type: phase.type,
+        type: toEnum(PhaseType, phase.type, 'PhaseType'),
         teamsCount: phase.teamsCount ?? undefined,
         groupsCount: phase.groupsCount ?? undefined,
         hasHomeAway: phase.hasHomeAway ?? false,
@@ -65,7 +80,7 @@ export async function createFormat(req: Request, res: Response) {
         advancingTeams: phase.advancingTeams ?? undefined,
         tiebreakRules: phase.tiebreakRules.map((rule) => ({
           order: rule.order,
-          criterion: rule.criterion,
+          criterion: toEnum(TiebreakCriterion, rule.criterion, 'TiebreakCriterion'),
         })),
       })),
     });

@@ -133,16 +133,21 @@ export class RBACAuditLogger {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private persistLog(log: RBACAccessLog): void {
-    // TODO: Implementar persistência
-    // Opções:
-    // 1. Banco de dados (tabela audit_logs)
-    // 2. Arquivo de logs
-    // 3. Serviço externo (Datadog, CloudWatch)
-    // Exemplo com arquivo (descomentar se necessário):
-    // import fs from 'fs';
-    // fs.appendFileSync('logs/rbac-audit.log', JSON.stringify(log) + '\n');
+    // Persistência assíncrona em arquivo (não bloqueante)
+    (async () => {
+      try {
+        const fs = await import('node:fs/promises');
+        const path = await import('node:path');
+        const dir = path.resolve(process.cwd(), 'logs');
+        await fs.mkdir(dir, { recursive: true });
+        await fs.appendFile(path.join(dir, 'rbac-audit.log'), JSON.stringify(log) + '\n', {
+          encoding: 'utf8',
+        });
+      } catch (e) {
+        console.warn('[RBACAuditLogger persist warn]', (e as Error).message);
+      }
+    })();
   }
 
   /**

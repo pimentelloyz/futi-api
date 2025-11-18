@@ -1,17 +1,7 @@
 import { prisma } from './client.js';
 
-// Typed helpers to avoid repetitive unsafe casts across controllers.
-const prismaPlayersOnTeams = prisma as unknown as {
-  playersOnTeams: {
-    findMany: (args: {
-      where: { playerId?: string; teamId?: string };
-      select: { teamId?: true; playerId?: true };
-    }) => Promise<Array<{ teamId?: string | null; playerId?: string | null }>>;
-  };
-};
-
 export async function listTeamIdsForPlayer(playerId: string): Promise<string[]> {
-  const rows = await prismaPlayersOnTeams.playersOnTeams.findMany({
+  const rows = await prisma.playersOnTeams.findMany({
     where: { playerId },
     select: { teamId: true },
   });
@@ -19,7 +9,7 @@ export async function listTeamIdsForPlayer(playerId: string): Promise<string[]> 
 }
 
 export async function listPlayerIdsForTeam(teamId: string): Promise<string[]> {
-  const rows = await prismaPlayersOnTeams.playersOnTeams.findMany({
+  const rows = await prisma.playersOnTeams.findMany({
     where: { teamId },
     select: { playerId: true },
   });

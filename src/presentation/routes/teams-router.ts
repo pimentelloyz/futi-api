@@ -11,7 +11,7 @@ import { AccessRole } from '../../domain/constants/access-roles.js';
 import { ERROR_CODES } from '../../domain/constants.js';
 import { TeamIconUploadController } from '../controllers/team-icon-upload-controller.js';
 import { TeamUpdateController } from '../controllers/team-update-controller.js';
-import { TeamPlayersController } from '../controllers/team-players-controller.js';
+import { makeTeamPlayersController } from '../../main/factories/make-team-players-controller.js';
 import { TeamAddPlayerController } from '../controllers/team-add-player-controller.js';
 import { TeamSoftDeleteController } from '../controllers/team-soft-delete-controller.js';
 
@@ -127,7 +127,7 @@ teamsRouter.get(
   '/:id/players',
   requireRole([AccessRole.PLAYER, AccessRole.MANAGER, AccessRole.ASSISTANT, AccessRole.ADMIN]),
   async (req, res) => {
-    const controller = new TeamPlayersController();
+    const controller = makeTeamPlayersController();
     const response = await controller.handle({
       teamId: req.params.id,
       page: Math.max(parseInt(String(req.query.page ?? '1'), 10) || 1, 1),

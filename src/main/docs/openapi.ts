@@ -31,6 +31,18 @@ export const openapi: OpenAPIObject = {
     description: 'Football matches control API',
   },
   servers: [{ url: 'http://localhost:3000' }],
+  tags: [
+    { name: 'Health', description: 'Healthcheck e status do serviço' },
+    { name: 'Auth', description: 'Autenticação e tokens' },
+    { name: 'Leagues', description: 'Gerenciamento de ligas' },
+    { name: 'Teams', description: 'Gerenciamento de times' },
+    { name: 'Players', description: 'Gerenciamento de jogadores' },
+    { name: 'Invites', description: 'Convites e participação' },
+    { name: 'Evaluations', description: 'Avaliações e formulários' },
+    { name: 'Audit', description: 'Auditoria e logs' },
+    { name: 'Positions', description: 'Posições de jogadores' },
+    { name: 'Formats', description: 'Formatos de liga e fases' },
+  ],
   components: {
     securitySchemes: {
       bearerAuth: {

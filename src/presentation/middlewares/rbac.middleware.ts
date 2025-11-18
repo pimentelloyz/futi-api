@@ -1,13 +1,15 @@
 import type { NextFunction, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 
+// Use the shared Prisma instance so tests can mock it
+import { prisma } from '../../infra/prisma/client.js';
 import type { AccessContext } from '../../domain/services/rbac.service.js';
 import { RBACService } from '../../domain/services/rbac.service.js';
 import { AccessRole } from '../../domain/constants/access-roles.js';
 import { RBAC_ERRORS } from '../../domain/constants/rbac-errors.js';
 import { RBACAuditLogger } from '../../domain/services/rbac-audit-logger.js';
 
-const prisma = new PrismaClient();
+import { getFromReqCache } from './request-context.js';
+
 const rbacService = new RBACService(prisma);
 const auditLogger = RBACAuditLogger.getInstance();
 
@@ -27,17 +29,30 @@ export function requireRole(allowedRoles: AccessRole[]) {
       }
 
       // Extrai contexto da requisição
+      const body = (req.body ?? {}) as Record<string, unknown>;
       const context: AccessContext = {
-        teamId: req.params.teamId || req.body.teamId,
-        leagueId: req.params.leagueId || req.body.leagueId,
-        matchId: req.params.matchId || req.body.matchId,
+        teamId:
+          (req.params?.teamId as string | undefined) ||
+          (typeof body.teamId === 'string' ? body.teamId : undefined),
+        leagueId:
+          (req.params?.leagueId as string | undefined) ||
+          (typeof body.leagueId === 'string' ? body.leagueId : undefined),
+        matchId:
+          (req.params?.matchId as string | undefined) ||
+          (typeof body.matchId === 'string' ? body.matchId : undefined),
       };
 
       // Verifica permissão
-      const hasPermission = await rbacService.hasPermission(userId, allowedRoles, context);
+      const permKey = `perm:${userId}:${allowedRoles.sort().join(',')}:${context.teamId || ''}:${context.leagueId || ''}:${context.matchId || ''}`;
+      const hasPermission = await getFromReqCache(req, permKey, () =>
+        rbacService.hasPermission(userId, allowedRoles, context),
+      );
 
       if (!hasPermission) {
-        const userRole = await rbacService.getHighestRole(userId, context);
+        const roleKey = `role:${userId}:${context.teamId || ''}:${context.leagueId || ''}:${context.matchId || ''}`;
+        const userRole = await getFromReqCache(req, roleKey, () =>
+          rbacService.getHighestRole(userId, context),
+        );
 
         // Log de acesso negado para auditoria
         auditLogger.logDenied({
@@ -64,7 +79,10 @@ export function requireRole(allowedRoles: AccessRole[]) {
       }
 
       // Log de acesso permitido (apenas em modo verbose)
-      const userRole = await rbacService.getHighestRole(userId, context);
+      const roleKey2 = `role:${userId}:${context.teamId || ''}:${context.leagueId || ''}:${context.matchId || ''}`;
+      const userRole = await getFromReqCache(req, roleKey2, () =>
+        rbacService.getHighestRole(userId, context),
+      );
       auditLogger.logGranted({
         userId,
         userEmail: (req as Request & { user?: { email?: string } }).user?.email,

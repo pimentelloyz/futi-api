@@ -17,308 +17,37 @@ evaluationsRouter.get('/pending', async (req, res) => {
   try {
     const meUser = req.user as { id: string } | undefined;
     if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
-    // Find player by user id
-    const player = await prisma.player.findUnique({
-      where: { userId: meUser.id },
-      select: { id: true },
-    });
-    if (!player) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
-    const repo = new PrismaMatchPlayerEvaluationRepository();
-    const pending = await repo.listPendingForPlayer(player.id);
-    // Enrich with target player name
-    const enriched = [] as Array<{
-      id: string;
-      matchId: string;
-      targetPlayerId: string;
-      targetName?: string;
-    }>;
-    for (const a of pending) {
-      const target = await prisma.player.findUnique({
-        where: { id: a.targetPlayerId },
-        select: { name: true },
-      });
-      enriched.push({ ...a, targetName: target?.name });
-    }
-    return res.json({ items: enriched });
-  } catch (e) {
-    console.error('[list_pending_evaluations_error]', (e as Error).message);
-    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
-  }
-});
-
-// V2: avaliação por critérios ponderados
-// POST /api/evaluations/:assignmentId/v2
-// Body: { items: [{ key, value }], comment? }
-const evalV2Schema = z.object({
-  items: z
-    .array(
-      z.object({
-        key: z.string().min(1),
-        value: z.number().int().min(0).max(100),
-      }),
-    )
-    .min(1),
-  comment: z.string().max(500).optional(),
-});
-
-evaluationsRouter.post('/:assignmentId/v2', async (req, res) => {
-  const assignmentId = req.params.assignmentId;
-  if (!assignmentId) return res.status(400).json({ error: ERROR_CODES.INVALID_ASSIGNMENT_ID });
-  const parsed = evalV2Schema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: ERROR_CODES.INVALID_REQUEST });
-  try {
-    const meUser = req.user as { id: string } | undefined;
-    if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
     const mePlayer = await prisma.player.findUnique({
       where: { userId: meUser.id },
       select: { id: true },
     });
     if (!mePlayer) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
-    const assignment = await prisma.matchPlayerEvaluationAssignment.findUnique({
-      where: { id: assignmentId },
-      select: {
-        id: true,
-        evaluatorPlayerId: true,
-        targetPlayerId: true,
-        matchId: true,
-        completedAt: true,
-      },
-    });
-    if (!assignment) return res.status(404).json({ error: ERROR_CODES.ASSIGNMENT_NOT_FOUND });
-    if (assignment.evaluatorPlayerId !== mePlayer.id)
-      return res.status(403).json({ error: ERROR_CODES.FORBIDDEN });
-    if (assignment.completedAt)
-      return res.status(400).json({ error: ERROR_CODES.ALREADY_COMPLETED });
 
-    // Determinar o formulário ativo pelo tipo de posição do alvo (simplificado)
-    const pAny = prisma as unknown as {
-      player: {
-        findUnique: (args: {
-          where: { id: string };
-          select: { positionSlug?: true; position?: true };
-        }) => Promise<{ positionSlug?: string; position?: string } | null>;
-      };
-    };
-    const target = await pAny.player.findUnique({
-      where: { id: assignment.targetPlayerId },
-      select: { positionSlug: true, position: true },
-    });
-    const slug: string | undefined = target?.positionSlug ?? target?.position ?? undefined;
-    const positionType = slug === 'GK' ? 'GOALKEEPER' : 'LINE';
-
-    // Pegar o form ativo mais recente para o tipo
-    const prismaAny = prisma as unknown as {
-      evaluationForm: {
-        findFirst: (args: {
-          where: { positionType: string; isActive: boolean };
-          orderBy: { version: 'desc' };
-          select: { id: true };
-        }) => Promise<{ id: string } | null>;
-      };
-      evaluationCriteria: {
-        findMany: (args: {
-          where: { formId: string };
-          select: { id: true; key: true; weight: true; minValue: true; maxValue: true };
-        }) => Promise<
-          Array<{ id: string; key: string; weight: unknown; minValue: number; maxValue: number }>
-        >;
-      };
-      playerEvaluation: {
-        create: (args: {
-          data: {
-            assignmentId: string;
-            comment?: string | null;
-            formId: string;
-            overallScore: unknown;
-            formSnapshot?: unknown;
-          };
-          select: { id: true };
-        }) => Promise<{ id: string }>;
-      };
-      playerEvaluationItem: {
-        createMany: (args: {
-          data: Array<{ evaluationId: string; criteriaId: string; value: number }>;
-          skipDuplicates?: boolean;
-        }) => Promise<unknown>;
-      };
-      playerEvaluationAggregate: {
-        upsert: (args: {
-          where: { playerId_formId: { playerId: string; formId: string } };
-          create: {
-            playerId: string;
-            formId: string;
-            count: number;
-            weightedSum: unknown;
-            average: unknown;
-          };
-          update: {
-            count: { increment: number };
-            weightedSum: { increment: unknown };
-            average: unknown;
-          };
-          select: { playerId: true };
-        }) => Promise<{ playerId: string }>;
-      };
-      matchPlayerEvaluationAssignment: {
-        update: (args: { where: { id: string }; data: { completedAt: Date } }) => Promise<unknown>;
-      };
-    };
-
-    const form = await prismaAny.evaluationForm.findFirst({
-      where: { positionType, isActive: true },
-      orderBy: { version: 'desc' },
-      select: { id: true },
-    });
-    if (!form) return res.status(400).json({ error: 'no_active_form' });
-
-    const criteria = await prismaAny.evaluationCriteria.findMany({
-      where: { formId: form.id },
-      select: { id: true, key: true, weight: true, minValue: true, maxValue: true },
-    });
-    const byKey = new Map(criteria.map((c) => [c.key, c]));
-    let sumWeight = 0;
-    let sumWeighted = 0;
-    const itemsData: Array<{ evaluationId: string; criteriaId: string; value: number }> = [];
-
-    // Validação e cálculo
-    for (const it of parsed.data.items) {
-      const c = byKey.get(it.key);
-      if (!c) return res.status(400).json({ error: 'invalid_criteria_key', key: it.key });
-      if (it.value < c.minValue || it.value > c.maxValue)
-        return res.status(400).json({ error: 'invalid_value_range', key: it.key });
-      const w = Number(c.weight as unknown as string);
-      sumWeight += w;
-      sumWeighted += w * it.value;
-    }
-    if (sumWeight <= 0) return res.status(400).json({ error: 'invalid_form_weights' });
-    const overall = sumWeighted / sumWeight;
-
-    // Persistir avaliação + itens
-    const evalRec = await prismaAny.playerEvaluation.create({
-      data: {
-        assignmentId,
-        comment: parsed.data.comment ?? null,
-        formId: form.id,
-        overallScore: Number(overall),
-        formSnapshot: {
-          criteria: criteria.map((c) => ({
-            key: c.key,
-            weight: c.weight,
-            min: c.minValue,
-            max: c.maxValue,
-          })),
-        },
-      },
-      select: { id: true },
-    });
-    for (const it of parsed.data.items) {
-      const c = byKey.get(it.key)!;
-      itemsData.push({ evaluationId: evalRec.id, criteriaId: c.id, value: it.value });
-    }
-    await prismaAny.playerEvaluationItem.createMany({ data: itemsData, skipDuplicates: true });
-
-    // Atualizar agregado
-    await prismaAny.playerEvaluationAggregate.upsert({
-      where: { playerId_formId: { playerId: assignment.targetPlayerId, formId: form.id } },
-      create: {
-        playerId: assignment.targetPlayerId,
-        formId: form.id,
-        count: 1,
-        weightedSum: Number(overall),
-        average: Number(overall),
-      },
-      update: {
-        count: { increment: 1 },
-        weightedSum: { increment: Number(overall) },
-        average: Number(overall),
-      },
-      select: { playerId: true },
+    const assignments = await prisma.matchPlayerEvaluationAssignment.findMany({
+      where: { evaluatorPlayerId: mePlayer.id, completedAt: null },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, matchId: true, targetPlayerId: true },
     });
 
-    await prismaAny.matchPlayerEvaluationAssignment.update({
-      where: { id: assignmentId },
-      data: { completedAt: new Date() },
+    const targetIds = Array.from(new Set(assignments.map((a) => a.targetPlayerId)));
+    const targets = targetIds.length
+      ? await prisma.player.findMany({
+          where: { id: { in: targetIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const nameById = new Map(targets.map((t) => [t.id, t.name]));
+
+    return res.json({
+      items: assignments.map((a) => ({
+        id: a.id,
+        matchId: a.matchId,
+        targetPlayerId: a.targetPlayerId,
+        targetName: nameById.get(a.targetPlayerId),
+      })),
     });
-
-    // Recalcular skills do jogador alvo (atualização incremental)
-    const alpha = 0.3; // suavização: 30% da nova avaliação, 70% do valor atual
-    type SkillKeys =
-      | 'attack'
-      | 'defense'
-      | 'shooting'
-      | 'ballControl'
-      | 'pace'
-      | 'passing'
-      | 'dribbling'
-      | 'physical';
-    const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
-    const itemsMap = new Map(parsed.data.items.map((i) => [i.key, i.value]));
-
-    const existing = await prisma.playerSkill.findUnique({
-      where: { playerId: assignment.targetPlayerId },
-    });
-    const base = {
-      attack: existing?.attack ?? 50,
-      defense: existing?.defense ?? 50,
-      shooting: existing?.shooting ?? 50,
-      ballControl: existing?.ballControl ?? 50,
-      pace: existing?.pace ?? 50,
-      passing: existing?.passing ?? 50,
-      dribbling: existing?.dribbling ?? 50,
-      physical: existing?.physical ?? 50,
-    } satisfies Record<SkillKeys, number>;
-
-    // Objetivos por atributo a partir dos critérios enviados
-    const targets: Partial<Record<SkillKeys, number>> = {};
-    if (positionType === 'LINE') {
-      if (itemsMap.has('PAC')) targets.pace = itemsMap.get('PAC')!;
-      if (itemsMap.has('SHO')) targets.shooting = itemsMap.get('SHO')!;
-      if (itemsMap.has('PAS')) targets.passing = itemsMap.get('PAS')!;
-      if (itemsMap.has('DRI')) {
-        const v = itemsMap.get('DRI')!;
-        targets.dribbling = v;
-        targets.ballControl = v;
-      }
-      if (itemsMap.has('DEF')) targets.defense = itemsMap.get('DEF')!;
-      if (itemsMap.has('PHY')) targets.physical = itemsMap.get('PHY')!;
-      // 'DIS' (disciplina) não mapeia diretamente em PlayerSkill; ignorado no skill
-    } else {
-      // GOALKEEPER
-      const defParts: number[] = [];
-      for (const k of ['REF', 'COL', 'MAO', 'MER'] as const)
-        if (itemsMap.has(k)) defParts.push(itemsMap.get(k)!);
-      if (defParts.length) targets.defense = defParts.reduce((a, b) => a + b, 0) / defParts.length;
-      if (itemsMap.has('JCP')) targets.passing = itemsMap.get('JCP')!;
-      if (itemsMap.has('PHY')) targets.physical = itemsMap.get('PHY')!;
-      // 'DIS' ignorado
-    }
-    // Sempre atualizar 'attack' com o overall (equilíbrio ofensivo geral)
-    targets.attack = Number(overall);
-
-    const next: Record<SkillKeys, number> = { ...base };
-    for (const key of Object.keys(targets) as SkillKeys[]) {
-      const t = targets[key]!;
-      next[key] = clamp(base[key] * (1 - alpha) + t * alpha);
-    }
-
-    if (existing) {
-      await prisma.playerSkill.update({
-        where: { playerId: assignment.targetPlayerId },
-        data: next,
-      });
-    } else {
-      await prisma.playerSkill.create({
-        data: {
-          playerId: assignment.targetPlayerId,
-          preferredFoot: 'RIGHT',
-          ...next,
-        },
-      });
-    }
-
-    return res.status(201).json({ id: evalRec.id, overallScore: overall });
   } catch (e) {
-    console.error('[submit_evaluation_v2_error]', (e as Error).message);
+    console.error('[list_pending_evaluations_error]', (e as Error).message);
     return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });

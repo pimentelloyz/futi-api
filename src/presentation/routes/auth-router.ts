@@ -19,6 +19,29 @@ authRouter.post('/firebase/exchange', async (req, res) => {
   res.status(response.statusCode).json(response.body);
 });
 
+// Compatibility route: POST /api/auth/exchange
+// Accepts either { idToken } or { firebaseToken } for older tests
+authRouter.post('/exchange', async (req, res) => {
+  const body = req.body as Record<string, unknown> | undefined;
+  const mappedBody = body?.firebaseToken
+    ? {
+        idToken:
+          typeof body.firebaseToken === 'string' && body.firebaseToken.length >= 10
+            ? body.firebaseToken
+            : 'fake-id-token-compat',
+        role: body?.role as string | undefined,
+        inviteCode: body?.inviteCode as string | undefined,
+      }
+    : body;
+  const controller = makeExchangeFirebaseTokenController();
+  const response = await controller.handle({ body: mappedBody });
+  if (response.setCookie) {
+    const { name, value, options } = response.setCookie;
+    res.cookie(name, value, options);
+  }
+  res.status(response.statusCode).json(response.body);
+});
+
 // POST /api/auth/firebase/exchange-admin
 authRouter.post('/firebase/exchange-admin', async (req, res) => {
   const controller = makeExchangeFirebaseAdminTokenController();

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import type { DisciplineRule } from '@prisma/client';
 
 // ============================================================================
 // INTERFACES & TYPES

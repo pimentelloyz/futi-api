@@ -19,28 +19,15 @@ export class TeamAddPlayerController {
       if (!team || team.isActive === false)
         return { statusCode: 404, body: { error: ERROR_CODES.TEAM_NOT_FOUND } };
       try {
-        const db1 = prisma as unknown as {
-          player: { update: (args: Record<string, unknown>) => Promise<unknown> };
-        };
-        await db1.player.update({
+        await prisma.player.update({
           where: { id: playerId },
-          data: { teams: { connect: [{ id: teamId }] } },
+          data: { teams: { create: { teamId } } },
         });
-      } catch (err1) {
-        const msg1 = (err1 as Error).message || '';
-        try {
-          const db2 = prisma as unknown as {
-            player: { update: (args: Record<string, unknown>) => Promise<unknown> };
-          };
-          await db2.player.update({
-            where: { id: playerId },
-            data: { teams: { create: { teamId } } },
-          });
-        } catch (err2) {
-          const msg2 = (err2 as Error).message || '';
-          if (!/unique/i.test(msg1) && !/unique/i.test(msg2))
-            return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
-        }
+      } catch (err) {
+        const msg = (err as Error).message || '';
+        if (!/unique/i.test(msg))
+          return { statusCode: 500, body: { error: ERROR_CODES.INTERNAL_ERROR } };
+        // se já existe, consideramos idempotente e retornamos 204
       }
       return { statusCode: 204, body: undefined };
     } catch (e) {
