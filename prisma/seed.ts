@@ -1,5 +1,4 @@
 import { PrismaClient, MatchEventType } from '@prisma/client';
-import { seedLeagues } from './seeds/leagues.seed.js';
 
 // Prefer DIRECT_URL (5432) para evitar problemas de PgBouncer (porta 6543) em seeds pesados.
 // Se DIRECT_URL não estiver definido, cai no DATABASE_URL.
@@ -59,6 +58,361 @@ function resolveFirebaseUid(): string {
 }
 
 const SEED_FIREBASE_UID = resolveFirebaseUid();
+
+// ============================================================================
+// LEAGUES SEED - Inline consolidation from leagues.seed.ts
+// ============================================================================
+
+interface LeagueConfig {
+  name: string;
+  slug: string;
+  description: string;
+  isPublic: boolean;
+  teamsCount: number;
+  startAt: Date;
+  endAt: Date;
+}
+
+const LEAGUE_CONFIGS: LeagueConfig[] = [
+  // 3 PÚBLICAS
+  {
+    name: 'Copa Brasil Amateur',
+    slug: 'copa-brasil-amateur',
+    description: 'Campeonato aberto para times amadores de todo o Brasil',
+    isPublic: true,
+    teamsCount: 16,
+    startAt: new Date('2024-03-01'),
+    endAt: new Date('2024-11-30'),
+  },
+  {
+    name: 'Liga Estadual Aberta',
+    slug: 'liga-estadual-aberta',
+    description: 'Liga estadual com inscrições abertas para todos os times',
+    isPublic: true,
+    teamsCount: 12,
+    startAt: new Date('2024-02-15'),
+    endAt: new Date('2024-10-15'),
+  },
+  {
+    name: 'Campeonato Regional Sul',
+    slug: 'campeonato-regional-sul',
+    description: 'Torneio regional aberto para times do sul do país',
+    isPublic: true,
+    teamsCount: 10,
+    startAt: new Date('2024-04-01'),
+    endAt: new Date('2024-09-30'),
+  },
+  // 7 PRIVADAS/FECHADAS
+  {
+    name: 'Liga Master Profissional',
+    slug: 'liga-master-profissional',
+    description: 'Liga exclusiva para times profissionais certificados',
+    isPublic: false,
+    teamsCount: 20,
+    startAt: new Date('2024-01-15'),
+    endAt: new Date('2024-12-15'),
+  },
+  {
+    name: 'Copa Elite Empresarial',
+    slug: 'copa-elite-empresarial',
+    description: 'Torneio exclusivo para times de empresas parceiras',
+    isPublic: false,
+    teamsCount: 8,
+    startAt: new Date('2024-03-10'),
+    endAt: new Date('2024-08-10'),
+  },
+  {
+    name: 'Liga Universitária Privada',
+    slug: 'liga-universitaria-privada',
+    description: 'Liga restrita para times de universidades conveniadas',
+    isPublic: false,
+    teamsCount: 14,
+    startAt: new Date('2024-02-20'),
+    endAt: new Date('2024-11-20'),
+  },
+  {
+    name: 'Torneio VIP Convidados',
+    slug: 'torneio-vip-convidados',
+    description: 'Torneio exclusivo por convite para times selecionados',
+    isPublic: false,
+    teamsCount: 6,
+    startAt: new Date('2024-05-01'),
+    endAt: new Date('2024-07-31'),
+  },
+  {
+    name: 'Liga Premium Sócio-Torcedor',
+    slug: 'liga-premium-socio-torcedor',
+    description: 'Liga exclusiva para times de sócios-torcedores premium',
+    isPublic: false,
+    teamsCount: 12,
+    startAt: new Date('2024-03-15'),
+    endAt: new Date('2024-10-30'),
+  },
+  {
+    name: 'Copa Empresas Tech',
+    slug: 'copa-empresas-tech',
+    description: 'Campeonato fechado para empresas do setor de tecnologia',
+    isPublic: false,
+    teamsCount: 8,
+    startAt: new Date('2024-04-05'),
+    endAt: new Date('2024-09-05'),
+  },
+  {
+    name: 'Liga Clube dos Campeões',
+    slug: 'liga-clube-dos-campeoes',
+    description: 'Liga exclusiva para times campeões de edições anteriores',
+    isPublic: false,
+    teamsCount: 10,
+    startAt: new Date('2024-01-20'),
+    endAt: new Date('2024-12-20'),
+  },
+];
+
+const TEAM_NAMES = [
+  // Times brasileiros clássicos
+  'Flamengo da Vila', 'Corinthians do Bairro', 'São Paulo FC Amador', 'Palmeiras Jovem',
+  'Santos Praia', 'Vasco da Gama Local', 'Grêmio Porto', 'Internacional Gaúcho',
+  'Cruzeiro Mineiro', 'Atlético MG Jovem', 'Botafogo RJ', 'Fluminense Tricolor',
+  // Times internacionais adaptados
+  'Barcelona Brasil', 'Real Madrid Local', 'Manchester City', 'Liverpool FC Amateur',
+  'Bayern Munich Brasil', 'Juventus Brasileiro', 'PSG Parisiense', 'Chelsea Brasil',
+  // Times amadores criativos
+  'Raio Verde FC', 'Águias Douradas', 'Leões do Norte', 'Tigres do Sul',
+  'Falcões do Leste', 'Dragões do Oeste', 'Unidos da Bola', 'Estrela da Manhã',
+  'Furacão Azul', 'Relâmpago Vermelho', 'Trovão Branco', 'Tempestade Negra',
+  // Times regionais brasileiros
+  'Vitória BA', 'Bahia Tradicional', 'Sport Recife', 'Náutico PE',
+  'Fortaleza CE', 'Ceará SC', 'Goiás EC', 'Atlético GO',
+  'Coritiba PR', 'Athletico Paranaense', 'Avaí SC', 'Figueirense SC',
+  // Times temáticos
+  'Academia de Futebol', 'Escola de Craques', 'Fábrica de Talentos', 'Cantera Brasileira',
+  'Juventude FC', 'Promessas do Futuro', 'Nova Geração', 'Futuro Campeão',
+  'Guerreiros FC', 'Gladiadores', 'Espartanos', 'Centuriões',
+  'Titãs do Campo', 'Gigantes da Bola', 'Colosos FC', 'Hércules United',
+  // Times adicionais para completar
+  'Pioneiros FC', 'Vanguarda Esportiva', 'Elite Sports', 'Champions United',
+  'Victory FC', 'Triumph United', 'Glory Sports', 'Honor FC',
+  'Bravos da Bola', 'Audazes FC', 'Destemidos United', 'Intrépidos SC',
+  'Campeões do Povo', 'Unidos Venceremos', 'Juntos FC', 'União Esportiva',
+  'Esperança FC', 'Sonho Campeão', 'Destino Glorioso', 'Legado FC',
+  'Tradição Esportiva', 'História Viva FC', 'Raízes do Futebol', 'Cultura Bola',
+];
+
+const FIRST_NAMES = [
+  'João', 'Pedro', 'Lucas', 'Gabriel', 'Rafael', 'Bruno', 'Thiago', 'Matheus',
+  'André', 'Felipe', 'Gustavo', 'Rodrigo', 'Diego', 'Carlos', 'Fernando', 'Marcelo',
+  'Ricardo', 'Paulo', 'Renato', 'Roberto', 'Sandro', 'Vitor', 'Wellington', 'Daniel',
+  'Leandro', 'Leonardo', 'Márcio', 'Fábio', 'Alexandre', 'Vinícius', 'Caio', 'Renan',
+];
+
+const LAST_NAMES = [
+  'Silva', 'Santos', 'Oliveira', 'Souza', 'Rodrigues', 'Ferreira', 'Alves', 'Pereira',
+  'Lima', 'Gomes', 'Costa', 'Ribeiro', 'Martins', 'Carvalho', 'Rocha', 'Almeida',
+  'Nascimento', 'Araújo', 'Melo', 'Barbosa', 'Cardoso', 'Correia', 'Dias', 'Fernandes',
+  'Freitas', 'Gonçalves', 'Lopes', 'Mendes', 'Monteiro', 'Moreira', 'Nunes', 'Ramos',
+];
+
+const POSITION_SLUGS = [
+  'GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'ST', 'CF',
+];
+
+function generatePlayerName(): string {
+  const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+  const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+  return `${firstName} ${lastName}`;
+}
+
+function generateRandomPositionSlug(): string {
+  return POSITION_SLUGS[Math.floor(Math.random() * POSITION_SLUGS.length)];
+}
+
+function generateRandomDate(start: Date, end: Date): Date {
+  const startTime = start.getTime();
+  const endTime = end.getTime();
+  const randomTime = startTime + Math.random() * (endTime - startTime);
+  return new Date(randomTime);
+}
+
+const usedTeamNames = new Set<string>();
+function getUniqueTeamName(): string {
+  const availableNames = TEAM_NAMES.filter(name => !usedTeamNames.has(name));
+  if (availableNames.length === 0) {
+    const uniqueName = `Time ${Math.random().toString(36).substr(2, 9)}`;
+    usedTeamNames.add(uniqueName);
+    return uniqueName;
+  }
+  const name = availableNames[Math.floor(Math.random() * availableNames.length)];
+  usedTeamNames.add(name);
+  return name;
+}
+
+async function seedLeagues(prisma: PrismaClient) {
+  console.log('\n[seed-leagues] ========================================');
+  console.log('[seed-leagues] Iniciando seed de 10 ligas (3 públicas + 7 privadas)');
+  console.log('[seed-leagues] ========================================\n');
+
+  let totalTeams = 0;
+  let totalPlayers = 0;
+  let totalMatches = 0;
+
+  for (const leagueConfig of LEAGUE_CONFIGS) {
+    console.log(`\n[seed-leagues] Processando liga: ${leagueConfig.name} (${leagueConfig.isPublic ? 'PÚBLICA' : 'PRIVADA'})`);
+    
+    // Criar ou buscar liga
+    let league = await prisma.league.findFirst({
+      where: { slug: leagueConfig.slug },
+    });
+
+    if (!league) {
+      league = await prisma.league.create({
+        data: {
+          name: leagueConfig.name,
+          slug: leagueConfig.slug,
+          description: leagueConfig.description,
+          isPublic: leagueConfig.isPublic,
+          isActive: true,
+          startAt: leagueConfig.startAt,
+          endAt: leagueConfig.endAt,
+        },
+      });
+      console.log(`[seed-leagues]   ✓ Liga criada: ${league.name} (ID: ${league.id})`);
+    } else {
+      console.log(`[seed-leagues]   ℹ Liga já existe: ${league.name} (ID: ${league.id})`);
+    }
+
+    // Criar times para esta liga
+    const teamIds: string[] = [];
+    for (let i = 0; i < leagueConfig.teamsCount; i++) {
+      const teamName = getUniqueTeamName();
+      
+      let team = await prisma.team.findFirst({
+        where: { name: teamName },
+      });
+
+      if (!team) {
+        team = await prisma.team.create({
+          data: {
+            name: teamName,
+            isActive: true,
+          },
+        });
+        totalTeams++;
+        console.log(`[seed-leagues]     ✓ Time criado: ${team.name}`);
+      }
+
+      teamIds.push(team.id);
+
+      // Associar time à liga via LeagueTeam
+      const existingLink = await prisma.leagueTeam.findFirst({
+        where: {
+          leagueId: league.id,
+          teamId: team.id,
+        },
+      });
+
+      if (!existingLink) {
+        await prisma.leagueTeam.create({
+          data: {
+            leagueId: league.id,
+            teamId: team.id,
+            division: 'A',
+          },
+        });
+      }
+
+      // Criar jogadores para este time (18 jogadores por time)
+      const playersPerTeam = 18;
+      for (let j = 0; j < playersPerTeam; j++) {
+        const playerName = `${generatePlayerName()} (${teamName})`;
+        const positionSlug = j === 0 ? 'GK' : generateRandomPositionSlug();
+
+        const existingPlayer = await prisma.player.findFirst({
+          where: { name: playerName },
+        });
+
+        if (!existingPlayer) {
+          const player = await prisma.player.create({
+            data: {
+              name: playerName,
+              isActive: true,
+              positionSlug,
+            },
+          });
+
+          await prisma.playersOnTeams.create({
+            data: {
+              playerId: player.id,
+              teamId: team.id,
+            },
+          });
+
+          totalPlayers++;
+        }
+      }
+    }
+
+    console.log(`[seed-leagues]   ✓ ${teamIds.length} times criados/vinculados para ${league.name}`);
+    console.log(`[seed-leagues]   ✓ ~${teamIds.length * 18} jogadores criados para ${league.name}`);
+
+    // Criar partidas (round-robin simplificado com 5 rodadas)
+    const matchesPerRound = Math.floor(teamIds.length / 2);
+    const totalRounds = 5;
+    const matchStatuses: Array<'SCHEDULED' | 'FINISHED' | 'IN_PROGRESS' | 'CANCELED'> = [
+      'SCHEDULED', 'FINISHED', 'IN_PROGRESS', 'CANCELED',
+    ];
+
+    for (let round = 0; round < totalRounds; round++) {
+      for (let matchIndex = 0; matchIndex < matchesPerRound; matchIndex++) {
+        const homeTeamIndex = (matchIndex * 2) % teamIds.length;
+        const awayTeamIndex = (matchIndex * 2 + 1) % teamIds.length;
+
+        const homeTeamId = teamIds[homeTeamIndex];
+        const awayTeamId = teamIds[awayTeamIndex];
+
+        const scheduledAt = generateRandomDate(leagueConfig.startAt, leagueConfig.endAt);
+        const status = matchStatuses[Math.floor(Math.random() * matchStatuses.length)];
+
+        const existingMatch = await prisma.match.findFirst({
+          where: {
+            leagueId: league.id,
+            homeTeamId,
+            awayTeamId,
+            scheduledAt,
+          },
+        });
+
+        if (!existingMatch) {
+          await prisma.match.create({
+            data: {
+              leagueId: league.id,
+              homeTeamId,
+              awayTeamId,
+              scheduledAt,
+              status,
+              homeScore: status === 'FINISHED' ? Math.floor(Math.random() * 4) : undefined,
+              awayScore: status === 'FINISHED' ? Math.floor(Math.random() * 4) : undefined,
+            },
+          });
+          totalMatches++;
+        }
+      }
+    }
+
+    console.log(`[seed-leagues]   ✓ ~${matchesPerRound * totalRounds} partidas criadas para ${league.name}\n`);
+  }
+
+  console.log('\n[seed-leagues] ========================================');
+  console.log('[seed-leagues] Seed de ligas concluído!');
+  console.log(`[seed-leagues] Total de ligas: ${LEAGUE_CONFIGS.length}`);
+  console.log(`[seed-leagues] Total de times: ~${totalTeams}`);
+  console.log(`[seed-leagues] Total de jogadores: ~${totalPlayers}`);
+  console.log(`[seed-leagues] Total de partidas: ~${totalMatches}`);
+  console.log('[seed-leagues] ========================================\n');
+}
+
+// ============================================================================
+// END OF LEAGUES SEED
+// ============================================================================
 
 async function main() {
   // Ensure user exists (by email or firebaseUid)
