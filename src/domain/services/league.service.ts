@@ -168,6 +168,16 @@ export class LeagueService {
         orderBy: { [orderByField]: order } as never,
         skip,
         take: pageSize,
+        include: {
+          format: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              type: true,
+            },
+          },
+        },
       }),
     ]);
 
@@ -186,6 +196,20 @@ export class LeagueService {
   async getLeagueById(id: string): Promise<League | null> {
     return this.prisma.league.findUnique({
       where: { id },
+      include: {
+        format: {
+          include: {
+            phases: {
+              orderBy: { order: 'asc' },
+              include: {
+                tiebreakRules: {
+                  orderBy: { order: 'asc' },
+                },
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -195,6 +219,20 @@ export class LeagueService {
   async getLeagueBySlug(slug: string): Promise<League | null> {
     return this.prisma.league.findUnique({
       where: { slug },
+      include: {
+        format: {
+          include: {
+            phases: {
+              orderBy: { order: 'asc' },
+              include: {
+                tiebreakRules: {
+                  orderBy: { order: 'asc' },
+                },
+              },
+            },
+          },
+        },
+      },
     });
   }
 

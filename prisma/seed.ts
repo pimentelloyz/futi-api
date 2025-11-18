@@ -1,4 +1,5 @@
 import { PrismaClient, MatchEventType } from '@prisma/client';
+import { seedLeagueFormats } from './seeds/league-formats.seed.js';
 
 // Prefer DIRECT_URL (5432) para evitar problemas de PgBouncer (porta 6543) em seeds pesados.
 // Se DIRECT_URL não estiver definido, cai no DATABASE_URL.
@@ -1111,6 +1112,14 @@ async function main() {
     await seedLeagues(prisma);
   } else {
     console.log('[seed] Pulando seed de ligas (SEED_LEAGUES=false)');
+  }
+
+  // Seed de formatos de campeonato (Copa do Brasil, Libertadores, etc.)
+  const shouldSeedFormats = process.env.SEED_FORMATS !== 'false';
+  if (shouldSeedFormats) {
+    await seedLeagueFormats(prisma);
+  } else {
+    console.log('[seed] Pulando seed de formatos (SEED_FORMATS=false)');
   }
 }
 

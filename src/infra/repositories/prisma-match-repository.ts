@@ -54,6 +54,20 @@ export class PrismaMatchRepository implements MatchRepository {
           status: true,
           homeScore: true,
           awayScore: true,
+          homeTeam: {
+            select: {
+              id: true,
+              name: true,
+              icon: true,
+            },
+          },
+          awayTeam: {
+            select: {
+              id: true,
+              name: true,
+              icon: true,
+            },
+          },
         },
       }),
     ]);

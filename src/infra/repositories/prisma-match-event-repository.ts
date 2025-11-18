@@ -29,6 +29,15 @@ export class PrismaMatchEventRepository {
     return prisma.matchEvent.findMany({
       where: { matchId },
       orderBy: { createdAt: 'asc' },
+      include: {
+        player: {
+          select: {
+            id: true,
+            name: true,
+            positionSlug: true,
+          },
+        },
+      },
     });
   }
 }

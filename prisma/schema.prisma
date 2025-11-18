@@ -23,9 +23,9 @@ model Team {
   accessMemberships AccessMembership[]
   matchEvents MatchEvent[]
   lineupEntries MatchLineupEntry[]
-  // Relations for league structures
   leagueTeams LeagueTeam[]
   leagueGroupTeams LeagueGroupTeam[]
+  standings   LeagueStanding[]
   invitationCodes InvitationCode[]
 }
 
@@ -331,25 +331,33 @@ model PlayersOnTeams {
 
 // League / Championship structure
 model League {
-  id          String    @id @default(uuid())
-  name        String    @db.VarChar(191)
-  slug        String    @unique @db.VarChar(191)
-  description String?   @db.VarChar(255)
-  icon        String?   @db.VarChar(255)
-  banner      String?   @db.VarChar(255)
+  id          String        @id @default(uuid())
+  name        String        @db.VarChar(191)
+  slug        String        @unique @db.VarChar(191)
+  description String?       @db.VarChar(255)
+  icon        String?       @db.VarChar(255)
+  banner      String?       @db.VarChar(255)
   startAt     DateTime?
   endAt       DateTime?
-  isActive    Boolean   @default(true)
-  isPublic    Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isActive    Boolean       @default(true)
+  isPublic    Boolean       @default(false)
+  
+  // Formato do campeonato
+  format      LeagueFormat? @relation("LeagueFormat", fields: [formatId], references: [id])
+  formatId    String?
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   teams       LeagueTeam[]
   groups      LeagueGroup[]
   invitations LeagueInvitation[]
   accessMemberships AccessMembership[]
-  // Matches that belong to this league (optional relation from Match)
   matches     Match[]
+  phases      LeaguePhase[]
+  disciplineRule DisciplineRule?
+
+  @@index([formatId])
 }
 
 // Invitations for leagues: allows admin/managers to create invite codes
@@ -383,15 +391,19 @@ model LeagueTeam {
 }
 
 model LeagueGroup {
-  id        String    @id @default(uuid())
-  league    League    @relation(fields: [leagueId], references: [id])
+  id        String       @id @default(uuid())
+  league    League       @relation(fields: [leagueId], references: [id])
   leagueId  String
-  name      String    @db.VarChar(100)
-  createdAt DateTime  @default(now())
+  phase     LeaguePhase? @relation("PhaseGroups", fields: [phaseId], references: [id])
+  phaseId   String?
+  name      String       @db.VarChar(100)
+  createdAt DateTime     @default(now())
 
   teams     LeagueGroupTeam[]
-  // Matches that belong to this group (optional relation from Match)
   matches   Match[]
+  standings LeagueStanding[]
+
+  @@index([phaseId])
 }
 
 model LeagueGroupTeam {
@@ -423,3 +435,200 @@ model InvitationCode {
 
   @@index([teamId])
 }
+
+// ============================================================================
+// LEAGUE FORMATS & TOURNAMENT STRUCTURES
+// ============================================================================
+
+enum LeagueFormatType {
+  ROUND_ROBIN    // Pontos corridos (Brasileirão)
+  KNOCKOUT       // Mata-mata puro (Copa do Brasil primeiras fases)
+  MIXED          // Grupos + Mata-mata (Libertadores, Copa do Mundo)
+  LEAGUE_PHASE   // Fase de liga única (Champions League novo formato)
+  CUSTOM         // Personalizado
+}
+
+enum PhaseType {
+  GROUP_STAGE    // Fase de grupos
+  KNOCKOUT       // Mata-mata
+  LEAGUE         // Liga/Pontos corridos
+  PLAYOFF        // Playoff/Repescagem
+}
+
+enum TiebreakCriterion {
+  POINTS              // Pontos
+  WINS                // Vitórias
+  GOAL_DIFFERENCE     // Saldo de gols
+  GOALS_FOR           // Gols marcados
+  GOALS_AGAINST       // Gols sofridos
+  HEAD_TO_HEAD_POINTS // Confronto direto (pontos)
+  HEAD_TO_HEAD_GOAL_DIFF // Confronto direto (saldo)
+  HEAD_TO_HEAD_GOALS_FOR // Confronto direto (gols marcados)
+  HEAD_TO_HEAD_GOALS_AWAY // Confronto direto (gols fora)
+  AWAY_GOALS          // Gols fora (geral)
+  WINS_AWAY           // Vitórias fora
+  FAIR_PLAY           // Fair play (menos cartões)
+  RED_CARDS           // Cartões vermelhos (menos)
+  YELLOW_CARDS        // Cartões amarelos (menos)
+  DRAW                // Sorteio
+  UEFA_COEFFICIENT    // Coeficiente (para competições UEFA)
+}
+
+// Template de formato (pré-configurações como Copa do Brasil, Libertadores, etc)
+model LeagueFormat {
+  id          String            @id @default(uuid())
+  name        String            @db.VarChar(100)
+  slug        String            @unique @db.VarChar(100)
+  description String?           @db.Text
+  type        LeagueFormatType
+  isTemplate  Boolean           @default(true) // Se é um template reutilizável
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relação com ligas que usam este formato
+  leagues     League[]          @relation("LeagueFormat")
+  phases      LeaguePhaseConfig[]
+  
+  @@index([slug])
+  @@index([isTemplate])
+}
+
+// Configuração de fases para um formato (ex: Fase de Grupos, Oitavas, Quartas, etc)
+model LeaguePhaseConfig {
+  id              String       @id @default(uuid())
+  format          LeagueFormat @relation(fields: [formatId], references: [id], onDelete: Cascade)
+  formatId        String
+  name            String       @db.VarChar(100)
+  order           Int          // Ordem da fase (1, 2, 3...)
+  type            PhaseType
+  
+  // Configurações da fase
+  teamsCount      Int?         // Número de times nesta fase (null = calculado)
+  groupsCount     Int?         // Número de grupos (se type = GROUP_STAGE)
+  teamsPerGroup   Int?         // Times por grupo
+  hasHomeAway     Boolean      @default(true)  // Ida e volta?
+  hasExtraTime    Boolean      @default(false) // Prorrogação?
+  hasPenalties    Boolean      @default(false) // Pênaltis?
+  hasAwayGoal     Boolean      @default(false) // Gol fora vale?
+  
+  // Avanço/Eliminação
+  advancingTeams  Int?         // Quantos avançam desta fase
+  advancingFrom   String?      @db.VarChar(50) // De onde vêm (ex: "TOP_2_EACH_GROUP", "TOP_8", "WINNERS")
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  // Instâncias reais de fases criadas para ligas específicas
+  phases          LeaguePhase[]
+  tiebreakRules   TiebreakRule[]
+
+  @@index([formatId])
+  @@index([order])
+}
+
+// Instância real de uma fase em uma liga específica
+model LeaguePhase {
+  id              String             @id @default(uuid())
+  league          League             @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  leagueId        String
+  config          LeaguePhaseConfig? @relation(fields: [configId], references: [id])
+  configId        String?
+  
+  name            String             @db.VarChar(100)
+  order           Int
+  type            PhaseType
+  status          String             @default("NOT_STARTED") @db.VarChar(20) // NOT_STARTED, IN_PROGRESS, COMPLETED
+  
+  startDate       DateTime?
+  endDate         DateTime?
+  
+  // Configurações (podem sobrescrever o config se necessário)
+  hasHomeAway     Boolean            @default(true)
+  hasExtraTime    Boolean            @default(false)
+  hasPenalties    Boolean            @default(false)
+  
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  
+  groups          LeagueGroup[]      @relation("PhaseGroups")
+  standings       LeagueStanding[]
+
+  @@unique([leagueId, order])
+  @@index([leagueId])
+  @@index([status])
+}
+
+// Critérios de desempate (ordenados por prioridade)
+model TiebreakRule {
+  id         String             @id @default(uuid())
+  config     LeaguePhaseConfig  @relation(fields: [configId], references: [id], onDelete: Cascade)
+  configId   String
+  order      Int                // Ordem de aplicação (1º, 2º, 3º critério)
+  criterion  TiebreakCriterion
+  createdAt  DateTime           @default(now())
+
+  @@unique([configId, order])
+  @@index([configId])
+}
+
+// Regras disciplinares (cartões)
+model DisciplineRule {
+  id                        String   @id @default(uuid())
+  league                    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  leagueId                  String   @unique
+  
+  yellowCardsForSuspension  Int      @default(3) // Quantos amarelos = suspensão
+  yellowCardsAccumulation   Boolean  @default(true) // Acumula amarelos?
+  resetYellowsAfterPhaseOrder Int?   // Zera amarelos após qual fase? (null = não zera)
+  
+  redCardMinimumGames       Int      @default(1) // Mínimo de jogos por vermelho direto
+  doubleYellowGames         Int      @default(1) // Jogos de suspensão por 2 amarelos na mesma partida
+  
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@index([leagueId])
+}
+
+// Tabela de classificação (standings) por fase
+model LeagueStanding {
+  id              String      @id @default(uuid())
+  phase           LeaguePhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  phaseId         String
+  team            Team        @relation(fields: [teamId], references: [id])
+  teamId          String
+  group           LeagueGroup? @relation(fields: [groupId], references: [id])
+  groupId         String?
+  
+  // Estatísticas
+  position        Int?
+  played          Int         @default(0)
+  wins            Int         @default(0)
+  draws           Int         @default(0)
+  losses          Int         @default(0)
+  goalsFor        Int         @default(0)
+  goalsAgainst    Int         @default(0)
+  goalDifference  Int         @default(0)
+  points          Int         @default(0)
+  
+  // Estatísticas casa/fora
+  winsHome        Int         @default(0)
+  winsAway        Int         @default(0)
+  goalsHome       Int         @default(0)
+  goalsAway       Int         @default(0)
+  
+  // Disciplina
+  yellowCards     Int         @default(0)
+  redCards        Int         @default(0)
+  
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([phaseId, teamId, groupId])
+  @@index([phaseId])
+  @@index([teamId])
+  @@index([groupId])
+}
+
+// ============================================================================
+// UPDATE EXISTING MODELS
+// ============================================================================

@@ -13,6 +13,7 @@ import { leaguesRouter } from '../presentation/routes/leagues-router.js';
 import { invitationCodesRouter } from '../presentation/routes/invitation-codes-router.js';
 import { disciplineRouter } from '../presentation/routes/discipline-router.js';
 import { auditRoutes } from '../presentation/routes/audit.routes.js';
+import { leagueFormatsRouter } from '../presentation/routes/league-formats-router.js';
 
 import { openapi } from './docs/openapi.js';
 import { rbacComponents, rbacRolesDocumentation } from './docs/rbac-openapi.js';
@@ -30,6 +31,7 @@ export function setupRoutes(app: Express) {
   app.use('/api/invites', invitationCodesRouter);
   app.use('/api/discipline', disciplineRouter);
   app.use('/api/admin/audit', auditRoutes);
+  app.use('/api', leagueFormatsRouter);
   app.get('/health', (_req, res) =>
     res.json({ status: 'ok', timestamp: new Date().toISOString() }),
   );

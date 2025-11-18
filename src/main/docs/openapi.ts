@@ -2799,5 +2799,481 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/formats': {
+      get: {
+        summary: 'Listar formatos de campeonato',
+        description:
+          'Lista todos os formatos de campeonato disponíveis (templates e personalizados)',
+        tags: ['League Formats'],
+        parameters: [
+          {
+            name: 'templatesOnly',
+            in: 'query',
+            schema: { type: 'boolean' },
+            description: 'Se true, retorna apenas templates pré-configurados (default: false)',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Lista de formatos',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      name: { type: 'string' },
+                      slug: { type: 'string' },
+                      type: {
+                        type: 'string',
+                        enum: ['ROUND_ROBIN', 'KNOCKOUT', 'MIXED', 'LEAGUE_PHASE', 'CUSTOM'],
+                      },
+                      description: { type: 'string', nullable: true },
+                      isTemplate: { type: 'boolean' },
+                      phases: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'string' },
+                            name: { type: 'string' },
+                            order: { type: 'integer' },
+                            type: {
+                              type: 'string',
+                              enum: ['GROUP_STAGE', 'KNOCKOUT', 'LEAGUE', 'PLAYOFF'],
+                            },
+                            teamsCount: { type: 'integer', nullable: true },
+                            groupsCount: { type: 'integer', nullable: true },
+                            hasHomeAway: { type: 'boolean' },
+                            hasExtraTime: { type: 'boolean' },
+                            hasPenalties: { type: 'boolean' },
+                            advancingTeams: { type: 'integer', nullable: true },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '500': { description: 'Internal Error' },
+        },
+      },
+      post: {
+        summary: 'Criar novo formato de campeonato',
+        description:
+          'Cria um novo formato personalizado com suas fases e regras de desempate (apenas ADMIN)',
+        tags: ['League Formats'],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name', 'slug', 'type', 'phases'],
+                properties: {
+                  name: { type: 'string', example: 'Copa Regional' },
+                  slug: { type: 'string', example: 'copa-regional' },
+                  type: {
+                    type: 'string',
+                    enum: ['ROUND_ROBIN', 'KNOCKOUT', 'MIXED', 'LEAGUE_PHASE', 'CUSTOM'],
+                  },
+                  description: { type: 'string', nullable: true },
+                  isTemplate: { type: 'boolean', default: true },
+                  phases: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      required: ['name', 'order', 'type', 'tiebreakRules'],
+                      properties: {
+                        name: { type: 'string' },
+                        order: { type: 'integer', minimum: 1 },
+                        type: {
+                          type: 'string',
+                          enum: ['GROUP_STAGE', 'KNOCKOUT', 'LEAGUE', 'PLAYOFF'],
+                        },
+                        teamsCount: { type: 'integer', nullable: true },
+                        groupsCount: { type: 'integer', nullable: true },
+                        hasHomeAway: { type: 'boolean', default: false },
+                        hasExtraTime: { type: 'boolean', default: false },
+                        hasPenalties: { type: 'boolean', default: false },
+                        hasAwayGoal: { type: 'boolean', default: false },
+                        advancingTeams: { type: 'integer', nullable: true },
+                        tiebreakRules: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              order: { type: 'integer' },
+                              criterion: {
+                                type: 'string',
+                                enum: [
+                                  'POINTS',
+                                  'WINS',
+                                  'GOAL_DIFFERENCE',
+                                  'GOALS_FOR',
+                                  'HEAD_TO_HEAD_POINTS',
+                                  'FAIR_PLAY',
+                                  'DRAW',
+                                ],
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Formato criado com sucesso' },
+          '400': { description: 'Dados inválidos' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden (não é ADMIN)' },
+          '409': { description: 'Slug já existe' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+    },
+    '/api/formats/{id}': {
+      get: {
+        summary: 'Obter detalhes de um formato',
+        tags: ['League Formats'],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'Formato encontrado' },
+          '404': { description: 'Formato não encontrado' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+      patch: {
+        summary: 'Atualizar metadados de um formato',
+        description: 'Atualiza nome, descrição e status de template (apenas ADMIN)',
+        tags: ['League Formats'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  description: { type: 'string', nullable: true },
+                  isTemplate: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Formato atualizado' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+          '404': { description: 'Formato não encontrado' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+      delete: {
+        summary: 'Deletar um formato',
+        description: 'Remove um formato se não estiver sendo usado por nenhuma liga (apenas ADMIN)',
+        tags: ['League Formats'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '204': { description: 'Formato deletado' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+          '404': { description: 'Formato não encontrado' },
+          '409': { description: 'Formato em uso por ligas' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+    },
+    '/api/leagues/{leagueId}/apply-format/{formatId}': {
+      post: {
+        summary: 'Aplicar formato a uma liga',
+        description:
+          'Aplica um formato template a uma liga, criando automaticamente suas fases (ADMIN ou LEAGUE_MANAGER)',
+        tags: ['League Formats'],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'leagueId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'formatId', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          '200': { description: 'Formato aplicado com sucesso' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+          '404': { description: 'Liga ou formato não encontrado' },
+          '409': { description: 'Liga já possui um formato' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+    },
+    '/api/leagues/{leagueId}/discipline-rules': {
+      get: {
+        summary: 'Obter regras de disciplina de uma liga',
+        tags: ['Discipline Rules'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'leagueId', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': {
+            description: 'Regras de disciplina',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    leagueId: { type: 'string' },
+                    yellowCardsForSuspension: { type: 'integer', example: 3 },
+                    yellowCardsAccumulation: { type: 'boolean' },
+                    resetYellowsAfterPhaseOrder: { type: 'integer', nullable: true },
+                    redCardMinimumGames: { type: 'integer', example: 1 },
+                    doubleYellowGames: { type: 'integer', example: 1 },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Regras não encontradas' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+      post: {
+        summary: 'Criar ou atualizar regras de disciplina',
+        description: 'Define ou atualiza regras de cartões para uma liga (ADMIN ou LEAGUE_MANAGER)',
+        tags: ['Discipline Rules'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'leagueId', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  yellowCardsForSuspension: { type: 'integer', example: 3 },
+                  resetYellowsAfterPhaseOrder: { type: 'integer', nullable: true, example: 4 },
+                  redCardMinimumGames: { type: 'integer', example: 1 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Regras criadas/atualizadas' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+          '404': { description: 'Liga não encontrada' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+    },
+    '/api/leagues/{leagueId}/players/{playerId}/suspension-check': {
+      get: {
+        summary: 'Verificar se jogador está suspenso',
+        description: 'Calcula automaticamente se um jogador está suspenso por acúmulo de cartões',
+        tags: ['Discipline Rules'],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'leagueId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'playerId', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          '200': {
+            description: 'Status de suspensão',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    playerId: { type: 'string' },
+                    isSuspended: { type: 'boolean' },
+                    reason: { type: 'string', nullable: true },
+                    suspensionGames: { type: 'integer', nullable: true },
+                    yellowCardsCount: { type: 'integer' },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Regras não encontradas' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+    },
+    '/api/phases/{phaseId}/standings': {
+      get: {
+        summary: 'Obter classificação de uma fase',
+        description: 'Retorna tabela de classificação ordenada por pontos',
+        tags: ['Standings'],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'phaseId', in: 'path', required: true, schema: { type: 'string' } },
+          {
+            name: 'groupId',
+            in: 'query',
+            schema: { type: 'string' },
+            description: 'Filtrar por grupo (opcional)',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Classificação',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      phaseId: { type: 'string' },
+                      teamId: { type: 'string' },
+                      position: { type: 'integer' },
+                      played: { type: 'integer' },
+                      wins: { type: 'integer' },
+                      draws: { type: 'integer' },
+                      losses: { type: 'integer' },
+                      goalsFor: { type: 'integer' },
+                      goalsAgainst: { type: 'integer' },
+                      goalDifference: { type: 'integer' },
+                      points: { type: 'integer' },
+                      team: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          name: { type: 'string' },
+                          icon: { type: 'string', nullable: true },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Unauthorized' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+      delete: {
+        summary: 'Deletar classificação de uma fase',
+        description: 'Remove toda a tabela de classificação (apenas ADMIN)',
+        tags: ['Standings'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'phaseId', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '204': { description: 'Classificação deletada' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+    },
+    '/api/phases/{phaseId}/standings/initialize': {
+      post: {
+        summary: 'Inicializar tabela de classificação',
+        description: 'Cria tabela zerada para todos os times de uma fase (ADMIN ou LEAGUE_MANAGER)',
+        tags: ['Standings'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'phaseId', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  groupId: { type: 'string', nullable: true },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Classificação inicializada' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+          '404': { description: 'Fase não encontrada' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+    },
+    '/api/phases/{phaseId}/standings/process-match': {
+      post: {
+        summary: 'Processar resultado de partida',
+        description:
+          'Atualiza classificação automaticamente com resultado de uma partida (ADMIN ou LEAGUE_MANAGER)',
+        tags: ['Standings'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'phaseId', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['homeTeamId', 'awayTeamId', 'homeScore', 'awayScore'],
+                properties: {
+                  homeTeamId: { type: 'string' },
+                  awayTeamId: { type: 'string' },
+                  homeScore: { type: 'integer' },
+                  awayScore: { type: 'integer' },
+                  homeYellowCards: { type: 'integer', default: 0 },
+                  awayYellowCards: { type: 'integer', default: 0 },
+                  homeRedCards: { type: 'integer', default: 0 },
+                  awayRedCards: { type: 'integer', default: 0 },
+                  groupId: { type: 'string', nullable: true },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Resultado processado' },
+          '400': { description: 'Dados inválidos' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+    },
+    '/api/phases/{phaseId}/standings/recalculate': {
+      post: {
+        summary: 'Recalcular posições da classificação',
+        description: 'Reordena a tabela aplicando critérios de desempate (ADMIN ou LEAGUE_MANAGER)',
+        tags: ['Standings'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'phaseId', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  groupId: { type: 'string', nullable: true },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Posições recalculadas' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+          '500': { description: 'Internal Error' },
+        },
+      },
+    },
   },
 };
