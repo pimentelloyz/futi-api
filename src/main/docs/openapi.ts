@@ -551,6 +551,123 @@ export const openapi: OpenAPIObject = {
         },
       },
     },
+    '/api/leagues/{id}/config-status': {
+      get: {
+        summary: 'Verificar status de configuração da liga',
+        description:
+          'Retorna lista de steps necessários para configurar a liga baseado no formato escolhido (Pontos Corridos, Copa do Brasil, Libertadores, etc). Cada step indica se foi completado e se é obrigatório.',
+        tags: ['Leagues'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': {
+            description: 'Status de configuração',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    leagueId: { type: 'string' },
+                    leagueName: { type: 'string' },
+                    formatName: { type: 'string' },
+                    formatType: {
+                      type: 'string',
+                      enum: ['ROUND_ROBIN', 'KNOCKOUT', 'MIXED', 'LEAGUE_PHASE', 'CUSTOM'],
+                    },
+                    isConfigured: {
+                      type: 'boolean',
+                      description: 'Se todos os steps obrigatórios foram completados',
+                    },
+                    completionPercentage: { type: 'integer', minimum: 0, maximum: 100 },
+                    steps: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string', description: 'Identificador único do step' },
+                          title: { type: 'string', description: 'Título do step' },
+                          description: { type: 'string', description: 'Descrição detalhada' },
+                          completed: { type: 'boolean', description: 'Se o step foi completado' },
+                          required: {
+                            type: 'boolean',
+                            description: 'Se o step é obrigatório',
+                          },
+                          order: { type: 'integer', description: 'Ordem de execução' },
+                        },
+                        required: ['id', 'title', 'description', 'completed', 'required', 'order'],
+                      },
+                    },
+                  },
+                  required: [
+                    'leagueId',
+                    'leagueName',
+                    'formatName',
+                    'formatType',
+                    'isConfigured',
+                    'completionPercentage',
+                    'steps',
+                  ],
+                },
+                example: {
+                  leagueId: 'league_123',
+                  leagueName: 'Brasileirão 2025',
+                  formatName: 'Pontos Corridos',
+                  formatType: 'ROUND_ROBIN',
+                  isConfigured: false,
+                  completionPercentage: 60,
+                  steps: [
+                    {
+                      id: 'league_created',
+                      title: 'Liga criada',
+                      description: 'A liga foi criada com sucesso',
+                      completed: true,
+                      required: true,
+                      order: 1,
+                    },
+                    {
+                      id: 'format_selected',
+                      title: 'Formato selecionado',
+                      description: 'Formato "Pontos Corridos" configurado',
+                      completed: true,
+                      required: true,
+                      order: 2,
+                    },
+                    {
+                      id: 'teams_confirmed',
+                      title: 'Times confirmados',
+                      description: '12/20 times confirmados na liga',
+                      completed: false,
+                      required: true,
+                      order: 3,
+                    },
+                    {
+                      id: 'invites_created',
+                      title: 'Criar convites',
+                      description: '3 convite(s) ativo(s) criado(s)',
+                      completed: true,
+                      required: false,
+                      order: 4,
+                    },
+                    {
+                      id: 'generate_fixtures',
+                      title: 'Gerar calendário de jogos',
+                      description: 'Gere as partidas de ida e volta',
+                      completed: false,
+                      required: true,
+                      order: 10,
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          '400': { description: 'Liga sem formato configurado' },
+          '401': { description: 'Não autorizado' },
+          '404': { description: 'Liga não encontrada' },
+          '500': { description: 'Erro interno' },
+        },
+      },
+    },
     '/health': {
       get: {
         summary: 'Health check',

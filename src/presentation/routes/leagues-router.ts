@@ -249,3 +249,23 @@ leaguesRouter.post(
     return controller.handleExpress(req, res);
   },
 );
+
+// Status de configuração da liga
+leaguesRouter.get(
+  '/:id/config-status',
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    const { LeagueConfigStatusController } = await import(
+      '../controllers/league-config-status-controller.js'
+    );
+    const controller = new LeagueConfigStatusController();
+    const httpRequest = {
+      params: req.params,
+      query: req.query as Record<string, unknown>,
+      body: req.body,
+      cookies: req.cookies,
+    };
+    const response = await controller.handle(httpRequest);
+    return res.status(response.statusCode).json(response.body);
+  },
+);

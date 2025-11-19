@@ -17,6 +17,7 @@ import { leagueFormatsRouter } from '../presentation/routes/league-formats-route
 
 import { openapi } from './docs/openapi.js';
 import { openapiPlayer } from './docs/openapi-player.js';
+import { openapiAdmin } from './docs/openapi-admin.js';
 import { rbacComponents, rbacRolesDocumentation } from './docs/rbac-openapi.js';
 
 export function setupRoutes(app: Express) {
@@ -113,6 +114,7 @@ export function setupRoutes(app: Express) {
             <div class="buttons">
               <a href="/docs/all">📚 Todos os Endpoints</a>
               <a href="/docs/player">⚽ Endpoints do aplicativo do jogador</a>
+              <a href="/docs/admin">🎯 Endpoints do painel administrativo</a>
             </div>
           </div>
         </body>
@@ -135,6 +137,14 @@ export function setupRoutes(app: Express) {
     swaggerUi.setup(openapiPlayer, { customSiteTitle: 'futi-api - Player App' }),
   );
   app.get('/docs/player.json', (_req, res) => res.json(openapiPlayer));
+
+  // Swagger UI para painel administrativo
+  app.use('/docs/admin', swaggerUi.serve);
+  app.get(
+    '/docs/admin',
+    swaggerUi.setup(openapiAdmin, { customSiteTitle: 'futi-api - Admin Panel' }),
+  );
+  app.get('/docs/admin.json', (_req, res) => res.json(openapiAdmin));
 
   // Mantém /docs redirecionando para a página principal (backward compatibility)
   app.get('/docs', (_req, res) => res.redirect('/'));
