@@ -51,3 +51,18 @@ export async function seedPositions(prisma: PrismaClient) {
   console.log('[seed-positions] Seed de posições concluído!');
   console.log('[seed-positions] ========================================\n');
 }
+
+// Execução standalone
+if (require.main === module) {
+  const prisma = new PrismaClient();
+  seedPositions(prisma)
+    .then(async () => {
+      await prisma.$disconnect();
+      process.exit(0);
+    })
+    .catch(async (e) => {
+      console.error(e);
+      await prisma.$disconnect();
+      process.exit(1);
+    });
+}

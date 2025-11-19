@@ -63,3 +63,18 @@ export async function seedUsers(prisma: PrismaClient) {
 
   return user;
 }
+
+// Execução standalone
+if (require.main === module) {
+  const prisma = new PrismaClient();
+  seedUsers(prisma)
+    .then(async () => {
+      await prisma.$disconnect();
+      process.exit(0);
+    })
+    .catch(async (e) => {
+      console.error(e);
+      await prisma.$disconnect();
+      process.exit(1);
+    });
+}

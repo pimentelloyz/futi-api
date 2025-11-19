@@ -185,3 +185,39 @@ export async function seedPlayers(
 
   return { adminPlayer, renan, bruno, laercio, matheus };
 }
+
+// Execução standalone
+if (require.main === module) {
+  const prisma = new PrismaClient();
+  
+  async function run() {
+    // Buscar usuário admin e time
+    const SEED_EMAIL = process.env.SEED_EMAIL ?? 'andre.loyz@gmail.com';
+    const SEED_TEAM_NAME = process.env.SEED_TEAM_NAME ?? 'Futi FC';
+    
+    const user = await prisma.user.findUnique({ where: { email: SEED_EMAIL } });
+    if (!user) {
+      console.log('[seed-players] ⚠ Usuário admin não encontrado. Execute prisma:seed:users primeiro.');
+      process.exit(1);
+    }
+
+    const team = await prisma.team.findFirst({ where: { name: SEED_TEAM_NAME } });
+    if (!team) {
+      console.log('[seed-players] ⚠ Time não encontrado. Execute prisma:seed:teams primeiro.');
+      process.exit(1);
+    }
+
+    await seedPlayers(prisma, user.id, team.id);
+  }
+
+  run()
+    .then(async () => {
+      await prisma.$disconnect();
+      process.exit(0);
+    })
+    .catch(async (e) => {
+      console.error(e);
+      await prisma.$disconnect();
+      process.exit(1);
+    });
+}

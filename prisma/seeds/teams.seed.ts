@@ -74,3 +74,32 @@ export async function seedTeams(prisma: PrismaClient, adminUserId: string) {
 
   return { team, opponentTeam };
 }
+
+// Execução standalone
+if (require.main === module) {
+  const prisma = new PrismaClient();
+  
+  async function run() {
+    // Buscar ou criar usuário admin
+    const SEED_EMAIL = process.env.SEED_EMAIL ?? 'andre.loyz@gmail.com';
+    let user = await prisma.user.findUnique({ where: { email: SEED_EMAIL } });
+    
+    if (!user) {
+      console.log('[seed-teams] ⚠ Usuário admin não encontrado. Execute prisma:seed:users primeiro.');
+      process.exit(1);
+    }
+
+    await seedTeams(prisma, user.id);
+  }
+
+  run()
+    .then(async () => {
+      await prisma.$disconnect();
+      process.exit(0);
+    })
+    .catch(async (e) => {
+      console.error(e);
+      await prisma.$disconnect();
+      process.exit(1);
+    });
+}

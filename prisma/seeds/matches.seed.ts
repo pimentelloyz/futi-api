@@ -200,3 +200,39 @@ export async function seedMatches(
   console.log('[seed-matches] Total: 5 partidas históricas + eventos + avaliações');
   console.log('[seed-matches] ========================================\n');
 }
+
+// Execução standalone
+if (require.main === module) {
+  const prisma = new PrismaClient();
+  
+  async function run() {
+    // Buscar times
+    const SEED_TEAM_NAME = process.env.SEED_TEAM_NAME ?? 'Futi FC';
+    const OPPONENT_NAME = 'Adversário Teste';
+    
+    const team = await prisma.team.findFirst({ where: { name: SEED_TEAM_NAME } });
+    if (!team) {
+      console.log('[seed-matches] ⚠ Time não encontrado. Execute prisma:seed:teams primeiro.');
+      process.exit(1);
+    }
+
+    const opponentTeam = await prisma.team.findFirst({ where: { name: OPPONENT_NAME } });
+    if (!opponentTeam) {
+      console.log('[seed-matches] ⚠ Time adversário não encontrado. Execute prisma:seed:teams primeiro.');
+      process.exit(1);
+    }
+
+    await seedMatches(prisma, team.id, opponentTeam.id);
+  }
+
+  run()
+    .then(async () => {
+      await prisma.$disconnect();
+      process.exit(0);
+    })
+    .catch(async (e) => {
+      console.error(e);
+      await prisma.$disconnect();
+      process.exit(1);
+    });
+}

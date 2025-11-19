@@ -641,3 +641,18 @@ export async function seedLeagueFormats(prisma: PrismaClient) {
   });
   console.log('[seed-formats] ========================================\n');
 }
+
+// Execução standalone
+if (require.main === module) {
+  const prisma = new PrismaClient();
+  seedLeagueFormats(prisma)
+    .then(async () => {
+      await prisma.$disconnect();
+      process.exit(0);
+    })
+    .catch(async (e) => {
+      console.error(e);
+      await prisma.$disconnect();
+      process.exit(1);
+    });
+}
