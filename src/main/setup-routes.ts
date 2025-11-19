@@ -46,7 +46,7 @@ export function setupRoutes(app: Express) {
         ...rbacComponents.schemas,
       },
     },
-    tags: [...(openapi.tags || []), rbacRolesDocumentation],
+    tags: [rbacRolesDocumentation, ...(openapi.tags || [])],
   };
 
   // Swagger UI and JSON
