@@ -16,6 +16,7 @@ import { auditRouter } from '../presentation/routes/audit-router.js';
 import { leagueFormatsRouter } from '../presentation/routes/league-formats-router.js';
 
 import { openapi } from './docs/openapi.js';
+import { openapiPlayer } from './docs/openapi-player.js';
 import { rbacComponents, rbacRolesDocumentation } from './docs/rbac-openapi.js';
 
 export function setupRoutes(app: Express) {
@@ -49,7 +50,92 @@ export function setupRoutes(app: Express) {
     tags: [rbacRolesDocumentation, ...(openapi.tags || [])],
   };
 
-  // Swagger UI and JSON
-  app.use('/docs', swaggerUi.serve, swaggerUi.setup(enrichedOpenapi));
-  app.get('/docs.json', (_req, res) => res.json(enrichedOpenapi));
+  // Página inicial com botões para as duas documentações
+  app.get('/', (_req, res) => {
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>futi-api - Documentação</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              margin: 0;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+            }
+            .container {
+              text-align: center;
+              padding: 2rem;
+            }
+            h1 {
+              font-size: 2.5rem;
+              margin-bottom: 0.5rem;
+            }
+            p {
+              font-size: 1.1rem;
+              margin-bottom: 3rem;
+              opacity: 0.9;
+            }
+            .buttons {
+              display: flex;
+              gap: 1.5rem;
+              justify-content: center;
+              flex-wrap: wrap;
+            }
+            a {
+              display: inline-block;
+              padding: 1rem 2rem;
+              background: white;
+              color: #667eea;
+              text-decoration: none;
+              border-radius: 8px;
+              font-weight: 600;
+              font-size: 1rem;
+              transition: transform 0.2s, box-shadow 0.2s;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            a:hover {
+              transform: translateY(-2px);
+              box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>🚀 futi-api</h1>
+            <p>Escolha a documentação que deseja visualizar:</p>
+            <div class="buttons">
+              <a href="/docs/all">📚 Todos os Endpoints</a>
+              <a href="/docs/player">⚽ Endpoints do aplicativo do jogador</a>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+  });
+
+  // Swagger UI para todos os endpoints
+  app.use('/docs/all', swaggerUi.serve);
+  app.get(
+    '/docs/all',
+    swaggerUi.setup(enrichedOpenapi, { customSiteTitle: 'futi-api - Todos os Endpoints' }),
+  );
+  app.get('/docs/all.json', (_req, res) => res.json(enrichedOpenapi));
+
+  // Swagger UI para endpoints do jogador
+  app.use('/docs/player', swaggerUi.serve);
+  app.get(
+    '/docs/player',
+    swaggerUi.setup(openapiPlayer, { customSiteTitle: 'futi-api - Player App' }),
+  );
+  app.get('/docs/player.json', (_req, res) => res.json(openapiPlayer));
+
+  // Mantém /docs redirecionando para a página principal (backward compatibility)
+  app.get('/docs', (_req, res) => res.redirect('/'));
 }
