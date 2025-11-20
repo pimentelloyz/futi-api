@@ -18,6 +18,12 @@ import { leagueFormatsRouter } from '../presentation/routes/league-formats-route
 import { openapi } from './docs/openapi.js';
 import { openapiPlayer } from './docs/openapi-player.js';
 import { openapiAdmin } from './docs/openapi-admin.js';
+import { openapiManager } from './docs/openapi-manager.js';
+import { openapiAssistant } from './docs/openapi-assistant.js';
+import { openapiLeagueManager } from './docs/openapi-league-manager.js';
+import { openapiMatchManager } from './docs/openapi-match-manager.js';
+import { openapiRefereeCommission } from './docs/openapi-referee-commission.js';
+import { openapiFan } from './docs/openapi-fan.js';
 import { rbacComponents, rbacRolesDocumentation } from './docs/rbac-openapi.js';
 
 export function setupRoutes(app: Express) {
@@ -51,7 +57,7 @@ export function setupRoutes(app: Express) {
     tags: [rbacRolesDocumentation, ...(openapi.tags || [])],
   };
 
-  // Página inicial com botões para as duas documentações
+  // Página inicial com botões para todas as documentações por role
   app.get('/', (_req, res) => {
     res.send(`
       <!DOCTYPE html>
@@ -73,6 +79,7 @@ export function setupRoutes(app: Express) {
             .container {
               text-align: center;
               padding: 2rem;
+              max-width: 1200px;
             }
             h1 {
               font-size: 2.5rem;
@@ -80,24 +87,32 @@ export function setupRoutes(app: Express) {
             }
             p {
               font-size: 1.1rem;
-              margin-bottom: 3rem;
+              margin-bottom: 2rem;
               opacity: 0.9;
+            }
+            .section {
+              margin-bottom: 2rem;
+            }
+            .section h2 {
+              font-size: 1.3rem;
+              margin-bottom: 1rem;
+              opacity: 0.95;
             }
             .buttons {
               display: flex;
-              gap: 1.5rem;
+              gap: 1rem;
               justify-content: center;
               flex-wrap: wrap;
             }
             a {
               display: inline-block;
-              padding: 1rem 2rem;
+              padding: 0.8rem 1.5rem;
               background: white;
               color: #667eea;
               text-decoration: none;
               border-radius: 8px;
               font-weight: 600;
-              font-size: 1rem;
+              font-size: 0.95rem;
               transition: transform 0.2s, box-shadow 0.2s;
               box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             }
@@ -110,11 +125,27 @@ export function setupRoutes(app: Express) {
         <body>
           <div class="container">
             <h1>🚀 futi-api</h1>
-            <p>Escolha a documentação que deseja visualizar:</p>
-            <div class="buttons">
-              <a href="/docs/all">📚 Todos os Endpoints</a>
-              <a href="/docs/player">⚽ Endpoints do aplicativo do jogador</a>
-              <a href="/docs/admin">🎯 Endpoints do painel administrativo</a>
+            <p>Escolha a documentação de acordo com sua role:</p>
+            
+            <div class="section">
+              <h2>📋 Documentações Gerais</h2>
+              <div class="buttons">
+                <a href="/docs/all">📚 Todos os Endpoints</a>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2>👥 Documentações por Role</h2>
+              <div class="buttons">
+                <a href="/docs/admin">🎯 Admin Panel (MASTER/ADMIN)</a>
+                <a href="/docs/manager">👔 Manager (Técnico)</a>
+                <a href="/docs/assistant">📋 Assistant (Auxiliar)</a>
+                <a href="/docs/player">⚽ Player (Jogador)</a>
+                <a href="/docs/league-manager">🏆 League Manager</a>
+                <a href="/docs/match-manager">⚽ Match Manager</a>
+                <a href="/docs/referee-commission">📊 Referee Commission</a>
+                <a href="/docs/fan">🎭 Fan (Torcedor)</a>
+              </div>
             </div>
           </div>
         </body>
@@ -145,6 +176,47 @@ export function setupRoutes(app: Express) {
     swaggerUi.setup(openapiAdmin, { customSiteTitle: 'futi-api - Admin Panel' }),
   );
   app.get('/docs/admin.json', (_req, res) => res.json(openapiAdmin));
+
+  // Swagger UI para Manager (Técnico)
+  app.get(
+    '/docs/manager',
+    swaggerUi.setup(openapiManager, { customSiteTitle: 'futi-api - Manager' }),
+  );
+  app.get('/docs/manager.json', (_req, res) => res.json(openapiManager));
+
+  // Swagger UI para Assistant (Auxiliar)
+  app.get(
+    '/docs/assistant',
+    swaggerUi.setup(openapiAssistant, { customSiteTitle: 'futi-api - Assistant' }),
+  );
+  app.get('/docs/assistant.json', (_req, res) => res.json(openapiAssistant));
+
+  // Swagger UI para League Manager
+  app.get(
+    '/docs/league-manager',
+    swaggerUi.setup(openapiLeagueManager, { customSiteTitle: 'futi-api - League Manager' }),
+  );
+  app.get('/docs/league-manager.json', (_req, res) => res.json(openapiLeagueManager));
+
+  // Swagger UI para Match Manager
+  app.get(
+    '/docs/match-manager',
+    swaggerUi.setup(openapiMatchManager, { customSiteTitle: 'futi-api - Match Manager' }),
+  );
+  app.get('/docs/match-manager.json', (_req, res) => res.json(openapiMatchManager));
+
+  // Swagger UI para Referee Commission
+  app.get(
+    '/docs/referee-commission',
+    swaggerUi.setup(openapiRefereeCommission, {
+      customSiteTitle: 'futi-api - Referee Commission',
+    }),
+  );
+  app.get('/docs/referee-commission.json', (_req, res) => res.json(openapiRefereeCommission));
+
+  // Swagger UI para Fan (Torcedor)
+  app.get('/docs/fan', swaggerUi.setup(openapiFan, { customSiteTitle: 'futi-api - Fan' }));
+  app.get('/docs/fan.json', (_req, res) => res.json(openapiFan));
 
   // Mantém /docs redirecionando para a página principal (backward compatibility)
   app.get('/docs', (_req, res) => res.redirect('/'));
