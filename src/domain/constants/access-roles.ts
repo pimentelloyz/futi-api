@@ -1,4 +1,5 @@
 export enum AccessRole {
+  MASTER = 'MASTER', // Super usuário com acesso total e irrestrito ao sistema
   ADMIN = 'ADMIN', // Acesso total ao sistema
   MANAGER = 'MANAGER', // Gerencia time: jogadores, convites, escalações
   ASSISTANT = 'ASSISTANT', // Auxiliar técnico: mesmos acessos do MANAGER mas somente leitura
@@ -22,7 +23,7 @@ export const LEAGUE_SCOPED_ROLES: AccessRole[] = [
   AccessRole.REFEREE_COMMISSION,
 ];
 
-export const GLOBAL_ROLES: AccessRole[] = [AccessRole.ADMIN];
+export const GLOBAL_ROLES: AccessRole[] = [AccessRole.MASTER, AccessRole.ADMIN];
 
 // Hierarquia de permissões (role mais alto inclui permissões dos mais baixos)
 export const ROLE_HIERARCHY: Record<AccessRole, number> = {
@@ -34,6 +35,7 @@ export const ROLE_HIERARCHY: Record<AccessRole, number> = {
   [AccessRole.REFEREE_COMMISSION]: 40,
   [AccessRole.LEAGUE_MANAGER]: 50,
   [AccessRole.ADMIN]: 100,
+  [AccessRole.MASTER]: 999, // Nível máximo de acesso
 };
 
 export function isReadOnlyRole(role: AccessRole): boolean {

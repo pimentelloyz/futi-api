@@ -120,6 +120,7 @@ model RefreshToken {
 }
 
 enum AccessRole {
+  MASTER             // Super usuário com acesso total e irrestrito ao sistema
   ADMIN              // Acesso total ao sistema
   MANAGER            // Gerencia time: jogadores, convites, escalações
   ASSISTANT          // Auxiliar técnico: mesmos acessos do MANAGER mas somente leitura

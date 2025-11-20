@@ -45,8 +45,8 @@ export class RBACService {
       return cached.value;
     }
 
-    // ADMIN sempre tem permissão
-    if (await this.isAdmin(userId)) {
+    // MASTER e ADMIN sempre têm permissão
+    if (await this.isMasterOrAdmin(userId)) {
       this.cachePermission(cacheKey, true);
       return true;
     }
@@ -68,10 +68,42 @@ export class RBACService {
   }
 
   /**
+   * Verifica se o usuário é MASTER ou ADMIN
+   */
+  async isMasterOrAdmin(userId: string): Promise<boolean> {
+    const count = await this.prisma.accessMembership.count({
+      where: {
+        userId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        role: { in: ['MASTER', 'ADMIN'] as any },
+        teamId: null,
+        leagueId: null,
+      },
+    });
+    return count > 0;
+  }
+
+  /**
+   * Verifica se o usuário é MASTER (nível máximo de acesso)
+   */
+  async isMaster(userId: string): Promise<boolean> {
+    const count = await this.prisma.accessMembership.count({
+      where: {
+        userId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        role: 'MASTER' as any,
+        teamId: null,
+        leagueId: null,
+      },
+    });
+    return count > 0;
+  }
+
+  /**
    * Verifica se o usuário é ADMIN
    */
   async isAdmin(userId: string): Promise<boolean> {
-    const adminCount = await this.prisma.accessMembership.count({
+    const count = await this.prisma.accessMembership.count({
       where: {
         userId,
         role: 'ADMIN',
@@ -79,7 +111,7 @@ export class RBACService {
         leagueId: null,
       },
     });
-    return adminCount > 0;
+    return count > 0;
   }
 
   /**
