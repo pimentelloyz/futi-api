@@ -25,7 +25,13 @@ export class AddTeamController implements Controller {
           fieldErrors: flat.fieldErrors,
         });
       }
-      const result = await this.addTeam.add(parsed.data);
+
+      // userId é obrigatório (vem do middleware jwtAuth)
+      if (!request.user?.id) {
+        throw new BadRequestError(ERROR_CODES.UNAUTHORIZED, 'userId not found in request');
+      }
+
+      const result = await this.addTeam.add({ ...parsed.data, userId: request.user.id });
       return { statusCode: 201, body: result };
     } catch (err) {
       if (err instanceof BadRequestError) {

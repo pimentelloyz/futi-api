@@ -83,7 +83,7 @@ teamsRouter.post(
               typeof req.body?.isActive === 'string' ? req.body.isActive === 'true' : undefined,
           }
         : req.body;
-      const response = await controller.handle({ body });
+      const response = await controller.handle({ body, user: req.user });
       return res.status(response.statusCode).json(response.body);
     } catch (e) {
       console.error('[team_create_error]', (e as Error).message);

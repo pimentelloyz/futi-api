@@ -3,6 +3,7 @@ export type AddTeamInput = {
   icon?: string | null;
   description?: string | null;
   isActive?: boolean;
+  userId: string;
 };
 
 export interface AddTeam {
