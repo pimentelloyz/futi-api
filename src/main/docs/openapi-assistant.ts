@@ -125,37 +125,40 @@ export const openapiAssistant: OpenAPIObject = {
       post: {
         summary: 'Refresh access token',
         tags: ['Auth'],
+        description:
+          '**Renovação de Tokens** - Use quando receber 401 EXPIRED_TOKEN.\n\n' +
+          '**O que enviar**: `{ "refreshToken": "futi_rt_..." }` ou deixe vazio (cookie HttpOnly automático).\n\n' +
+          '**Retorno**: Novo `accessToken` (1h) + novo `refreshToken` (30 dias). O anterior é invalidado.',
         requestBody: {
-          required: true,
+          required: false,
           content: {
             'application/json': {
               schema: {
                 type: 'object',
                 properties: {
-                  refreshToken: { type: 'string' },
+                  refreshToken: { type: 'string', description: 'Opcional se enviado via cookie' },
                 },
-                required: ['refreshToken'],
               },
             },
           },
         },
         responses: {
           '200': {
-            description: 'Tokens refreshed',
+            description: 'Tokens renovados',
             content: {
               'application/json': {
                 schema: {
                   type: 'object',
                   properties: {
-                    accessToken: { type: 'string' },
-                    refreshToken: { type: 'string' },
+                    accessToken: { type: 'string', description: 'Novo JWT (1h)' },
+                    refreshToken: { type: 'string', description: 'Novo refreshToken (30 dias)' },
                   },
                 },
               },
             },
           },
-          '400': { description: 'Invalid request' },
-          '401': { description: 'Invalid refresh token' },
+          '400': { description: 'RefreshToken não enviado' },
+          '401': { description: 'RefreshToken inválido ou expirado' },
         },
       },
     },

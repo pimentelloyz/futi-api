@@ -2245,20 +2245,42 @@ export const openapi: OpenAPIObject = {
         summary: 'Refresh access token (rotates refresh token)',
         tags: ['Auth'],
         description:
-          'Aceita refreshToken no body ou via cookie HttpOnly. Gera novo accessToken e substitui o refreshToken (rotação).',
+          '**Renovação de Tokens**\n\n' +
+          'Use este endpoint quando receber erro 401 EXPIRED_TOKEN em requisições autenticadas.\n\n' +
+          '**Como funciona:**\n' +
+          '- Aceita `refreshToken` via **body JSON** ou **cookie HttpOnly** (automático)\n' +
+          '- Valida o refreshToken no banco (validade: 30 dias)\n' +
+          '- Gera novo `accessToken` (JWT, expira em 1 hora)\n' +
+          '- Gera novo `refreshToken` (expira em 30 dias)\n' +
+          '- **Rotação de segurança**: O refreshToken anterior é invalidado\n\n' +
+          '**O que enviar:**\n' +
+          '- **Via body**: `{ "refreshToken": "futi_rt_..." }`\n' +
+          '- **Via cookie**: Nada (o cookie HttpOnly é enviado automaticamente pelo navegador)\n\n' +
+          '**Resposta**: Retorna `accessToken` e `refreshToken` novos. Use o novo accessToken no header `Authorization: Bearer <token>`.',
         requestBody: {
-          required: true,
+          required: false,
           content: {
             'application/json': {
               schema: {
                 type: 'object',
-                properties: { refreshToken: { type: 'string' } },
-                required: ['refreshToken'],
+                properties: {
+                  refreshToken: {
+                    type: 'string',
+                    description:
+                      'RefreshToken obtido no login (formato: futi_rt_...). Opcional se enviado via cookie HttpOnly.',
+                  },
+                },
               },
               examples: {
-                body: {
-                  summary: 'Via body',
-                  value: { refreshToken: 'futi_rt_9f0c4e9a-3a52-4f1c-a1ef-3f4b...' },
+                viaBody: {
+                  summary: 'Via body JSON',
+                  value: { refreshToken: 'futi_rt_9f0c4e9a-3a52-4f1c-a1ef-3f4b5c6d7e8f' },
+                },
+                viaCookie: {
+                  summary: 'Via cookie (envio automático)',
+                  description:
+                    'Não envie nada no body. O cookie HttpOnly "refreshToken" é enviado automaticamente.',
+                  value: {},
                 },
               },
             },
@@ -2266,26 +2288,37 @@ export const openapi: OpenAPIObject = {
         },
         responses: {
           '200': {
-            description: 'Tokens refreshed',
+            description:
+              'Tokens renovados com sucesso. Use o novo accessToken nas próximas requisições.',
             content: {
               'application/json': {
                 schema: {
                   type: 'object',
-                  properties: { accessToken: { type: 'string' }, refreshToken: { type: 'string' } },
+                  properties: {
+                    accessToken: {
+                      type: 'string',
+                      description: 'Novo JWT para autenticação (válido por 1 hora)',
+                    },
+                    refreshToken: {
+                      type: 'string',
+                      description:
+                        'Novo refreshToken rotacionado (válido por 30 dias). O anterior foi invalidado.',
+                    },
+                  },
                 },
                 examples: {
                   success: {
                     value: {
                       accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-                      refreshToken: 'futi_rt_7aa1cdae-5b5f-4e9c-81f1-6a33...',
+                      refreshToken: 'futi_rt_7aa1cdae-5b5f-4e9c-81f1-6a332b4c5d6e',
                     },
                   },
                 },
               },
             },
           },
-          '400': { description: 'Invalid request' },
-          '401': { description: 'Invalid refresh token' },
+          '400': { description: 'RefreshToken não foi enviado (nem via body nem via cookie)' },
+          '401': { description: 'RefreshToken inválido, expirado ou já foi usado (rotacionado)' },
         },
       },
     },

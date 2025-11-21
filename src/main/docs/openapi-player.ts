@@ -111,23 +111,20 @@ export const openapiPlayer: OpenAPIObject = {
     },
     '/api/auth/refresh': {
       post: {
-        summary: 'Refresh access token (rotates refresh token)',
+        summary: 'Refresh access token',
         tags: ['Auth'],
         description:
-          'Aceita refreshToken no body ou via cookie HttpOnly. Gera novo accessToken e substitui o refreshToken (rotação).',
+          '**Renovação de Tokens** - Use quando receber 401 EXPIRED_TOKEN.\n\n' +
+          '**O que enviar**: `{ "refreshToken": "futi_rt_..." }` ou deixe vazio (cookie HttpOnly automático).\n\n' +
+          '**Retorno**: Novo `accessToken` (1h) + novo `refreshToken` (30 dias). O anterior é invalidado.',
         requestBody: {
-          required: true,
+          required: false,
           content: {
             'application/json': {
               schema: {
                 type: 'object',
-                properties: { refreshToken: { type: 'string' } },
-                required: ['refreshToken'],
-              },
-              examples: {
-                body: {
-                  summary: 'Via body',
-                  value: { refreshToken: 'futi_rt_9f0c4e9a-3a52-4f1c-a1ef-3f4b...' },
+                properties: {
+                  refreshToken: { type: 'string', description: 'Opcional se enviado via cookie' },
                 },
               },
             },
@@ -135,19 +132,14 @@ export const openapiPlayer: OpenAPIObject = {
         },
         responses: {
           '200': {
-            description: 'Tokens refreshed',
+            description: 'Tokens renovados',
             content: {
               'application/json': {
                 schema: {
                   type: 'object',
-                  properties: { accessToken: { type: 'string' }, refreshToken: { type: 'string' } },
-                },
-                examples: {
-                  success: {
-                    value: {
-                      accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-                      refreshToken: 'futi_rt_7aa1cdae-5b5f-4e9c-81f1-6a33...',
-                    },
+                  properties: {
+                    accessToken: { type: 'string', description: 'Novo JWT (1h)' },
+                    refreshToken: { type: 'string', description: 'Novo refreshToken (30 dias)' },
                   },
                 },
               },
