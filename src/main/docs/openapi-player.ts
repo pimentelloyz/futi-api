@@ -37,6 +37,7 @@ export const openapiPlayer: OpenAPIObject = {
   servers: [{ url: 'http://localhost:3000' }],
   tags: [
     { name: 'Auth', description: 'Autenticação e tokens para jogadores' },
+    { name: 'Teams', description: 'Gerenciamento de times' },
     { name: 'Players', description: 'Gerenciamento de jogadores' },
     { name: 'Access', description: 'Controle de acesso e permissões' },
   ],
@@ -191,6 +192,57 @@ export const openapiPlayer: OpenAPIObject = {
         responses: {
           '200': { description: 'OK' },
           '401': { description: 'Unauthorized' },
+        },
+      },
+    },
+    '/api/teams': {
+      post: {
+        summary: 'Criar time',
+        tags: ['Teams'],
+        security: [{ bearerAuth: [] }],
+        description:
+          'Jogadores podem criar seus próprios times. O criador automaticamente recebe a role MANAGER do time.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', description: 'Nome do time' },
+                  icon: { type: ['string', 'null'], description: 'URL do ícone do time' },
+                  description: {
+                    type: ['string', 'null'],
+                    description: 'Descrição do time',
+                  },
+                },
+                required: ['name'],
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Time criado com sucesso',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' },
+                    icon: { type: ['string', 'null'] },
+                    description: { type: ['string', 'null'] },
+                    isActive: { type: 'boolean' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Dados inválidos' },
+          '401': { description: 'Não autenticado' },
+          '403': { description: 'Sem permissão' },
         },
       },
     },

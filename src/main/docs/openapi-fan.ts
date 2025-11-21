@@ -33,7 +33,8 @@ export const openapiFan: OpenAPIObject = {
   info: {
     title: 'futi-api - Fan (Torcedor)',
     version: '0.1.0',
-    description: 'Endpoints para torcedores - Visualização de ligas públicas (SOMENTE LEITURA)',
+    description:
+      'Endpoints para torcedores - Visualização de ligas públicas e criação de times próprios',
   },
   servers: [{ url: 'http://localhost:3000' }],
   tags: [
@@ -151,8 +152,57 @@ export const openapiFan: OpenAPIObject = {
       },
     },
 
-    // ==================== TEAMS (READ-ONLY) ====================
+    // ==================== TEAMS ====================
     '/api/teams': {
+      post: {
+        summary: 'Criar time',
+        tags: ['Teams'],
+        security: [{ bearerAuth: [] }],
+        description:
+          'Torcedores podem criar seus próprios times para participar de ligas. O criador automaticamente recebe a role MANAGER do time.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', description: 'Nome do time' },
+                  icon: { type: ['string', 'null'], description: 'URL do ícone do time' },
+                  description: {
+                    type: ['string', 'null'],
+                    description: 'Descrição do time',
+                  },
+                },
+                required: ['name'],
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Time criado com sucesso',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' },
+                    icon: { type: ['string', 'null'] },
+                    description: { type: ['string', 'null'] },
+                    isActive: { type: 'boolean' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Dados inválidos' },
+          '401': { description: 'Não autenticado' },
+          '403': { description: 'Sem permissão' },
+        },
+      },
       get: {
         summary: 'Listar times',
         tags: ['Teams'],

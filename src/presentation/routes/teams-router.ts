@@ -26,69 +26,73 @@ const upload = multer({
   limits: { fileSize: 2 * 1024 * 1024 },
 });
 
-// Criar time - Apenas MANAGER e ADMIN
-teamsRouter.post('/', requireRole([AccessRole.MANAGER, AccessRole.ADMIN]), async (req, res) => {
-  const isMultipart = req.is('multipart/form-data');
-  try {
-    let iconUrlFromUpload: string | undefined;
-    if (isMultipart) {
-      await new Promise<void>((resolve, reject) => {
-        upload.single('file')(req, res, (err: unknown) => {
-          if (err) return reject(err);
-          return resolve();
+// Criar time - PLAYER, FAN, MANAGER e ADMIN podem criar times
+teamsRouter.post(
+  '/',
+  requireRole([AccessRole.PLAYER, AccessRole.FAN, AccessRole.MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    const isMultipart = req.is('multipart/form-data');
+    try {
+      let iconUrlFromUpload: string | undefined;
+      if (isMultipart) {
+        await new Promise<void>((resolve, reject) => {
+          upload.single('file')(req, res, (err: unknown) => {
+            if (err) return reject(err);
+            return resolve();
+          });
         });
-      });
-      const file = req.file;
-      if (file) {
-        const allowed = new Set(['image/png', 'image/jpeg', 'image/webp']);
-        if (!allowed.has(file.mimetype)) {
-          return res.status(415).json({ error: ERROR_CODES.UNSUPPORTED_MEDIA_TYPE });
+        const file = req.file;
+        if (file) {
+          const allowed = new Set(['image/png', 'image/jpeg', 'image/webp']);
+          if (!allowed.has(file.mimetype)) {
+            return res.status(415).json({ error: ERROR_CODES.UNSUPPORTED_MEDIA_TYPE });
+          }
+          const ext =
+            file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
+          const stamp = Date.now();
+          const safeName =
+            String(
+              (req.body?.name ?? 'team')
+                .toString()
+                .toLowerCase()
+                .replace(/[^a-z0-9-_]/g, ''),
+            ) || 'team';
+          const objectPath = path.posix.join('teams', 'new', `${safeName}_${stamp}.${ext}`);
+          const { getDefaultBucket } = await import('../../infra/firebase/admin.js');
+          const bucket = getDefaultBucket();
+          const gcsFile = bucket.file(objectPath);
+          await gcsFile.save(file.buffer, {
+            contentType: file.mimetype,
+            resumable: false,
+            metadata: { cacheControl: 'public,max-age=3600' },
+          });
+          try {
+            await gcsFile.makePublic();
+          } catch {}
+          iconUrlFromUpload = `https://storage.googleapis.com/${bucket.name}/${objectPath}`;
         }
-        const ext =
-          file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
-        const stamp = Date.now();
-        const safeName =
-          String(
-            (req.body?.name ?? 'team')
-              .toString()
-              .toLowerCase()
-              .replace(/[^a-z0-9-_]/g, ''),
-          ) || 'team';
-        const objectPath = path.posix.join('teams', 'new', `${safeName}_${stamp}.${ext}`);
-        const { getDefaultBucket } = await import('../../infra/firebase/admin.js');
-        const bucket = getDefaultBucket();
-        const gcsFile = bucket.file(objectPath);
-        await gcsFile.save(file.buffer, {
-          contentType: file.mimetype,
-          resumable: false,
-          metadata: { cacheControl: 'public,max-age=3600' },
-        });
-        try {
-          await gcsFile.makePublic();
-        } catch {}
-        iconUrlFromUpload = `https://storage.googleapis.com/${bucket.name}/${objectPath}`;
       }
-    }
 
-    const controller = makeAddTeamController();
-    const body = isMultipart
-      ? {
-          name: req.body?.name,
-          icon: iconUrlFromUpload ?? req.body?.icon ?? undefined,
-          description: req.body?.description ?? undefined,
-          isActive:
-            typeof req.body?.isActive === 'string' ? req.body.isActive === 'true' : undefined,
-        }
-      : req.body;
-    const response = await controller.handle({ body });
-    return res.status(response.statusCode).json(response.body);
-  } catch (e) {
-    console.error('[team_create_error]', (e as Error).message);
-    if ((e as Error).message?.toLowerCase().includes('multipart'))
-      return res.status(400).json({ error: ERROR_CODES.INVALID_MULTIPART });
-    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
-  }
-});
+      const controller = makeAddTeamController();
+      const body = isMultipart
+        ? {
+            name: req.body?.name,
+            icon: iconUrlFromUpload ?? req.body?.icon ?? undefined,
+            description: req.body?.description ?? undefined,
+            isActive:
+              typeof req.body?.isActive === 'string' ? req.body.isActive === 'true' : undefined,
+          }
+        : req.body;
+      const response = await controller.handle({ body });
+      return res.status(response.statusCode).json(response.body);
+    } catch (e) {
+      console.error('[team_create_error]', (e as Error).message);
+      if ((e as Error).message?.toLowerCase().includes('multipart'))
+        return res.status(400).json({ error: ERROR_CODES.INVALID_MULTIPART });
+      return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
+    }
+  },
+);
 
 // Listar todos os times
 teamsRouter.get('/', async (req, res) => {
