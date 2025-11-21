@@ -51,14 +51,14 @@ export class RBACService {
       return true;
     }
 
-    // Se FAN está nas roles permitidas e não há context, permite
-    if (allowedRoles.includes(AccessRole.FAN) && !context) {
+    // Busca memberships do usuário no contexto
+    const memberships = await this.getUserMemberships(userId, context);
+
+    // Se FAN está nas roles permitidas e usuário não tem memberships, permite (FAN é default)
+    if (allowedRoles.includes(AccessRole.FAN) && memberships.length === 0) {
       this.cachePermission(cacheKey, true);
       return true;
     }
-
-    // Busca memberships do usuário no contexto
-    const memberships = await this.getUserMemberships(userId, context);
 
     // Verifica se tem alguma role permitida
     const hasPermission = memberships.some((m) => allowedRoles.includes(m.role as AccessRole));
