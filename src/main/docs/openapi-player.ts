@@ -47,6 +47,8 @@ export const openapiPlayer: OpenAPIObject = {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
+        description:
+          '🔐 **Autenticação via JWT**: Sua role (PLAYER, FAN, etc) está incluída automaticamente no token JWT obtido via `/api/auth/firebase/exchange`. Não é necessário passar a role manualmente - ela é extraída do token pelo servidor. Endpoints protegidos verificam se você tem a role adequada.',
       },
     },
   },
@@ -201,7 +203,7 @@ export const openapiPlayer: OpenAPIObject = {
         tags: ['Teams'],
         security: [{ bearerAuth: [] }],
         description:
-          'Jogadores podem criar seus próprios times. O criador automaticamente recebe a role MANAGER do time.',
+          '**Roles permitidas**: FAN, PLAYER, MANAGER, ADMIN\n\nJogadores e torcedores podem criar seus próprios times. O criador automaticamente recebe a role MANAGER do time.\n\n⚠️ **Importante**: A role é verificada automaticamente através do token JWT - não envie a role no body da request.',
         requestBody: {
           required: true,
           content: {

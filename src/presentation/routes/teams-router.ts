@@ -26,10 +26,10 @@ const upload = multer({
   limits: { fileSize: 2 * 1024 * 1024 },
 });
 
-// Criar time - PLAYER, FAN, MANAGER e ADMIN podem criar times
+// Criar time - FAN, PLAYER, MANAGER e ADMIN podem criar times
 teamsRouter.post(
   '/',
-  requireRole([AccessRole.PLAYER, AccessRole.FAN, AccessRole.MANAGER, AccessRole.ADMIN]),
+  requireRole([AccessRole.FAN, AccessRole.PLAYER, AccessRole.MANAGER, AccessRole.ADMIN]),
   async (req, res) => {
     const isMultipart = req.is('multipart/form-data');
     try {

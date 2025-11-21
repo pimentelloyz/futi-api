@@ -178,6 +178,7 @@ export function setupRoutes(app: Express) {
   app.get('/docs/admin.json', (_req, res) => res.json(openapiAdmin));
 
   // Swagger UI para Manager (Técnico)
+  app.use('/docs/manager', swaggerUi.serve);
   app.get(
     '/docs/manager',
     swaggerUi.setup(openapiManager, { customSiteTitle: 'futi-api - Manager' }),
@@ -185,6 +186,7 @@ export function setupRoutes(app: Express) {
   app.get('/docs/manager.json', (_req, res) => res.json(openapiManager));
 
   // Swagger UI para Assistant (Auxiliar)
+  app.use('/docs/assistant', swaggerUi.serve);
   app.get(
     '/docs/assistant',
     swaggerUi.setup(openapiAssistant, { customSiteTitle: 'futi-api - Assistant' }),
@@ -192,6 +194,7 @@ export function setupRoutes(app: Express) {
   app.get('/docs/assistant.json', (_req, res) => res.json(openapiAssistant));
 
   // Swagger UI para League Manager
+  app.use('/docs/league-manager', swaggerUi.serve);
   app.get(
     '/docs/league-manager',
     swaggerUi.setup(openapiLeagueManager, { customSiteTitle: 'futi-api - League Manager' }),
@@ -199,6 +202,7 @@ export function setupRoutes(app: Express) {
   app.get('/docs/league-manager.json', (_req, res) => res.json(openapiLeagueManager));
 
   // Swagger UI para Match Manager
+  app.use('/docs/match-manager', swaggerUi.serve);
   app.get(
     '/docs/match-manager',
     swaggerUi.setup(openapiMatchManager, { customSiteTitle: 'futi-api - Match Manager' }),
@@ -206,6 +210,7 @@ export function setupRoutes(app: Express) {
   app.get('/docs/match-manager.json', (_req, res) => res.json(openapiMatchManager));
 
   // Swagger UI para Referee Commission
+  app.use('/docs/referee-commission', swaggerUi.serve);
   app.get(
     '/docs/referee-commission',
     swaggerUi.setup(openapiRefereeCommission, {
@@ -215,6 +220,7 @@ export function setupRoutes(app: Express) {
   app.get('/docs/referee-commission.json', (_req, res) => res.json(openapiRefereeCommission));
 
   // Swagger UI para Fan (Torcedor)
+  app.use('/docs/fan', swaggerUi.serve);
   app.get('/docs/fan', swaggerUi.setup(openapiFan, { customSiteTitle: 'futi-api - Fan' }));
   app.get('/docs/fan.json', (_req, res) => res.json(openapiFan));
 
