@@ -442,18 +442,34 @@ playersRouter.get('/me/team/overview', async (req, res) => {
     if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
     const { teamId } = req.query as { teamId?: string };
 
-    // Meu player
-    const mePlayer = await prisma.player.findUnique({
-      where: { userId: meUser.id },
-      select: { id: true },
+    // Buscar times através de AccessMembership (MANAGER, ASSISTANT, PLAYER)
+    const memberships = await prisma.accessMembership.findMany({
+      where: {
+        userId: meUser.id,
+        teamId: { not: null },
+        role: { in: ['MANAGER', 'ASSISTANT', 'PLAYER'] },
+      },
+      select: { teamId: true, team: { select: { id: true, name: true } } },
     });
-    if (!mePlayer) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
 
-    // Descobrir times em que estou via relação explícita PlayersOnTeams
-    const myTeams = await prisma.team.findMany({
-      where: { players: { some: { playerId: mePlayer.id } } },
-      select: { id: true, name: true },
-    });
+    // Se não tem membership, tentar buscar como jogador via PlayersOnTeams
+    let myTeams = memberships.filter((m) => m.team).map((m) => m.team!);
+
+    if (!myTeams.length) {
+      const mePlayer = await prisma.player.findUnique({
+        where: { userId: meUser.id },
+        select: { id: true },
+      });
+
+      if (mePlayer) {
+        const playerTeams = await prisma.team.findMany({
+          where: { players: { some: { playerId: mePlayer.id } } },
+          select: { id: true, name: true },
+        });
+        myTeams = playerTeams;
+      }
+    }
+
     if (!myTeams.length) return res.status(404).json({ error: 'no_team' });
 
     const selectedTeamId = teamId || myTeams[0].id;
@@ -502,24 +518,7 @@ playersRouter.get('/me/team/overview', async (req, res) => {
     });
 
     // Banner: existe partida nas últimas 24h com avaliações pendentes para mim?
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const recent24hMatch = await prisma.match.findFirst({
-      where: {
-        scheduledAt: { gte: twentyFourHoursAgo, lte: now },
-        OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
-      },
-      orderBy: { scheduledAt: 'desc' },
-      select: {
-        id: true,
-        scheduledAt: true,
-        status: true,
-        venue: true,
-        homeTeamId: true,
-        awayTeamId: true,
-        homeScore: true,
-        awayScore: true,
-      },
-    });
+    // Só aplica se eu for um jogador (player)
     let evaluationBanner: null | {
       match: {
         id: string;
@@ -533,21 +532,48 @@ playersRouter.get('/me/team/overview', async (req, res) => {
       };
       expiresAt: string;
     } = null;
-    if (recent24hMatch) {
-      const pendingCount = await prisma.matchPlayerEvaluationAssignment.count({
+
+    const mePlayer = await prisma.player.findUnique({
+      where: { userId: meUser.id },
+      select: { id: true },
+    });
+
+    if (mePlayer) {
+      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const recent24hMatch = await prisma.match.findFirst({
         where: {
-          matchId: recent24hMatch.id,
-          evaluatorPlayerId: mePlayer.id,
-          completedAt: null,
+          scheduledAt: { gte: twentyFourHoursAgo, lte: now },
+          OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
+        },
+        orderBy: { scheduledAt: 'desc' },
+        select: {
+          id: true,
+          scheduledAt: true,
+          status: true,
+          venue: true,
+          homeTeamId: true,
+          awayTeamId: true,
+          homeScore: true,
+          awayScore: true,
         },
       });
-      if (pendingCount > 0) {
-        evaluationBanner = {
-          match: recent24hMatch,
-          expiresAt: new Date(
-            recent24hMatch.scheduledAt.getTime() + 24 * 60 * 60 * 1000,
-          ).toISOString(),
-        };
+
+      if (recent24hMatch) {
+        const pendingCount = await prisma.matchPlayerEvaluationAssignment.count({
+          where: {
+            matchId: recent24hMatch.id,
+            evaluatorPlayerId: mePlayer.id,
+            completedAt: null,
+          },
+        });
+        if (pendingCount > 0) {
+          evaluationBanner = {
+            match: recent24hMatch,
+            expiresAt: new Date(
+              recent24hMatch.scheduledAt.getTime() + 24 * 60 * 60 * 1000,
+            ).toISOString(),
+          };
+        }
       }
     }
 

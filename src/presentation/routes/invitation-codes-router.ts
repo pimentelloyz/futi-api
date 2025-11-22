@@ -27,7 +27,7 @@ const listLeagueInvites = makeListLeagueInvitationsController();
 const revokeLeagueInvite = makeRevokeLeagueInvitationController();
 const acceptLeagueInvite = makeAcceptLeagueInvitationController();
 
-invitationCodesRouter.post('/', requireManager(), async (req, res) => {
+invitationCodesRouter.post('/', jwtAuth, requireManager(), async (req, res) => {
   try {
     const request: HttpRequest = {
       body: req.body,
@@ -43,7 +43,7 @@ invitationCodesRouter.post('/', requireManager(), async (req, res) => {
   }
 });
 
-invitationCodesRouter.get('/', requireManager(), async (req, res) => {
+invitationCodesRouter.get('/', jwtAuth, requireManager(), async (req, res) => {
   try {
     const request: HttpRequest = {
       body: undefined,
@@ -59,7 +59,7 @@ invitationCodesRouter.get('/', requireManager(), async (req, res) => {
   }
 });
 
-invitationCodesRouter.delete('/:id', requireManager(), async (req, res) => {
+invitationCodesRouter.delete('/:id', jwtAuth, requireManager(), async (req, res) => {
   try {
     const request: HttpRequest = {
       body: undefined,
@@ -93,7 +93,7 @@ invitationCodesRouter.post('/accept', jwtAuth, async (req, res) => {
 });
 
 // League invites management (admin/manager)
-invitationCodesRouter.post('/league', requireManager(), async (req, res) => {
+invitationCodesRouter.post('/league', jwtAuth, requireManager(), async (req, res) => {
   try {
     const request: HttpRequest = {
       body: req.body,
@@ -109,7 +109,7 @@ invitationCodesRouter.post('/league', requireManager(), async (req, res) => {
   }
 });
 
-invitationCodesRouter.get('/league', requireManager(), async (req, res) => {
+invitationCodesRouter.get('/league', jwtAuth, requireManager(), async (req, res) => {
   try {
     const request: HttpRequest = {
       body: undefined,
@@ -125,7 +125,7 @@ invitationCodesRouter.get('/league', requireManager(), async (req, res) => {
   }
 });
 
-invitationCodesRouter.delete('/league/:id', requireManager(), async (req, res) => {
+invitationCodesRouter.delete('/league/:id', jwtAuth, requireManager(), async (req, res) => {
   try {
     const request: HttpRequest = {
       body: undefined,
