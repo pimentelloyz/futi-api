@@ -328,7 +328,7 @@ async function main() {
     // 7. CRIAR CALENDÁRIO DE JOGOS (8 RODADAS)
     // ============================================================================
     
-    console.log('[7/7] Criando calendário de jogos...');
+    console.log('[7/8] Criando calendário de jogos...');
     
     // Primeiro, limpar jogos existentes da liga para evitar duplicatas
     const existingMatches = await prisma.match.count({
