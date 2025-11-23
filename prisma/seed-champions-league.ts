@@ -27,10 +27,52 @@ async function main() {
 
   try {
     // ============================================================================
+    // 0. CRIAR POSIÇÕES DOS JOGADORES
+    // ============================================================================
+    
+    console.log('[0/8] Criando posições dos jogadores...');
+    
+    const positions: Array<{ slug: string; name: string; description: string }> = [
+      { slug: 'GK', name: 'Goalkeeper', description: 'Goleiro' },
+      { slug: 'CB', name: 'Centre Back', description: 'Zagueiro central' },
+      { slug: 'LCB', name: 'Left Centre Back', description: 'Zagueiro central esquerdo' },
+      { slug: 'RCB', name: 'Right Centre Back', description: 'Zagueiro central direito' },
+      { slug: 'LB', name: 'Left Back', description: 'Lateral-esquerdo' },
+      { slug: 'RB', name: 'Right Back', description: 'Lateral-direito' },
+      { slug: 'LWB', name: 'Left Wing Back', description: 'Ala-esquerdo / lateral-esquerdo ofensivo' },
+      { slug: 'RWB', name: 'Right Wing Back', description: 'Ala-direito / lateral-direito ofensivo' },
+      { slug: 'SW', name: 'Sweeper', description: 'Líbero (raro atualmente)' },
+      { slug: 'CDM', name: 'Central Defensive Midfielder', description: 'Volante / meio-campista defensivo' },
+      { slug: 'CM', name: 'Central Midfielder', description: 'Meio-campista central' },
+      { slug: 'CAM', name: 'Central Attacking Midfielder', description: 'Meia ofensivo / armador' },
+      { slug: 'LM', name: 'Left Midfielder', description: 'Meia-esquerda' },
+      { slug: 'RM', name: 'Right Midfielder', description: 'Meia-direita' },
+      { slug: 'CF', name: 'Centre Forward', description: 'Segundo atacante / centroavante recuado' },
+      { slug: 'ST', name: 'Striker', description: 'Centroavante' },
+      { slug: 'LW', name: 'Left Winger', description: 'Ponta-esquerda' },
+      { slug: 'RW', name: 'Right Winger', description: 'Ponta-direita' },
+      { slug: 'LF', name: 'Left Forward', description: 'Atacante pela esquerda' },
+      { slug: 'RF', name: 'Right Forward', description: 'Atacante pela direita' },
+    ];
+
+    for (const p of positions) {
+      await prisma.$executeRaw`
+        INSERT INTO "Position" ("slug","name","description","createdAt","updatedAt")
+        VALUES (${p.slug}, ${p.name}, ${p.description}, NOW(), NOW())
+        ON CONFLICT ("slug") DO UPDATE SET 
+          "name" = EXCLUDED."name", 
+          "description" = EXCLUDED."description", 
+          "updatedAt" = NOW()
+      `;
+    }
+
+    console.log(`      ✓ ${positions.length} posições criadas/atualizadas`);
+
+    // ============================================================================
     // 1. BUSCAR OU CRIAR FORMATO DA CHAMPIONS LEAGUE
     // ============================================================================
     
-    console.log('[1/7] Buscando formato Champions League...');
+    console.log('[1/8] Buscando formato Champions League...');
     let format = await prisma.leagueFormat.findUnique({
       where: { slug: 'champions-league' },
       include: { phases: true },
@@ -82,7 +124,7 @@ async function main() {
     // 2. CRIAR OS 36 TIMES EUROPEUS
     // ============================================================================
     
-    console.log('[2/7] Criando times europeus...');
+    console.log('[2/8] Criando times europeus...');
     
     const teamsData = [
       // Inglaterra (4 times)
@@ -159,7 +201,7 @@ async function main() {
     // 3. CRIAR A LIGA
     // ============================================================================
     
-    console.log('[3/7] Criando liga Champions League...');
+    console.log('[3/8] Criando liga Champions League...');
     
     const league = await prisma.league.upsert({
       where: { slug: 'champions-league-2024-25' },
@@ -189,7 +231,7 @@ async function main() {
     // 4. VINCULAR TIMES À LIGA
     // ============================================================================
     
-    console.log('[4/7] Vinculando times à liga...');
+    console.log('[4/8] Vinculando times à liga...');
     
     for (const team of teams) {
       await prisma.leagueTeam.upsert({
@@ -213,7 +255,7 @@ async function main() {
     // 5. CRIAR FASE DE LIGA
     // ============================================================================
     
-    console.log('[5/7] Criando fase de liga...');
+    console.log('[5/8] Criando fase de liga...');
     
     const phaseConfig = format.phases[0]; // Fase de Liga
     

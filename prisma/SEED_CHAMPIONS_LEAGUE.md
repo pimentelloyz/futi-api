@@ -4,11 +4,13 @@ Este seed cria uma liga completa da UEFA Champions League com o novo formato (fa
 
 ## O que é criado
 
+- **19 posições de jogadores** (GK, CB, LB, RB, CDM, CM, CAM, ST, LW, RW, etc.)
 - **36 times europeus** dos principais campeonatos (Inglaterra, Espanha, Alemanha, Itália, França, Portugal, Holanda e outros)
 - **1 liga** - UEFA Champions League 2024/25
 - **1 fase** - Fase de Liga (36 times, liga única)
 - **144 jogos** distribuídos em 8 rodadas
 - **Tabela de classificação** inicial para todos os times
+- **Permissões de acesso** para o usuário configurado (MASTER, LEAGUE_MANAGER, MANAGER)
 
 ## Calendário de Jogos
 
