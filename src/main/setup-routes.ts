@@ -153,76 +153,53 @@ export function setupRoutes(app: Express) {
     `);
   });
 
+  // Swagger UI - usando serveFiles separado para cada rota
+  const swaggerOptions = { customSiteTitle: 'futi-api' };
+
   // Swagger UI para todos os endpoints
-  app.use('/docs/all', swaggerUi.serve);
-  app.get(
-    '/docs/all',
-    swaggerUi.setup(enrichedOpenapi, { customSiteTitle: 'futi-api - Todos os Endpoints' }),
-  );
   app.get('/docs/all.json', (_req, res) => res.json(enrichedOpenapi));
+  app.use('/docs/all', swaggerUi.serveFiles(enrichedOpenapi, swaggerOptions));
+  app.get('/docs/all', swaggerUi.setup(enrichedOpenapi, { customSiteTitle: 'futi-api - Todos os Endpoints' }));
 
   // Swagger UI para endpoints do jogador
-  app.use('/docs/player', swaggerUi.serve);
-  app.get(
-    '/docs/player',
-    swaggerUi.setup(openapiPlayer, { customSiteTitle: 'futi-api - Player App' }),
-  );
   app.get('/docs/player.json', (_req, res) => res.json(openapiPlayer));
+  app.use('/docs/player', swaggerUi.serveFiles(openapiPlayer, swaggerOptions));
+  app.get('/docs/player', swaggerUi.setup(openapiPlayer, { customSiteTitle: 'futi-api - Player App' }));
 
   // Swagger UI para painel administrativo
-  app.use('/docs/admin', swaggerUi.serve);
-  app.get(
-    '/docs/admin',
-    swaggerUi.setup(openapiAdmin, { customSiteTitle: 'futi-api - Admin Panel' }),
-  );
   app.get('/docs/admin.json', (_req, res) => res.json(openapiAdmin));
+  app.use('/docs/admin', swaggerUi.serveFiles(openapiAdmin, swaggerOptions));
+  app.get('/docs/admin', swaggerUi.setup(openapiAdmin, { customSiteTitle: 'futi-api - Admin Panel' }));
 
   // Swagger UI para Manager (Técnico)
-  app.use('/docs/manager', swaggerUi.serve);
-  app.get(
-    '/docs/manager',
-    swaggerUi.setup(openapiManager, { customSiteTitle: 'futi-api - Manager' }),
-  );
   app.get('/docs/manager.json', (_req, res) => res.json(openapiManager));
+  app.use('/docs/manager', swaggerUi.serveFiles(openapiManager, swaggerOptions));
+  app.get('/docs/manager', swaggerUi.setup(openapiManager, { customSiteTitle: 'futi-api - Manager' }));
 
   // Swagger UI para Assistant (Auxiliar)
-  app.use('/docs/assistant', swaggerUi.serve);
-  app.get(
-    '/docs/assistant',
-    swaggerUi.setup(openapiAssistant, { customSiteTitle: 'futi-api - Assistant' }),
-  );
   app.get('/docs/assistant.json', (_req, res) => res.json(openapiAssistant));
+  app.use('/docs/assistant', swaggerUi.serveFiles(openapiAssistant, swaggerOptions));
+  app.get('/docs/assistant', swaggerUi.setup(openapiAssistant, { customSiteTitle: 'futi-api - Assistant' }));
 
   // Swagger UI para League Manager
-  app.use('/docs/league-manager', swaggerUi.serve);
-  app.get(
-    '/docs/league-manager',
-    swaggerUi.setup(openapiLeagueManager, { customSiteTitle: 'futi-api - League Manager' }),
-  );
   app.get('/docs/league-manager.json', (_req, res) => res.json(openapiLeagueManager));
+  app.use('/docs/league-manager', swaggerUi.serveFiles(openapiLeagueManager, swaggerOptions));
+  app.get('/docs/league-manager', swaggerUi.setup(openapiLeagueManager, { customSiteTitle: 'futi-api - League Manager' }));
 
   // Swagger UI para Match Manager
-  app.use('/docs/match-manager', swaggerUi.serve);
-  app.get(
-    '/docs/match-manager',
-    swaggerUi.setup(openapiMatchManager, { customSiteTitle: 'futi-api - Match Manager' }),
-  );
   app.get('/docs/match-manager.json', (_req, res) => res.json(openapiMatchManager));
+  app.use('/docs/match-manager', swaggerUi.serveFiles(openapiMatchManager, swaggerOptions));
+  app.get('/docs/match-manager', swaggerUi.setup(openapiMatchManager, { customSiteTitle: 'futi-api - Match Manager' }));
 
   // Swagger UI para Referee Commission
-  app.use('/docs/referee-commission', swaggerUi.serve);
-  app.get(
-    '/docs/referee-commission',
-    swaggerUi.setup(openapiRefereeCommission, {
-      customSiteTitle: 'futi-api - Referee Commission',
-    }),
-  );
   app.get('/docs/referee-commission.json', (_req, res) => res.json(openapiRefereeCommission));
+  app.use('/docs/referee-commission', swaggerUi.serveFiles(openapiRefereeCommission, swaggerOptions));
+  app.get('/docs/referee-commission', swaggerUi.setup(openapiRefereeCommission, { customSiteTitle: 'futi-api - Referee Commission' }));
 
   // Swagger UI para Fan (Torcedor)
-  app.use('/docs/fan', swaggerUi.serve);
-  app.get('/docs/fan', swaggerUi.setup(openapiFan, { customSiteTitle: 'futi-api - Fan' }));
   app.get('/docs/fan.json', (_req, res) => res.json(openapiFan));
+  app.use('/docs/fan', swaggerUi.serveFiles(openapiFan, swaggerOptions));
+  app.get('/docs/fan', swaggerUi.setup(openapiFan, { customSiteTitle: 'futi-api - Fan' }));
 
   // Mantém /docs redirecionando para a página principal (backward compatibility)
   app.get('/docs', (_req, res) => res.redirect('/'));
