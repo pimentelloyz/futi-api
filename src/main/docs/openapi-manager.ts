@@ -456,9 +456,19 @@ export const openapiManager: OpenAPIObject = {
     // ==================== INVITES ====================
     '/api/invites': {
       post: {
-        summary: 'Criar convite para jogador',
+        summary: 'Criar convite para jogador participar do time',
         tags: ['Invites'],
         security: [{ bearerAuth: [] }],
+        description:
+          '**Criar Convite de Time**\n\n' +
+          'Gera um código de convite para jogadores participarem do time. O convite pode ser único (1 uso) ou reutilizável (N usos).\n\n' +
+          '**Comportamento:**\n' +
+          '- `maxUses=1`: Convite único (invalidado após 1 uso)\n' +
+          '- `maxUses=N`: Convite reutilizável (pode ser usado N vezes)\n' +
+          '- `expiresAt` opcional: Data de expiração do convite\n' +
+          '- Código gerado automaticamente pelo backend\n' +
+          '- Quando `uses >= maxUses`, o convite é automaticamente invalidado\n\n' +
+          '**Permissões:** Requer role MANAGER do time especificado',
         requestBody: {
           required: true,
           content: {
@@ -466,39 +476,159 @@ export const openapiManager: OpenAPIObject = {
               schema: {
                 type: 'object',
                 properties: {
-                  teamId: { type: 'string' },
-                  role: { type: 'string', enum: ['PLAYER', 'ASSISTANT'] },
-                  maxUses: { type: ['integer', 'null'] },
-                  expiresAt: { type: ['string', 'null'], format: 'date-time' },
+                  teamId: {
+                    type: 'string',
+                    format: 'uuid',
+                    description: 'ID do time para o qual o convite será criado',
+                  },
+                  maxUses: {
+                    type: 'integer',
+                    minimum: 1,
+                    default: 1,
+                    description: 'Número máximo de usos do convite (padrão: 1)',
+                  },
+                  expiresAt: {
+                    type: 'string',
+                    format: 'date-time',
+                    description: 'Data de expiração do convite (opcional)',
+                  },
                 },
-                required: ['teamId', 'role'],
+                required: ['teamId'],
+              },
+              examples: {
+                uniqueInvite: {
+                  summary: 'Convite único',
+                  value: {
+                    teamId: '4803e1e9-5011-4ef8-8e6c-f222f069a9ca',
+                    maxUses: 1,
+                  },
+                },
+                groupInvite: {
+                  summary: 'Convite para grupo (reutilizável)',
+                  value: {
+                    teamId: '4803e1e9-5011-4ef8-8e6c-f222f069a9ca',
+                    maxUses: 20,
+                    expiresAt: '2025-12-31T23:59:59Z',
+                  },
+                },
               },
             },
           },
         },
         responses: {
-          '201': { description: 'Convite criado' },
-          '400': { description: 'Invalid request' },
-          '401': { description: 'Unauthorized' },
-          '403': { description: 'Forbidden' },
+          '201': {
+            description: 'Convite criado com sucesso',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    code: { type: 'string', description: 'Código do convite (compartilhar com jogadores)' },
+                    teamId: { type: 'string', format: 'uuid' },
+                    maxUses: { type: 'integer' },
+                    uses: { type: 'integer', description: 'Número de usos até o momento' },
+                    isActive: { type: 'boolean' },
+                    expiresAt: { type: 'string', format: 'date-time', nullable: true },
+                    createdAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+                example: {
+                  id: 'abc123-def456',
+                  code: 'ABC123XYZ',
+                  teamId: '4803e1e9-5011-4ef8-8e6c-f222f069a9ca',
+                  maxUses: 1,
+                  uses: 0,
+                  isActive: true,
+                  expiresAt: null,
+                  createdAt: '2025-11-22T10:30:00Z',
+                },
+              },
+            },
+          },
+          '400': { description: 'Dados inválidos (teamId obrigatório)' },
+          '401': { description: 'Não autenticado' },
+          '403': { description: 'Não é MANAGER do time especificado' },
         },
       },
       get: {
         summary: 'Listar convites do time',
         tags: ['Invites'],
         security: [{ bearerAuth: [] }],
+        description:
+          '**Listar Convites do Time**\n\n' +
+          'Retorna todos os convites criados para o time (ativos e inativos).\n\n' +
+          '**Informações retornadas:**\n' +
+          '- Código do convite\n' +
+          '- Status: `uses/maxUses` (ex: 3/10)\n' +
+          '- `isActive: false` quando `uses >= maxUses` ou expirado\n' +
+          '- Data de criação e expiração\n\n' +
+          '**Permissões:** Requer role MANAGER do time especificado',
         parameters: [
           {
             name: 'teamId',
             in: 'query',
             required: true,
-            schema: { type: 'string' },
+            schema: { type: 'string', format: 'uuid' },
+            description: 'ID do time para listar convites',
+            example: '4803e1e9-5011-4ef8-8e6c-f222f069a9ca',
           },
         ],
         responses: {
-          '200': { description: 'Lista de convites' },
-          '401': { description: 'Unauthorized' },
-          '403': { description: 'Forbidden' },
+          '200': {
+            description: 'Lista de convites do time',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    invitations: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string', format: 'uuid' },
+                          code: { type: 'string' },
+                          teamId: { type: 'string', format: 'uuid' },
+                          maxUses: { type: 'integer' },
+                          uses: { type: 'integer' },
+                          isActive: { type: 'boolean' },
+                          expiresAt: { type: 'string', format: 'date-time', nullable: true },
+                          createdAt: { type: 'string', format: 'date-time' },
+                        },
+                      },
+                    },
+                  },
+                },
+                example: {
+                  invitations: [
+                    {
+                      id: 'abc123',
+                      code: 'ABC123XYZ',
+                      teamId: '4803e1e9-5011-4ef8-8e6c-f222f069a9ca',
+                      maxUses: 1,
+                      uses: 0,
+                      isActive: true,
+                      expiresAt: null,
+                      createdAt: '2025-11-22T10:30:00Z',
+                    },
+                    {
+                      id: 'def456',
+                      code: 'XYZ789ABC',
+                      teamId: '4803e1e9-5011-4ef8-8e6c-f222f069a9ca',
+                      maxUses: 10,
+                      uses: 3,
+                      isActive: true,
+                      expiresAt: '2025-12-31T23:59:59Z',
+                      createdAt: '2025-11-20T08:00:00Z',
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          '401': { description: 'Não autenticado' },
+          '403': { description: 'Não é MANAGER do time especificado' },
         },
       },
     },
