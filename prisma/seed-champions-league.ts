@@ -651,6 +651,117 @@ async function main() {
     console.log('      ✓ Calendário criado:', matchesCreated, 'jogos em 8 rodadas');
 
     // ============================================================================
+    // 8. CONFIGURAR PERMISSÕES DO USUÁRIO
+    // ============================================================================
+    
+    console.log('[8/8] Configurando permissões do usuário...');
+    
+    const userId = 'cd0d23bd-fe57-48c6-b0c8-c0cf64edbe6d';
+    
+    // Verificar se o usuário existe
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+    
+    if (!user) {
+      console.log('      ⚠ Usuário não encontrado, pulando configuração de permissões');
+    } else {
+      // 8.1. Permissão MASTER (global)
+      const existingMaster = await prisma.accessMembership.findFirst({
+        where: {
+          userId,
+          teamId: null,
+          leagueId: null,
+          matchId: null,
+          role: 'MASTER',
+        },
+      });
+      
+      if (!existingMaster) {
+        await prisma.accessMembership.create({
+          data: {
+            userId,
+            role: 'MASTER',
+          },
+        });
+        console.log('      ✓ Permissão MASTER (global) concedida');
+      } else {
+        console.log('      ℹ Permissão MASTER já existe');
+      }
+      
+      // 8.2. Permissão LEAGUE_MANAGER da Champions League
+      const existingLeagueManager = await prisma.accessMembership.findFirst({
+        where: {
+          userId,
+          leagueId: league.id,
+          teamId: null,
+          matchId: null,
+        },
+      });
+      
+      if (!existingLeagueManager) {
+        await prisma.accessMembership.create({
+          data: {
+            userId,
+            leagueId: league.id,
+            role: 'LEAGUE_MANAGER',
+          },
+        });
+        console.log('      ✓ Permissão LEAGUE_MANAGER da Champions League concedida');
+      } else {
+        await prisma.accessMembership.updateMany({
+          where: {
+            userId,
+            leagueId: league.id,
+            teamId: null,
+            matchId: null,
+          },
+          data: {
+            role: 'LEAGUE_MANAGER',
+          },
+        });
+        console.log('      ✓ Permissão LEAGUE_MANAGER atualizada');
+      }
+      
+      // 8.3. Permissão MANAGER do primeiro time (Manchester City)
+      const firstTeam = teams[0];
+      const existingManager = await prisma.accessMembership.findFirst({
+        where: {
+          userId,
+          teamId: firstTeam.id,
+          leagueId: null,
+          matchId: null,
+        },
+      });
+      
+      if (!existingManager) {
+        await prisma.accessMembership.create({
+          data: {
+            userId,
+            teamId: firstTeam.id,
+            role: 'MANAGER',
+          },
+        });
+        console.log(`      ✓ Permissão MANAGER do time ${firstTeam.name} concedida`);
+      } else {
+        await prisma.accessMembership.updateMany({
+          where: {
+            userId,
+            teamId: firstTeam.id,
+            leagueId: null,
+            matchId: null,
+          },
+          data: {
+            role: 'MANAGER',
+          },
+        });
+        console.log(`      ✓ Permissão MANAGER do time ${firstTeam.name} atualizada`);
+      }
+      
+      console.log('      ✓ Todas as permissões configuradas');
+    }
+
+    // ============================================================================
     // RESUMO FINAL
     // ============================================================================
 

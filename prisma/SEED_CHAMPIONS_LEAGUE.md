@@ -112,6 +112,10 @@ DIRECT_URL="postgresql://..." # Opcional, mas recomendado
 - **Liga existente**: Se a liga já existir, será atualizada
 - **Jogos existentes**: Jogos da liga serão **deletados e recriados** para evitar duplicatas
 - **Classificação**: Será criada/atualizada com valores zerados para todos os times
+- **Permissões**: Configura automaticamente o usuário `a46be27d-b30a-4e15-8ab6-cf287b2e99cd` com:
+  - **MASTER** - Acesso global ao sistema
+  - **LEAGUE_MANAGER** - Gestor da Champions League
+  - **MANAGER** - Técnico do Manchester City
 
 ## Formato da Champions League
 
