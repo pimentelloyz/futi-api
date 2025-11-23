@@ -13,10 +13,15 @@ export class AcceptInvitationCodeUseCase {
   ) {}
 
   async execute(input: AcceptInvitationCodeInput): Promise<AcceptInvitationCodeOutput> {
-    // 1. Find player
-    const player = await this.playerRepository.findByUserId(input.userId);
+    // 1. Find or create player
+    let player = await this.playerRepository.findByUserId(input.userId);
     if (!player) {
-      throw new Error('PLAYER_NOT_FOUND');
+      // Auto-criar perfil de jogador para FANs aceitando convite
+      // Nome padrão será atualizado pelo usuário depois
+      player = await this.playerRepository.addForUser(input.userId, {
+        name: 'Jogador',
+        isActive: true,
+      });
     }
 
     // 2. Find and validate invitation code

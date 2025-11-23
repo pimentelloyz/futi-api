@@ -77,6 +77,13 @@ export class PrismaPlayerRepository implements PlayerRepository, IPlayerReposito
   }
 
   async linkToTeam(playerId: string, teamId: string, assignedBy: string): Promise<void> {
+    // Buscar o userId do player
+    const player = await this.prisma.player.findUnique({
+      where: { id: playerId },
+      select: { userId: true },
+    });
+
+    // Criar relação PlayersOnTeams
     await this.prisma.playersOnTeams.create({
       data: {
         playerId,
@@ -84,6 +91,28 @@ export class PrismaPlayerRepository implements PlayerRepository, IPlayerReposito
         assignedBy,
       },
     });
+
+    // Criar AccessMembership com role PLAYER (se o player tiver userId)
+    if (player?.userId) {
+      // Verificar se já existe membership para evitar duplicatas
+      const existingMembership = await this.prisma.accessMembership.findFirst({
+        where: {
+          userId: player.userId,
+          teamId,
+          role: 'PLAYER',
+        },
+      });
+
+      if (!existingMembership) {
+        await this.prisma.accessMembership.create({
+          data: {
+            userId: player.userId,
+            teamId,
+            role: 'PLAYER',
+          },
+        });
+      }
+    }
   }
 
   // Clean Arch adapter: listagem/paginação por time
