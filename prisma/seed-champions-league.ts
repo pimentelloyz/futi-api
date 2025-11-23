@@ -292,32 +292,34 @@ async function main() {
     // 6. CRIAR TABELA DE CLASSIFICAÇÃO INICIAL
     // ============================================================================
     
-    console.log('[6/7] Criando tabela de classificação...');
+    console.log('[6/8] Criando tabela de classificação...');
     
     for (let i = 0; i < teams.length; i++) {
-      await prisma.leagueStanding.upsert({
+      // Verificar se já existe
+      const existing = await prisma.leagueStanding.findFirst({
         where: {
-          phaseId_teamId_groupId: {
-            phaseId: phase.id,
-            teamId: teams[i].id,
-            groupId: undefined as any,
-          },
-        },
-        create: {
           phaseId: phase.id,
           teamId: teams[i].id,
-          position: i + 1,
-          points: 0,
-          played: 0,
-          wins: 0,
-          draws: 0,
-          losses: 0,
-          goalsFor: 0,
-          goalsAgainst: 0,
-          goalDifference: 0,
         },
-        update: {},
       });
+
+      if (!existing) {
+        await prisma.leagueStanding.create({
+          data: {
+            phaseId: phase.id,
+            teamId: teams[i].id,
+            position: i + 1,
+            points: 0,
+            played: 0,
+            wins: 0,
+            draws: 0,
+            losses: 0,
+            goalsFor: 0,
+            goalsAgainst: 0,
+            goalDifference: 0,
+          },
+        });
+      }
     }
 
     console.log('      ✓ Classificação criada para', teams.length, 'times');
