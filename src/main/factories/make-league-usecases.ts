@@ -6,6 +6,7 @@ import { CreateLeagueUseCase } from '../../domain/usecases/create-league/create-
 import { DeleteLeagueUseCase } from '../../domain/usecases/delete-league/delete-league.usecase.js';
 import { GenerateFixturesUseCase } from '../../domain/usecases/generate-fixtures/generate-fixtures.usecase.js';
 import { GetLeagueUseCase } from '../../domain/usecases/get-league/get-league.usecase.js';
+import { GetLeagueSettingsUseCase } from '../../domain/usecases/get-league-settings/get-league-settings.usecase.js';
 import { GetMyLeagueDetailsUseCase } from '../../domain/usecases/get-my-league-details/get-my-league-details.usecase.js';
 import { ListLeaguesUseCase } from '../../domain/usecases/list-leagues/list-leagues.usecase.js';
 import { ListLeagueTeamsUseCase } from '../../domain/usecases/list-league-teams/list-league-teams.usecase.js';
@@ -69,4 +70,8 @@ export function makeAddTeamToGroupUseCase() {
 
 export function makeGenerateFixturesUseCase() {
   return new GenerateFixturesUseCase(leagueGroupRepository, matchRepository);
+}
+
+export function makeGetLeagueSettingsUseCase() {
+  return new GetLeagueSettingsUseCase(prisma);
 }

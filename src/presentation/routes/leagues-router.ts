@@ -12,6 +12,7 @@ import {
   makeDeleteLeagueController,
   makeGenerateFixturesController,
   makeGetLeagueController,
+  makeGetLeagueSettingsController,
   makeGetMyLeagueDetailsController,
   makeListLeaguesController,
   makeListLeagueTeamsController,
@@ -153,6 +154,16 @@ leaguesRouter.get(
   ]),
   async (req, res) => {
     const controller = makeGetMyLeagueDetailsController();
+    return controller.handleExpress(req, res);
+  },
+);
+
+// Obter configurações completas da liga (requer LEAGUE_MANAGER ou ADMIN)
+leaguesRouter.get(
+  '/:id/settings',
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    const controller = makeGetLeagueSettingsController();
     return controller.handleExpress(req, res);
   },
 );
