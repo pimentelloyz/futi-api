@@ -21,6 +21,12 @@ export class ListLeaguesController implements Controller {
             : qp.isActive?.toString().toLowerCase() === 'false'
               ? false
               : undefined,
+        isPublic:
+          qp.isPublic?.toString().toLowerCase() === 'true'
+            ? true
+            : qp.isPublic?.toString().toLowerCase() === 'false'
+              ? false
+              : undefined,
         startAtFrom: qp.startAtFrom,
         startAtTo: qp.startAtTo,
         endAtFrom: qp.endAtFrom,

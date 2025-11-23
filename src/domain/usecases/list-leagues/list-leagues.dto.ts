@@ -3,6 +3,7 @@ export interface ListLeaguesInput {
   name?: string;
   slug?: string;
   isActive?: boolean;
+  isPublic?: boolean;
   startAtFrom?: string;
   startAtTo?: string;
   endAtFrom?: string;

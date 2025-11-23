@@ -5,6 +5,7 @@ export interface LeagueFilters {
   name?: string;
   slug?: string;
   isActive?: boolean;
+  isPublic?: boolean;
   startAtFrom?: Date;
   startAtTo?: Date;
   endAtFrom?: Date;

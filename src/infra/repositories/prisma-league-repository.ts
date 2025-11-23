@@ -68,6 +68,7 @@ export class PrismaLeagueRepository implements ILeagueRepository {
     if (filters.name) andClauses.push({ name: { contains: filters.name, mode: 'insensitive' } });
     if (filters.slug) andClauses.push({ slug: { contains: filters.slug, mode: 'insensitive' } });
     if (filters.isActive !== undefined) andClauses.push({ isActive: filters.isActive });
+    if (filters.isPublic !== undefined) andClauses.push({ isPublic: filters.isPublic });
     if (filters.startAtFrom || filters.startAtTo) {
       const range: Record<string, Date> = {};
       if (filters.startAtFrom) range.gte = filters.startAtFrom;

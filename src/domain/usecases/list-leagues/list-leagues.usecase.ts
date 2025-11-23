@@ -15,6 +15,7 @@ export class ListLeaguesUseCase {
       name: input.name,
       slug: input.slug,
       isActive: input.isActive,
+      isPublic: input.isPublic,
       startAtFrom: input.startAtFrom ? new Date(input.startAtFrom) : undefined,
       startAtTo: input.startAtTo ? new Date(input.startAtTo) : undefined,
       endAtFrom: input.endAtFrom ? new Date(input.endAtFrom) : undefined,
