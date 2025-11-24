@@ -30,6 +30,14 @@ export interface GetLeagueSettingsOutput {
     order: number;
     type: string;
     status: string;
+    teamsCount: number | null;
+    groupsCount: number | null;
+    teamsPerGroup: number | null;
+    hasHomeAway: boolean;
+    hasExtraTime: boolean;
+    hasPenalties: boolean;
+    advancingTeams: number | null;
+    advancingFrom: string | null;
     tiebreakRules: Array<{
       id: string;
       order: number;
