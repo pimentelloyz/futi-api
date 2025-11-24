@@ -7,11 +7,13 @@ import { DeleteLeagueUseCase } from '../../domain/usecases/delete-league/delete-
 import { GenerateFixturesUseCase } from '../../domain/usecases/generate-fixtures/generate-fixtures.usecase.js';
 import { GetLeagueUseCase } from '../../domain/usecases/get-league/get-league.usecase.js';
 import { GetLeagueSettingsUseCase } from '../../domain/usecases/get-league-settings/get-league-settings.usecase.js';
+import { GetLeagueTiebreakRulesUseCase } from '../../domain/usecases/get-league-tiebreak-rules/get-league-tiebreak-rules.usecase.js';
 import { GetMyLeagueDetailsUseCase } from '../../domain/usecases/get-my-league-details/get-my-league-details.usecase.js';
 import { ListLeaguesUseCase } from '../../domain/usecases/list-leagues/list-leagues.usecase.js';
 import { ListLeagueTeamsUseCase } from '../../domain/usecases/list-league-teams/list-league-teams.usecase.js';
 import { ListMyLeaguesUseCase } from '../../domain/usecases/list-my-leagues/list-my-leagues.usecase.js';
 import { UpdateLeagueUseCase } from '../../domain/usecases/update-league/update-league.usecase.js';
+import { UpdateTiebreakRulesOrderUseCase } from '../../domain/usecases/update-tiebreak-rules-order/update-tiebreak-rules-order.usecase.js';
 import { PrismaLeagueFixturesRepository } from '../../infra/repositories/prisma-league-fixtures-repository.js';
 import { PrismaLeagueGroupRepository } from '../../infra/repositories/prisma-league-group-repository.js';
 import { PrismaLeagueRepository } from '../../infra/repositories/prisma-league-repository.js';
@@ -74,4 +76,12 @@ export function makeGenerateFixturesUseCase() {
 
 export function makeGetLeagueSettingsUseCase() {
   return new GetLeagueSettingsUseCase(prisma);
+}
+
+export function makeGetLeagueTiebreakRulesUseCase() {
+  return new GetLeagueTiebreakRulesUseCase(prisma);
+}
+
+export function makeUpdateTiebreakRulesOrderUseCase() {
+  return new UpdateTiebreakRulesOrderUseCase(prisma);
 }

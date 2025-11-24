@@ -367,6 +367,162 @@ export const openapiLeagueManager: OpenAPIObject = {
       },
     },
 
+    // ==================== TIEBREAK RULES ====================
+    '/api/leagues/{id}/tiebreak-rules': {
+      get: {
+        summary: 'Obter critérios de desempate da liga',
+        description:
+          '**Buscar critérios de desempate** - Retorna os critérios de desempate configurados para uma liga/fase específica, ordenados por prioridade. Também retorna todos os critérios disponíveis para uso.\n\n' +
+          '**Query Parameters:**\n' +
+          '- `phaseId` (opcional): ID da fase específica. Se omitido, retorna da primeira fase.\n\n' +
+          '**Exemplo de Response:**\n' +
+          '```json\n' +
+          '{\n' +
+          '  "rules": [\n' +
+          '    {"id": "uuid", "order": 1, "criterion": "POINTS", "criterionLabel": "Pontos"},\n' +
+          '    {"id": "uuid", "order": 2, "criterion": "GOAL_DIFFERENCE", "criterionLabel": "Saldo de Gols"}\n' +
+          '  ],\n' +
+          '  "availableCriteria": [\n' +
+          '    {"value": "POINTS", "label": "Pontos"},\n' +
+          '    {"value": "WINS", "label": "Vitórias"},\n' +
+          '    {"value": "GOAL_DIFFERENCE", "label": "Saldo de Gols"},\n' +
+          '    {"value": "GOALS_FOR", "label": "Gols Marcados"},\n' +
+          '    {"value": "HEAD_TO_HEAD_POINTS", "label": "Confronto Direto (Pontos)"},\n' +
+          '    {"value": "AWAY_GOALS", "label": "Gols Fora"},\n' +
+          '    {"value": "FAIR_PLAY", "label": "Fair Play"},\n' +
+          '    {"value": "DRAW", "label": "Sorteio"},\n' +
+          '    ... (16 critérios no total)\n' +
+          '  ]\n' +
+          '}\n' +
+          '```',
+        tags: ['Leagues'],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+          {
+            name: 'phaseId',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'ID da fase específica (opcional)',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Critérios de desempate da liga',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    rules: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          order: { type: 'integer' },
+                          criterion: { type: 'string' },
+                          criterionLabel: { type: 'string' },
+                        },
+                      },
+                    },
+                    availableCriteria: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          value: { type: 'string' },
+                          label: { type: 'string' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Não autenticado' },
+          '403': { description: 'Sem permissão para acessar esta liga' },
+          '404': { description: 'Liga ou fase não encontrada' },
+        },
+      },
+    },
+    '/api/leagues/{id}/phases/{phaseId}/tiebreak-rules': {
+      put: {
+        summary: 'Atualizar ordem dos critérios de desempate',
+        description:
+          '**Reordenar critérios de desempate** - Atualiza a ordem de prioridade dos critérios de desempate de uma fase. Requer permissão de LEAGUE_MANAGER ou ADMIN e a liga não pode ter começado.\n\n' +
+          '**Validações:**\n' +
+          '- Liga não pode ter começado (startAt > now)\n' +
+          '- Requer role LEAGUE_MANAGER ou ADMIN\n' +
+          '- Array `rules` deve conter todos os critérios com novos valores de `order`\n\n' +
+          '**Exemplo de Request:**\n' +
+          '```json\n' +
+          '{\n' +
+          '  "rules": [\n' +
+          '    {"id": "819ac357-9095-493e-aa38-0f5296a02edf", "order": 1},\n' +
+          '    {"id": "049eb3b9-5dff-48a0-9bda-b68643afe648", "order": 2},\n' +
+          '    {"id": "9d9be9d8-61a8-47a5-b294-84931f33ebe1", "order": 3}\n' +
+          '  ]\n' +
+          '}\n' +
+          '```',
+        tags: ['Leagues'],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'phaseId', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  rules: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string', description: 'ID do critério' },
+                        order: { type: 'integer', description: 'Nova ordem (1, 2, 3...)' },
+                      },
+                      required: ['id', 'order'],
+                    },
+                  },
+                },
+                required: ['rules'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Ordem atualizada com sucesso',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    message: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Dados inválidos (rules vazio ou malformado)' },
+          '401': { description: 'Não autenticado' },
+          '403': {
+            description:
+              'Sem permissão (requer LEAGUE_MANAGER ou ADMIN) ou liga já começou',
+          },
+          '404': { description: 'Liga, fase ou configuração não encontrada' },
+        },
+      },
+    },
+
     // ==================== DISCIPLINE ====================
     '/api/leagues/{leagueId}/discipline-rules': {
       get: {

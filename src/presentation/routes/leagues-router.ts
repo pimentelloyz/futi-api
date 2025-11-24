@@ -14,10 +14,12 @@ import {
   makeGetLeagueController,
   makeGetLeagueSettingsController,
   makeGetMyLeagueDetailsController,
+  makeGetTiebreakCriteriaController,
   makeListLeaguesController,
   makeListLeagueTeamsController,
   makeListMyLeaguesController,
   makeUpdateLeagueController,
+  makeUpdateTiebreakRulesOrderController,
 } from '../../main/factories/make-league-controllers.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
 import { requireRole } from '../middlewares/rbac.middleware.js';
@@ -119,6 +121,22 @@ leaguesRouter.post('/', requireRole([AccessRole.ADMIN]), async (req, res) => {
     return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
   }
 });
+
+// Obter critérios de desempate de uma liga/fase
+leaguesRouter.get('/:id/tiebreak-rules', async (req, res) => {
+  const controller = makeGetTiebreakCriteriaController();
+  return controller.handleExpress(req, res);
+});
+
+// Atualizar ordem dos critérios de desempate
+leaguesRouter.put(
+  '/:id/phases/:phaseId/tiebreak-rules',
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    const controller = makeUpdateTiebreakRulesOrderController();
+    return controller.handleExpress(req, res);
+  }
+);
 
 // Listar todas as ligas (público)
 leaguesRouter.get('/', async (req, res) => {

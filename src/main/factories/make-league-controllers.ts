@@ -7,10 +7,12 @@ import { GenerateFixturesController } from '../../presentation/controllers/gener
 import { GetLeagueController } from '../../presentation/controllers/get-league-controller.js';
 import { GetLeagueSettingsController } from '../../presentation/controllers/get-league-settings-controller.js';
 import { GetMyLeagueDetailsController } from '../../presentation/controllers/get-my-league-details-controller.js';
+import { GetTiebreakCriteriaController } from '../../presentation/controllers/get-tiebreak-criteria-controller.js';
 import { ListLeaguesController } from '../../presentation/controllers/list-leagues-controller.js';
 import { ListLeagueTeamsController } from '../../presentation/controllers/list-league-teams-controller.js';
 import { ListMyLeaguesController } from '../../presentation/controllers/list-my-leagues-controller.js';
 import { UpdateLeagueController } from '../../presentation/controllers/update-league-controller.js';
+import { UpdateTiebreakRulesOrderController } from '../../presentation/controllers/update-tiebreak-rules-order-controller.js';
 
 import {
   makeAddTeamToGroupUseCase,
@@ -21,11 +23,13 @@ import {
   makeGenerateFixturesUseCase,
   makeGetLeagueUseCase,
   makeGetLeagueSettingsUseCase,
+  makeGetLeagueTiebreakRulesUseCase,
   makeGetMyLeagueDetailsUseCase,
   makeListLeaguesUseCase,
   makeListLeagueTeamsUseCase,
   makeListMyLeaguesUseCase,
   makeUpdateLeagueUseCase,
+  makeUpdateTiebreakRulesOrderUseCase,
 } from './make-league-usecases.js';
 
 export function makeCreateLeagueController() {
@@ -91,4 +95,14 @@ export function makeGenerateFixturesController() {
 export function makeGetLeagueSettingsController() {
   const useCase = makeGetLeagueSettingsUseCase();
   return new GetLeagueSettingsController(useCase);
+}
+
+export function makeGetTiebreakCriteriaController() {
+  const useCase = makeGetLeagueTiebreakRulesUseCase();
+  return new GetTiebreakCriteriaController(useCase);
+}
+
+export function makeUpdateTiebreakRulesOrderController() {
+  const useCase = makeUpdateTiebreakRulesOrderUseCase();
+  return new UpdateTiebreakRulesOrderController(useCase);
 }
