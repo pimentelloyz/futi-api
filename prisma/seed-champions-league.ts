@@ -252,10 +252,97 @@ async function main() {
     console.log('      ✓ Times vinculados à liga');
 
     // ============================================================================
-    // 5. CRIAR FASE DE LIGA
+    // 5. CRIAR JOGADORES PARA CADA TIME
     // ============================================================================
     
-    console.log('[5/8] Criando fase de liga...');
+    console.log('[5/8] Criando jogadores para cada time...');
+    
+    // Formação 4-3-3: 1 GK, 4 DEF, 3 MID, 3 ATT = 11 titulares + 7 reservas = 18 jogadores
+    const squadTemplate = [
+      // Titulares
+      { position: 'GK', number: 1, isCaptain: false },
+      { position: 'RB', number: 2, isCaptain: false },
+      { position: 'CB', number: 4, isCaptain: true }, // Capitão
+      { position: 'CB', number: 5, isCaptain: false },
+      { position: 'LB', number: 3, isCaptain: false },
+      { position: 'CDM', number: 6, isCaptain: false },
+      { position: 'CM', number: 8, isCaptain: false },
+      { position: 'CAM', number: 10, isCaptain: false },
+      { position: 'RW', number: 7, isCaptain: false },
+      { position: 'ST', number: 9, isCaptain: false },
+      { position: 'LW', number: 11, isCaptain: false },
+      
+      // Reservas
+      { position: 'GK', number: 12, isCaptain: false }, // Goleiro reserva
+      { position: 'CB', number: 13, isCaptain: false },
+      { position: 'RB', number: 14, isCaptain: false },
+      { position: 'CDM', number: 15, isCaptain: false },
+      { position: 'CM', number: 16, isCaptain: false },
+      { position: 'RW', number: 17, isCaptain: false },
+      { position: 'ST', number: 18, isCaptain: false },
+    ];
+
+    // Nomes genéricos para jogadores
+    const firstNames = ['João', 'Pedro', 'Lucas', 'Gabriel', 'Miguel', 'Rafael', 'André', 'Carlos', 
+                       'Felipe', 'Bruno', 'Diego', 'Thiago', 'Matheus', 'Rodrigo', 'Daniel', 
+                       'Leonardo', 'Marcelo', 'Gustavo'];
+    
+    const lastNames = ['Silva', 'Santos', 'Oliveira', 'Souza', 'Costa', 'Pereira', 'Ferreira', 
+                      'Rodrigues', 'Almeida', 'Nascimento', 'Lima', 'Araújo', 'Fernandes', 
+                      'Carvalho', 'Gomes', 'Martins', 'Rocha', 'Ribeiro'];
+
+    let totalPlayersCreated = 0;
+    
+    for (const team of teams) {
+      console.log(`      Criando elenco para ${team.name}...`);
+      
+      for (const playerTemplate of squadTemplate) {
+        // Gerar nome aleatório
+        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const playerName = `${firstName} ${lastName}`;
+        
+        // Verificar se já existe um jogador vinculado a este time (evitar duplicatas)
+        const existingPlayers = await prisma.player.findMany({
+          where: {
+            name: playerName,
+            number: playerTemplate.number,
+            teams: {
+              some: {
+                teamId: team.id,
+              },
+            },
+          },
+        });
+
+        if (existingPlayers.length === 0) {
+          // Criar o jogador e vinculá-lo ao time
+          const player = await prisma.player.create({
+            data: {
+              name: playerName,
+              positionSlug: playerTemplate.position,
+              number: playerTemplate.number,
+              isActive: true,
+              teams: {
+                create: {
+                  teamId: team.id,
+                  assignedAt: new Date(),
+                },
+              },
+            },
+          });
+          totalPlayersCreated++;
+        }
+      }
+    }
+
+    console.log(`      ✓ ${totalPlayersCreated} jogadores criados para ${teams.length} times`);
+
+    // ============================================================================
+    // 6. CRIAR FASE DE LIGA
+    // ============================================================================
+    
+    console.log('[6/9] Criando fase de liga...');
     
     const phaseConfig = format.phases[0]; // Fase de Liga
     
@@ -289,10 +376,10 @@ async function main() {
     console.log('      ✓ Fase de liga criada');
 
     // ============================================================================
-    // 6. CRIAR TABELA DE CLASSIFICAÇÃO INICIAL
+    // 7. CRIAR TABELA DE CLASSIFICAÇÃO INICIAL
     // ============================================================================
     
-    console.log('[6/8] Criando tabela de classificação...');
+    console.log('[7/9] Criando tabela de classificação...');
     
     for (let i = 0; i < teams.length; i++) {
       // Verificar se já existe
@@ -325,10 +412,10 @@ async function main() {
     console.log('      ✓ Classificação criada para', teams.length, 'times');
 
     // ============================================================================
-    // 7. CRIAR CALENDÁRIO DE JOGOS (8 RODADAS)
+    // 8. CRIAR CALENDÁRIO DE JOGOS (8 RODADAS)
     // ============================================================================
     
-    console.log('[7/8] Criando calendário de jogos...');
+    console.log('[8/9] Criando calendário de jogos...');
     
     // Primeiro, limpar jogos existentes da liga para evitar duplicatas
     const existingMatches = await prisma.match.count({
@@ -651,10 +738,10 @@ async function main() {
     console.log('      ✓ Calendário criado:', matchesCreated, 'jogos em 8 rodadas');
 
     // ============================================================================
-    // 8. CONFIGURAR PERMISSÕES DO USUÁRIO
+    // 9. CONFIGURAR PERMISSÕES DO USUÁRIO
     // ============================================================================
     
-    console.log('[8/8] Configurando permissões do usuário...');
+    console.log('[9/9] Configurando permissões do usuário...');
     
     const userId = 'cd0d23bd-fe57-48c6-b0c8-c0cf64edbe6d';
     
