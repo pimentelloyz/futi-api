@@ -5,6 +5,8 @@
  * Permissões: Mesmas do MANAGER mas SOMENTE LEITURA (read-only)
  */
 
+import { pushNotificationComponents, pushNotificationPaths } from './push-notifications-openapi.js';
+
 interface OpenAPIInfo {
   title: string;
   version: string;
@@ -47,6 +49,7 @@ export const openapiAssistant: OpenAPIObject = {
     { name: 'Evaluations', description: 'Visualização de avaliações' },
     { name: 'Leagues', description: 'Visualização de ligas' },
     { name: 'Matches', description: 'Visualização de partidas' },
+    { name: 'Push Notifications', description: 'Notificações push via FCM' },
   ],
   components: {
     securitySchemes: {
@@ -447,6 +450,14 @@ export const openapiAssistant: OpenAPIObject = {
           '404': { description: 'Partida não encontrada' },
         },
       },
+    },
+    ...pushNotificationPaths,
+  },
+  components: {
+    ...openapiAssistant.components,
+    schemas: {
+      ...(openapiAssistant.components?.schemas || {}),
+      ...pushNotificationComponents.schemas,
     },
   },
 };

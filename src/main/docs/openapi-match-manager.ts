@@ -5,6 +5,8 @@
  * Permissões: Gerenciar eventos da partida (gols, cartões, substituições)
  */
 
+import { pushNotificationComponents, pushNotificationPaths } from './push-notifications-openapi.js';
+
 interface OpenAPIInfo {
   title: string;
   version: string;
@@ -42,6 +44,7 @@ export const openapiMatchManager: OpenAPIObject = {
     { name: 'Access', description: 'Controle de acesso' },
     { name: 'Matches', description: 'Gerenciamento de partidas' },
     { name: 'Match Events', description: 'Eventos da partida (gols, cartões, substituições)' },
+    { name: 'Push Notifications', description: 'Notificações push via FCM' },
   ],
   components: {
     securitySchemes: {
@@ -248,6 +251,14 @@ export const openapiMatchManager: OpenAPIObject = {
           '404': { description: 'Evento não encontrado' },
         },
       },
+    },
+    ...pushNotificationPaths,
+  },
+  components: {
+    ...openapiMatchManager.components,
+    schemas: {
+      ...(openapiMatchManager.components?.schemas || {}),
+      ...pushNotificationComponents.schemas,
     },
   },
 };

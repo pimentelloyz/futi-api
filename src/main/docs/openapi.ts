@@ -1,3 +1,5 @@
+import { pushNotificationComponents, pushNotificationPaths } from './push-notifications-openapi.js';
+
 // Using a lightweight inline type (avoid runtime dependency for typing only)
 interface OpenAPIInfo {
   title: string;
@@ -39,6 +41,7 @@ export const openapi: OpenAPIObject = {
     { name: 'Players', description: 'Gerenciamento de jogadores' },
     { name: 'Positions', description: 'Posições de jogadores' },
     { name: 'Invites', description: 'Convites e participação' },
+    { name: 'Push Notifications', description: 'Notificações push via FCM' },
   ],
   components: {
     securitySchemes: {
@@ -3428,6 +3431,14 @@ export const openapi: OpenAPIObject = {
           '500': { description: 'Internal Error' },
         },
       },
+    },
+    ...pushNotificationPaths,
+  },
+  components: {
+    ...openapi.components,
+    schemas: {
+      ...(openapi.components?.schemas || {}),
+      ...pushNotificationComponents.schemas,
     },
   },
 };

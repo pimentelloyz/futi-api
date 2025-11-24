@@ -5,6 +5,8 @@
  * Permissões: Visualizar ligas públicas, times e partidas (SOMENTE LEITURA)
  */
 
+import { pushNotificationComponents, pushNotificationPaths } from './push-notifications-openapi.js';
+
 interface OpenAPIInfo {
   title: string;
   version: string;
@@ -45,6 +47,7 @@ export const openapiFan: OpenAPIObject = {
     { name: 'Teams', description: 'Visualização de times' },
     { name: 'Matches', description: 'Visualização de partidas' },
     { name: 'Standings', description: 'Classificação' },
+    { name: 'Push Notifications', description: 'Notificações push via FCM' },
   ],
   components: {
     securitySchemes: {
@@ -304,6 +307,14 @@ export const openapiFan: OpenAPIObject = {
           '200': { description: 'Classificação' },
         },
       },
+    },
+    ...pushNotificationPaths,
+  },
+  components: {
+    ...openapiFan.components,
+    schemas: {
+      ...(openapiFan.components?.schemas || {}),
+      ...pushNotificationComponents.schemas,
     },
   },
 };

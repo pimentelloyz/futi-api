@@ -5,6 +5,8 @@
  * Permissões: Gerenciar liga, times da liga, criar partidas, grupos, etc.
  */
 
+import { pushNotificationComponents, pushNotificationPaths } from './push-notifications-openapi.js';
+
 interface OpenAPIInfo {
   title: string;
   version: string;
@@ -46,6 +48,7 @@ export const openapiLeagueManager: OpenAPIObject = {
     { name: 'Invites', description: 'Convites para times' },
     { name: 'Discipline', description: 'Regras disciplinares' },
     { name: 'Standings', description: 'Classificação e tabelas' },
+    { name: 'Push Notifications', description: 'Notificações push via FCM' },
   ],
   components: {
     securitySchemes: {
@@ -515,8 +518,7 @@ export const openapiLeagueManager: OpenAPIObject = {
           '400': { description: 'Dados inválidos (rules vazio ou malformado)' },
           '401': { description: 'Não autenticado' },
           '403': {
-            description:
-              'Sem permissão (requer LEAGUE_MANAGER ou ADMIN) ou liga já começou',
+            description: 'Sem permissão (requer LEAGUE_MANAGER ou ADMIN) ou liga já começou',
           },
           '404': { description: 'Liga, fase ou configuração não encontrada' },
         },
@@ -571,6 +573,14 @@ export const openapiLeagueManager: OpenAPIObject = {
           '200': { description: 'Classificação' },
         },
       },
+    },
+    ...pushNotificationPaths,
+  },
+  components: {
+    ...openapiLeagueManager.components,
+    schemas: {
+      ...(openapiLeagueManager.components?.schemas || {}),
+      ...pushNotificationComponents.schemas,
     },
   },
 };

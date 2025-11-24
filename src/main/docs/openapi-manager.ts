@@ -5,6 +5,8 @@
  * Permissões: Gerenciar time, jogadores, convites, escalações
  */
 
+import { pushNotificationComponents, pushNotificationPaths } from './push-notifications-openapi.js';
+
 interface OpenAPIInfo {
   title: string;
   version: string;
@@ -47,6 +49,7 @@ export const openapiManager: OpenAPIObject = {
     { name: 'Evaluations', description: 'Avaliações de jogadores' },
     { name: 'Leagues', description: 'Visualização de ligas' },
     { name: 'Matches', description: 'Visualização de partidas e escalações' },
+    { name: 'Push Notifications', description: 'Notificações push via FCM' },
   ],
   components: {
     securitySchemes: {
@@ -524,7 +527,10 @@ export const openapiManager: OpenAPIObject = {
                   type: 'object',
                   properties: {
                     id: { type: 'string', format: 'uuid' },
-                    code: { type: 'string', description: 'Código do convite (compartilhar com jogadores)' },
+                    code: {
+                      type: 'string',
+                      description: 'Código do convite (compartilhar com jogadores)',
+                    },
                     teamId: { type: 'string', format: 'uuid' },
                     maxUses: { type: 'integer' },
                     uses: { type: 'integer', description: 'Número de usos até o momento' },
@@ -765,6 +771,14 @@ export const openapiManager: OpenAPIObject = {
           '403': { description: 'Forbidden' },
         },
       },
+    },
+    ...pushNotificationPaths,
+  },
+  components: {
+    ...openapiManager.components,
+    schemas: {
+      ...(openapiManager.components?.schemas || {}),
+      ...pushNotificationComponents.schemas,
     },
   },
 };

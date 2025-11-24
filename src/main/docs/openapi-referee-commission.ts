@@ -5,6 +5,8 @@
  * Permissões: Visualizar partidas, eventos disciplinares, suspensões (SOMENTE LEITURA)
  */
 
+import { pushNotificationComponents, pushNotificationPaths } from './push-notifications-openapi.js';
+
 interface OpenAPIInfo {
   title: string;
   version: string;
@@ -44,6 +46,7 @@ export const openapiRefereeCommission: OpenAPIObject = {
     { name: 'Matches', description: 'Visualização de partidas' },
     { name: 'Match Events', description: 'Visualização de eventos disciplinares' },
     { name: 'Discipline', description: 'Regras e suspensões' },
+    { name: 'Push Notifications', description: 'Notificações push via FCM' },
   ],
   components: {
     securitySchemes: {
@@ -242,6 +245,14 @@ export const openapiRefereeCommission: OpenAPIObject = {
           },
         },
       },
+    },
+    ...pushNotificationPaths,
+  },
+  components: {
+    ...openapiRefereeCommission.components,
+    schemas: {
+      ...(openapiRefereeCommission.components?.schemas || {}),
+      ...pushNotificationComponents.schemas,
     },
   },
 };

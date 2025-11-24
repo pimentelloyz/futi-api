@@ -4,6 +4,8 @@
  * Documentação dos endpoints para o painel administrativo
  */
 
+import { pushNotificationComponents, pushNotificationPaths } from './push-notifications-openapi.js';
+
 interface OpenAPIInfo {
   title: string;
   version: string;
@@ -47,6 +49,7 @@ export const openapiAdmin: OpenAPIObject = {
     { name: 'League Config', description: 'Configuração e setup de ligas' },
     { name: 'Discipline', description: 'Regras disciplinares e suspensões' },
     { name: 'Standings', description: 'Classificação e tabelas' },
+    { name: 'Push Notifications', description: 'Notificações push via FCM' },
   ],
   components: {
     securitySchemes: {
@@ -860,6 +863,14 @@ export const openapiAdmin: OpenAPIObject = {
           '404': { description: 'Phase not found' },
         },
       },
+    },
+    ...pushNotificationPaths,
+  },
+  components: {
+    ...openapiAdmin.components,
+    schemas: {
+      ...(openapiAdmin.components?.schemas || {}),
+      ...pushNotificationComponents.schemas,
     },
   },
 };

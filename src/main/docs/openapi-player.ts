@@ -4,6 +4,8 @@
  * Documentação dos endpoints específicos para o aplicativo do jogador
  */
 
+import { pushNotificationComponents, pushNotificationPaths } from './push-notifications-openapi.js';
+
 interface OpenAPIInfo {
   title: string;
   version: string;
@@ -40,6 +42,7 @@ export const openapiPlayer: OpenAPIObject = {
     { name: 'Teams', description: 'Gerenciamento de times' },
     { name: 'Players', description: 'Gerenciamento de jogadores' },
     { name: 'Access', description: 'Controle de acesso e permissões' },
+    { name: 'Push Notifications', description: 'Notificações push via FCM' },
   ],
   components: {
     securitySchemes: {
@@ -877,6 +880,14 @@ export const openapiPlayer: OpenAPIObject = {
           '401': { description: 'Unauthorized' },
         },
       },
+    },
+    ...pushNotificationPaths,
+  },
+  components: {
+    ...openapiPlayer.components,
+    schemas: {
+      ...(openapiPlayer.components?.schemas || {}),
+      ...pushNotificationComponents.schemas,
     },
   },
 };
