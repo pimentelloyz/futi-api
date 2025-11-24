@@ -41,6 +41,12 @@ export interface ILeagueRepository {
   ): Promise<{ items: League[]; total: number }>;
 
   listByTeamIds(teamIds: string[]): Promise<League[]>;
+  listByTeamIdsEnriched(teamIds: string[], userId: string, role?: string): Promise<Array<{
+    league: League;
+    format: { id: string; name: string; slug: string } | null;
+    teamsCount: number;
+    myRole: string;
+  }>>;
 
   update(
     id: string,

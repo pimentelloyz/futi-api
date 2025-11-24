@@ -114,6 +114,55 @@ export class PrismaLeagueRepository implements ILeagueRepository {
     return leagues.map((l) => this.toDomain(l));
   }
 
+  async listByTeamIdsEnriched(
+    teamIds: string[],
+    userId: string,
+    role?: string,
+  ): Promise<Array<{
+    league: League;
+    format: { id: string; name: string; slug: string } | null;
+    teamsCount: number;
+    myRole: string;
+  }>> {
+    if (teamIds.length === 0) return [];
+
+    const leagues = await this.prisma.league.findMany({
+      where: { teams: { some: { teamId: { in: teamIds } } } },
+      include: {
+        format: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        _count: {
+          select: {
+            teams: true,
+          },
+        },
+        accessMemberships: {
+          where: {
+            userId,
+            ...(role && { role }),
+          },
+          select: {
+            role: true,
+          },
+          take: 1,
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return leagues.map((l) => ({
+      league: this.toDomain(l),
+      format: l.format,
+      teamsCount: l._count.teams,
+      myRole: l.accessMemberships[0]?.role || 'UNKNOWN',
+    }));
+  }
+
   async update(
     id: string,
     data: {

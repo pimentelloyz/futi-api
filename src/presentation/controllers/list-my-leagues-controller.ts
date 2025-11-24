@@ -18,6 +18,7 @@ export class ListMyLeaguesController implements Controller {
 
       const result = await this.listMyLeaguesUseCase.execute({
         userId: request.user.id,
+        role: request.query.role as string | undefined,
       });
 
       return {

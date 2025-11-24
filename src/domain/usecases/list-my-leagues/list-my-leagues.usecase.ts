@@ -16,15 +16,27 @@ export class ListMyLeaguesUseCase {
       return { leagues: [] };
     }
 
-    const leagues = await this.leagueRepository.listByTeamIds(teamIds);
+    const enrichedLeagues = await this.leagueRepository.listByTeamIdsEnriched(
+      teamIds,
+      input.userId,
+      input.role,
+    );
 
     return {
-      leagues: leagues.map((league) => ({
+      leagues: enrichedLeagues.map(({ league, format, teamsCount, myRole }) => ({
         id: league.id,
         name: league.name,
         slug: league.slug,
         description: league.description,
         isActive: league.isActive,
+        isPublic: league.isPublic,
+        icon: league.icon,
+        banner: league.banner,
+        startAt: league.startAt,
+        endAt: league.endAt,
+        format,
+        teamsCount,
+        myRole,
       })),
     };
   }
