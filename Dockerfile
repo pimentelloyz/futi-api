@@ -11,7 +11,8 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 
 # Install all dependencies (including dev) to run prisma generate and build
-RUN npm ci
+# --ignore-scripts prevents husky from running
+RUN npm ci --ignore-scripts
 
 # Copy Prisma schema to allow client generation
 COPY prisma ./prisma
