@@ -29,6 +29,9 @@ RUN npm run build
 # Prune devDependencies to shrink runtime image
 RUN npm prune --omit=dev
 
+# Regenerate Prisma Client after prune to ensure it's in production node_modules
+RUN npx prisma generate
+
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
@@ -37,6 +40,8 @@ ENV NODE_ENV=production
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
+# Copy Prisma schema for runtime
+COPY --from=builder /app/prisma ./prisma
 
 # Expose the Cloud Run port (will be provided via $PORT)
 ENV PORT=3000
