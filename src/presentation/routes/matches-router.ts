@@ -16,6 +16,7 @@ import {
   MatchLineupSetController,
   MatchLineupGetController,
 } from '../controllers/match-lineup-controller.js';
+import { MatchSummaryController } from '../controllers/match-summary-controller.js';
 
 export const matchesRouter = Router();
 
@@ -64,6 +65,13 @@ matchesRouter.post(
 
 matchesRouter.get('/:id/lineup', async (req, res) => {
   const controller = new MatchLineupGetController();
+  const response = await controller.handle({ matchId: req.params.id });
+  return res.status(response.statusCode).json(response.body);
+});
+
+// Obter súmula completa da partida
+matchesRouter.get('/:id/summary', async (req, res) => {
+  const controller = new MatchSummaryController();
   const response = await controller.handle({ matchId: req.params.id });
   return res.status(response.statusCode).json(response.body);
 });
