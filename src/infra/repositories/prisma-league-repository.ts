@@ -24,6 +24,7 @@ export class PrismaLeagueRepository implements ILeagueRepository {
     startAt?: Date | null;
     endAt?: Date | null;
     isPublic?: boolean;
+    matchFormat?: 'FUTSAL' | 'FUT7' | 'FUT11';
   }): Promise<League> {
     const league = await this.prisma.league.create({
       data: {
@@ -35,6 +36,7 @@ export class PrismaLeagueRepository implements ILeagueRepository {
         startAt: data.startAt,
         endAt: data.endAt,
         isPublic: data.isPublic ?? false,
+        matchFormat: data.matchFormat || 'FUT11',
       },
     });
     return this.toDomain(league);
@@ -174,6 +176,7 @@ export class PrismaLeagueRepository implements ILeagueRepository {
       isActive?: boolean;
       icon?: string | null;
       banner?: string | null;
+      matchFormat?: 'FUTSAL' | 'FUT7' | 'FUT11';
     },
   ): Promise<League> {
     const league = await this.prisma.league.update({
@@ -187,6 +190,7 @@ export class PrismaLeagueRepository implements ILeagueRepository {
         ...(data.isActive !== undefined && { isActive: data.isActive }),
         ...(data.icon !== undefined && { icon: data.icon }),
         ...(data.banner !== undefined && { banner: data.banner }),
+        ...(data.matchFormat !== undefined && { matchFormat: data.matchFormat }),
       },
     });
     return this.toDomain(league);
@@ -280,6 +284,7 @@ export class PrismaLeagueRepository implements ILeagueRepository {
     endAt: Date | null;
     isActive: boolean;
     isPublic: boolean;
+    matchFormat: 'FUTSAL' | 'FUT7' | 'FUT11';
     createdAt: Date;
     updatedAt: Date;
   }): League {
@@ -294,6 +299,7 @@ export class PrismaLeagueRepository implements ILeagueRepository {
       league.endAt,
       league.isActive,
       league.isPublic,
+      league.matchFormat,
       league.createdAt,
       league.updatedAt,
     );
