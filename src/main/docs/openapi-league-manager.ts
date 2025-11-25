@@ -194,6 +194,12 @@ export const openapiLeagueManager: OpenAPIObject = {
                   slug: { type: 'string' },
                   description: { type: ['string', 'null'] },
                   isPublic: { type: 'boolean' },
+                  matchFormat: { 
+                    type: 'string', 
+                    enum: ['FUTSAL', 'FUT7', 'FUT11'],
+                    default: 'FUT11',
+                    description: 'Formato da partida: FUTSAL (5 jogadores), FUT7 (7 jogadores) ou FUT11 (11 jogadores)'
+                  },
                   startAt: { type: 'string', format: 'date-time' },
                   endAt: { type: 'string', format: 'date-time' },
                 },
@@ -203,7 +209,26 @@ export const openapiLeagueManager: OpenAPIObject = {
           },
         },
         responses: {
-          '201': { description: 'Liga criada' },
+          '201': { 
+            description: 'Liga criada',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' },
+                    slug: { type: 'string' },
+                    matchFormat: { 
+                      type: 'string', 
+                      enum: ['FUTSAL', 'FUT7', 'FUT11'],
+                      description: 'Formato da partida'
+                    },
+                  },
+                },
+              },
+            },
+          },
           '400': { description: 'Invalid request' },
           '403': { description: 'Forbidden' },
         },
@@ -216,7 +241,36 @@ export const openapiLeagueManager: OpenAPIObject = {
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
         responses: {
-          '200': { description: 'Detalhes da liga' },
+          '200': { 
+            description: 'Detalhes da liga',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' },
+                    slug: { type: 'string' },
+                    description: { type: ['string', 'null'] },
+                    icon: { type: ['string', 'null'] },
+                    banner: { type: ['string', 'null'] },
+                    startAt: { type: ['string', 'null'], format: 'date-time' },
+                    endAt: { type: ['string', 'null'], format: 'date-time' },
+                    isActive: { type: 'boolean' },
+                    isPublic: { type: 'boolean' },
+                    isOngoing: { type: 'boolean' },
+                    matchFormat: { 
+                      type: 'string', 
+                      enum: ['FUTSAL', 'FUT7', 'FUT11'],
+                      description: 'Formato da partida'
+                    },
+                    createdAt: { type: 'string', format: 'date-time' },
+                    updatedAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
           '404': { description: 'Liga não encontrada' },
         },
       },
@@ -235,13 +289,37 @@ export const openapiLeagueManager: OpenAPIObject = {
                   name: { type: 'string' },
                   description: { type: ['string', 'null'] },
                   isActive: { type: 'boolean' },
+                  matchFormat: { 
+                    type: 'string', 
+                    enum: ['FUTSAL', 'FUT7', 'FUT11'],
+                    description: 'Formato da partida: FUTSAL (5 jogadores), FUT7 (7 jogadores) ou FUT11 (11 jogadores)'
+                  },
                 },
               },
             },
           },
         },
         responses: {
-          '200': { description: 'Liga atualizada' },
+          '200': { 
+            description: 'Liga atualizada',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' },
+                    slug: { type: 'string' },
+                    matchFormat: { 
+                      type: 'string', 
+                      enum: ['FUTSAL', 'FUT7', 'FUT11'],
+                      description: 'Formato da partida'
+                    },
+                  },
+                },
+              },
+            },
+          },
           '403': { description: 'Forbidden' },
           '404': { description: 'Liga não encontrada' },
         },
