@@ -255,6 +255,25 @@ export const openapiMatchManager: OpenAPIObject = {
         },
       },
     },
+
+    // ==================== MATCH SUMMARY ====================
+    '/api/matches/{id}/summary': {
+      get: {
+        summary: 'Obter súmula completa da partida',
+        description:
+          'Retorna dados completos da partida incluindo informações básicas, escalações, todos os eventos (gols, cartões, faltas) e estatísticas',
+        tags: ['Matches'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': {
+            description: 'Súmula completa',
+          },
+          '404': { description: 'Partida não encontrada' },
+        },
+      },
+    },
+
     ...pushNotificationPaths,
   },
 };
