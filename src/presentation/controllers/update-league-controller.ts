@@ -10,7 +10,7 @@ export class UpdateLeagueController implements Controller {
   async handle(request: HttpRequest): Promise<HttpResponse> {
     try {
       const { id } = request.params as { id?: string };
-      const { name, slug, description, startAt, endAt, isActive, icon, banner } = request.body as {
+      const { name, slug, description, startAt, endAt, isActive, icon, banner, matchFormat } = request.body as {
         name?: string;
         slug?: string;
         description?: string | null;
@@ -19,12 +19,20 @@ export class UpdateLeagueController implements Controller {
         isActive?: boolean;
         icon?: string | null;
         banner?: string | null;
+        matchFormat?: 'FUTSAL' | 'FUT7' | 'FUT11';
       };
 
       if (!id) {
         return {
           statusCode: 400,
           body: { message: 'id is required' },
+        };
+      }
+
+      if (matchFormat && !['FUTSAL', 'FUT7', 'FUT11'].includes(matchFormat)) {
+        return {
+          statusCode: 400,
+          body: { message: 'matchFormat must be one of: FUTSAL, FUT7, FUT11' },
         };
       }
 
@@ -38,6 +46,7 @@ export class UpdateLeagueController implements Controller {
         isActive,
         icon,
         banner,
+        matchFormat,
       });
 
       return {

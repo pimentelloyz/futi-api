@@ -9,7 +9,7 @@ export class CreateLeagueController implements Controller {
 
   async handle(request: HttpRequest): Promise<HttpResponse> {
     try {
-      const { name, slug, description, startAt, endAt, icon, banner, isPublic } = request.body as {
+      const { name, slug, description, startAt, endAt, icon, banner, isPublic, matchFormat } = request.body as {
         name?: string;
         slug?: string;
         description?: string | null;
@@ -18,12 +18,20 @@ export class CreateLeagueController implements Controller {
         icon?: string | null;
         banner?: string | null;
         isPublic?: boolean;
+        matchFormat?: 'FUTSAL' | 'FUT7' | 'FUT11';
       };
 
       if (!name || !slug) {
         return {
           statusCode: 400,
           body: { message: 'name and slug are required' },
+        };
+      }
+
+      if (matchFormat && !['FUTSAL', 'FUT7', 'FUT11'].includes(matchFormat)) {
+        return {
+          statusCode: 400,
+          body: { message: 'matchFormat must be one of: FUTSAL, FUT7, FUT11' },
         };
       }
 
@@ -36,6 +44,7 @@ export class CreateLeagueController implements Controller {
         startAt: startAt ? new Date(startAt) : undefined,
         endAt: endAt ? new Date(endAt) : undefined,
         isPublic,
+        matchFormat,
       });
 
       return {
