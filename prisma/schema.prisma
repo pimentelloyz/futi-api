@@ -161,16 +161,24 @@ enum MatchEventType {
   OWN_GOAL
 }
 
+enum MatchFormat {
+  FUTSAL    // 5 jogadores (1 goleiro + 4)
+  FUT7      // 7 jogadores (1 goleiro + 6)
+  FUT11     // 11 jogadores (1 goleiro + 10)
+}
+
 model MatchLineupEntry {
-  id        String   @id @default(uuid())
-  match     Match    @relation(fields: [matchId], references: [id])
-  matchId   String
-  team      Team     @relation(fields: [teamId], references: [id])
-  teamId    String
-  player    Player   @relation(fields: [playerId], references: [id])
-  playerId  String
+  id         String   @id @default(uuid())
+  match      Match    @relation(fields: [matchId], references: [id])
+  matchId    String
+  team       Team     @relation(fields: [teamId], references: [id])
+  teamId     String
+  player     Player   @relation(fields: [playerId], references: [id])
+  playerId   String
   isStarting Boolean  @default(true)
-  createdAt DateTime @default(now())
+  // Posição na formação tática (ex: GK, CB, LB, RB, CDM, CM, CAM, LW, RW, ST)
+  position   String?  @db.VarChar(10)
+  createdAt  DateTime @default(now())
 
   @@unique([matchId, playerId])
   @@index([matchId, teamId])
@@ -348,6 +356,9 @@ model League {
   // Formato do campeonato
   format      LeagueFormat? @relation("LeagueFormat", fields: [formatId], references: [id])
   formatId    String?
+  
+  // Modalidade: FUTSAL (5), FUT7 (7), ou FUT11 (11)
+  matchFormat MatchFormat   @default(FUT11)
   
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
