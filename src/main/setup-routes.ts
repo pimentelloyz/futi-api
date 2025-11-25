@@ -15,6 +15,7 @@ import { disciplineRouter } from '../presentation/routes/discipline-router.js';
 import { auditRouter } from '../presentation/routes/audit-router.js';
 import { leagueFormatsRouter } from '../presentation/routes/league-formats-router.js';
 import { topicsRouter } from '../presentation/routes/topics-router.js';
+import { formationsRouter } from '../presentation/routes/formations-router.js';
 
 import { openapi } from './docs/openapi.js';
 import { openapiPlayer } from './docs/openapi-player.js';
@@ -41,6 +42,7 @@ export function setupRoutes(app: Express) {
   app.use('/api/discipline', disciplineRouter);
   app.use('/api/admin/audit', auditRouter);
   app.use('/api/topics', topicsRouter);
+  app.use('/api/formations', formationsRouter);
   app.use('/api', leagueFormatsRouter);
   app.get('/health', (_req, res) =>
     res.json({ status: 'ok', timestamp: new Date().toISOString() }),
