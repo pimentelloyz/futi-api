@@ -60,6 +60,9 @@ export const openapiLeagueManager: OpenAPIObject = {
           '🔐 **Autenticação via JWT**: Sua role (LEAGUE_MANAGER) está incluída automaticamente no token JWT obtido via `/api/auth/firebase/exchange`. Não é necessário passar a role manualmente - ela é extraída do token pelo servidor. Endpoints protegidos verificam se você tem a role adequada.',
       },
     },
+    schemas: {
+      ...pushNotificationComponents.schemas,
+    },
   },
   paths: {
     // ==================== COMMON ENDPOINTS ====================
@@ -575,12 +578,5 @@ export const openapiLeagueManager: OpenAPIObject = {
       },
     },
     ...pushNotificationPaths,
-  },
-  components: {
-    ...openapiLeagueManager.components,
-    schemas: {
-      ...(openapiLeagueManager.components?.schemas || {}),
-      ...pushNotificationComponents.schemas,
-    },
   },
 };

@@ -59,6 +59,9 @@ export const openapiFan: OpenAPIObject = {
           '🔐 **Autenticação via JWT**: Sua role (FAN) está incluída automaticamente no token JWT obtido via `/api/auth/firebase/exchange`. Não é necessário passar a role manualmente - ela é extraída do token pelo servidor. Torcedores podem criar times e visualizar ligas públicas.',
       },
     },
+    schemas: {
+      ...pushNotificationComponents.schemas,
+    },
   },
   paths: {
     '/health': {
@@ -309,12 +312,5 @@ export const openapiFan: OpenAPIObject = {
       },
     },
     ...pushNotificationPaths,
-  },
-  components: {
-    ...openapiFan.components,
-    schemas: {
-      ...(openapiFan.components?.schemas || {}),
-      ...pushNotificationComponents.schemas,
-    },
   },
 };

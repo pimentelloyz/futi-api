@@ -54,6 +54,9 @@ export const openapiPlayer: OpenAPIObject = {
           '🔐 **Autenticação via JWT**: Sua role (PLAYER, FAN, etc) está incluída automaticamente no token JWT obtido via `/api/auth/firebase/exchange`. Não é necessário passar a role manualmente - ela é extraída do token pelo servidor. Endpoints protegidos verificam se você tem a role adequada.',
       },
     },
+    schemas: {
+      ...pushNotificationComponents.schemas,
+    },
   },
   paths: {
     '/api/auth/firebase/exchange': {
@@ -882,12 +885,5 @@ export const openapiPlayer: OpenAPIObject = {
       },
     },
     ...pushNotificationPaths,
-  },
-  components: {
-    ...openapiPlayer.components,
-    schemas: {
-      ...(openapiPlayer.components?.schemas || {}),
-      ...pushNotificationComponents.schemas,
-    },
   },
 };

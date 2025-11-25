@@ -56,6 +56,9 @@ export const openapiMatchManager: OpenAPIObject = {
           '🔐 **Autenticação via JWT**: Sua role (MATCH_MANAGER) está incluída automaticamente no token JWT obtido via `/api/auth/firebase/exchange`. Não é necessário passar a role manualmente - ela é extraída do token pelo servidor. Endpoints protegidos verificam se você tem a role adequada.',
       },
     },
+    schemas: {
+      ...pushNotificationComponents.schemas,
+    },
   },
   paths: {
     '/health': {
@@ -253,12 +256,5 @@ export const openapiMatchManager: OpenAPIObject = {
       },
     },
     ...pushNotificationPaths,
-  },
-  components: {
-    ...openapiMatchManager.components,
-    schemas: {
-      ...(openapiMatchManager.components?.schemas || {}),
-      ...pushNotificationComponents.schemas,
-    },
   },
 };

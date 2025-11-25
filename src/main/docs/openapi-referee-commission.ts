@@ -58,6 +58,9 @@ export const openapiRefereeCommission: OpenAPIObject = {
           '🔐 **Autenticação via JWT**: Sua role (REFEREE_COMMISSION) está incluída automaticamente no token JWT obtido via `/api/auth/firebase/exchange`. Não é necessário passar a role manualmente - ela é extraída do token pelo servidor. Endpoints protegidos verificam se você tem a role adequada (somente leitura).',
       },
     },
+    schemas: {
+      ...pushNotificationComponents.schemas,
+    },
   },
   paths: {
     '/health': {
@@ -247,12 +250,5 @@ export const openapiRefereeCommission: OpenAPIObject = {
       },
     },
     ...pushNotificationPaths,
-  },
-  components: {
-    ...openapiRefereeCommission.components,
-    schemas: {
-      ...(openapiRefereeCommission.components?.schemas || {}),
-      ...pushNotificationComponents.schemas,
-    },
   },
 };
