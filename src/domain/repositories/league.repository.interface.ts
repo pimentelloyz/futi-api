@@ -19,6 +19,8 @@ export interface PaginationParams {
   order?: 'asc' | 'desc';
 }
 
+export type MatchFormat = 'FUTSAL' | 'FUT7' | 'FUT11';
+
 export interface ILeagueRepository {
   create(data: {
     name: string;
@@ -29,6 +31,7 @@ export interface ILeagueRepository {
     startAt?: Date | null;
     endAt?: Date | null;
     isPublic?: boolean;
+    matchFormat?: MatchFormat;
   }): Promise<League>;
 
   findById(id: string): Promise<League | null>;
@@ -59,6 +62,7 @@ export interface ILeagueRepository {
       isActive?: boolean;
       icon?: string | null;
       banner?: string | null;
+      matchFormat?: MatchFormat;
     },
   ): Promise<League>;
 

@@ -1,3 +1,5 @@
+export type MatchFormat = 'FUTSAL' | 'FUT7' | 'FUT11';
+
 export class League {
   constructor(
     public readonly id: string,
@@ -10,6 +12,7 @@ export class League {
     public readonly endAt: Date | null,
     public readonly isActive: boolean,
     public readonly isPublic: boolean,
+    public readonly matchFormat: MatchFormat,
     public readonly createdAt: Date,
     public readonly updatedAt: Date,
   ) {}

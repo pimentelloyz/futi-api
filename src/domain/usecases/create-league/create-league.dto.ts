@@ -1,3 +1,5 @@
+export type MatchFormat = 'FUTSAL' | 'FUT7' | 'FUT11';
+
 export interface CreateLeagueInput {
   name: string;
   slug: string;
@@ -7,10 +9,12 @@ export interface CreateLeagueInput {
   startAt?: Date | null;
   endAt?: Date | null;
   isPublic?: boolean;
+  matchFormat?: MatchFormat;
 }
 
 export interface CreateLeagueOutput {
   id: string;
   name: string;
   slug: string;
+  matchFormat: MatchFormat;
 }

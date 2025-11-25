@@ -1,3 +1,5 @@
+export type MatchFormat = 'FUTSAL' | 'FUT7' | 'FUT11';
+
 export interface UpdateLeagueInput {
   leagueId: string;
   name?: string;
@@ -8,10 +10,12 @@ export interface UpdateLeagueInput {
   isActive?: boolean;
   icon?: string | null;
   banner?: string | null;
+  matchFormat?: MatchFormat;
 }
 
 export interface UpdateLeagueOutput {
   id: string;
   name: string;
   slug: string;
+  matchFormat: MatchFormat;
 }

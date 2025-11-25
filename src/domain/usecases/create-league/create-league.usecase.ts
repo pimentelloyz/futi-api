@@ -21,12 +21,14 @@ export class CreateLeagueUseCase {
       startAt: input.startAt,
       endAt: input.endAt,
       isPublic: input.isPublic,
+      matchFormat: input.matchFormat || 'FUT11',
     });
 
     return {
       id: league.id,
       name: league.name,
       slug: league.slug,
+      matchFormat: league.matchFormat as any,
     };
   }
 }

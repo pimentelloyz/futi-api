@@ -29,6 +29,7 @@ export class GetLeagueUseCase {
       isActive: league.isActive,
       isPublic: league.isPublic,
       isOngoing: league.isOngoing(),
+      matchFormat: league.matchFormat as any,
       createdAt: league.createdAt,
       updatedAt: league.updatedAt,
     };

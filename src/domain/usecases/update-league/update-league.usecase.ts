@@ -28,12 +28,14 @@ export class UpdateLeagueUseCase {
       isActive: input.isActive,
       icon: input.icon,
       banner: input.banner,
+      matchFormat: input.matchFormat,
     });
 
     return {
       id: updated.id,
       name: updated.name,
       slug: updated.slug,
+      matchFormat: updated.matchFormat as any,
     };
   }
 }

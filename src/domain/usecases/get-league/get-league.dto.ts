@@ -1,3 +1,5 @@
+export type MatchFormat = 'FUTSAL' | 'FUT7' | 'FUT11';
+
 export interface GetLeagueInput {
   identifier: string; // Can be ID or slug
 }
@@ -14,6 +16,7 @@ export interface GetLeagueOutput {
   isActive: boolean;
   isPublic: boolean;
   isOngoing: boolean;
+  matchFormat: MatchFormat;
   createdAt: Date;
   updatedAt: Date;
 }
