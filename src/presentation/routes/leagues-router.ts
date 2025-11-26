@@ -39,7 +39,7 @@ const upload = multer({
   limits: { fileSize: 2 * 1024 * 1024 },
 });
 
-leaguesRouter.post('/', requireRole([AccessRole.ADMIN]), async (req, res) => {
+leaguesRouter.post('/', requireRole([AccessRole.ADMIN, AccessRole.FAN]), async (req, res) => {
   const isMultipart = req.is('multipart/form-data');
   try {
     let iconUrlFromUpload: string | undefined;
