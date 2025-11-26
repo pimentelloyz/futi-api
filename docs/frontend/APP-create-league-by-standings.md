@@ -30,18 +30,33 @@ Fonte da verdade de contratos: `src/main/docs/openapi.ts` (OpenAPI 3.1). Confirm
 
 ## 3) Fluxo da Tela (Sugerido)
 
+**Modo Onboarding (Guiado):**
+1. Após criar liga, obter progresso: `GET /api/leagues/{leagueId}/setup-progress`
+2. Exibir wizard/stepper com os 7 passos do setup
+3. Destacar o `currentStep` e mostrar `nextAction` ao usuário
+4. Executar ações conforme o usuário progride nos steps
+5. Mostrar progresso visual (`completionPercentage`)
+6. Quando `isSetupComplete: true`, permitir iniciar a liga
+
+**Fluxo Manual (Avançado):**
 1. Formulário "Criar Liga":
    - Campos: nome, slug, descrição (opcional), isPublic (bool), isActive (bool, default true), datas (opcional), upload de ícone/banner (opcional).
    - Ação: `POST /api/leagues` (JSON ou multipart). Se usar multipart, enviar `icon` e `banner` como arquivos.
 2. Selecionar Formato e Aplicar:
    - Após criar liga, exibir seletor de formatos disponíveis (endpoints de formatos no OpenAPI).
    - Ação: `POST /api/leagues/{leagueId}/apply-format/{formatId}`.
-3. Inicializar Standings:
+3. Configurar Regras de Disciplina (Opcional):
+   - Ação: `POST /api/leagues/{leagueId}/discipline-rules`
+4. Cadastrar Times:
+   - Ação: `POST /api/leagues/{leagueId}/teams`
+5. Inicializar Standings:
    - Carregar as fases criadas pelo formato (a partir dos detalhes da liga ou de endpoint específico de fases do formato, se disponível na app).
    - Ação: `POST /api/phases/{phaseId}/standings/initialize` (opcional `groupId`).
-4. Visualizar Standings:
+6. Gerar Calendário:
+   - Ação: `POST /api/leagues/{leagueId}/groups/{groupId}/fixtures`
+7. Visualizar Standings:
    - Ação: `GET /api/phases/{phaseId}/standings` (opcional `groupId`). Renderizar tabela com posição, pontos, vitórias, empates, derrotas, gols pró/contra, saldo, etc.
-5. Ações avançadas (opcional):
+8. Ações avançadas (opcional):
    - `POST /api/phases/{phaseId}/standings/recalculate`.
    - `POST /api/phases/{phaseId}/standings/process-match` para atualizar automaticamente a classificação com resultado de partida.
 
@@ -90,6 +105,89 @@ Header comum: `Authorization: Bearer <jwt>`
 - `GET /api/leagues`
 - Query: `q`, `name`, `slug`, `isActive`, `isPublic`, `page`, `pageSize`, `orderBy`, `order`
 - 200: `{ items: [...], page, pageSize, total, hasNext }`
+
+### 4.3.1 Obter Progresso de Setup da Liga
+
+- `GET /api/leagues/{id}/setup-progress`
+- Segurança: Bearer (ADMIN ou LEAGUE_MANAGER)
+- Resposta 200:
+
+```json
+{
+  "leagueId": "league_123",
+  "leagueName": "Copa Brasil Amateur",
+  "currentStep": 2,
+  "totalSteps": 7,
+  "completionPercentage": 28,
+  "isSetupComplete": false,
+  "canStartLeague": false,
+  "steps": [
+    {
+      "step": 1,
+      "name": "Liga Criada",
+      "description": "Informações básicas da liga configuradas",
+      "status": "completed",
+      "isRequired": true,
+      "completedAt": "2025-11-26T10:00:00Z"
+    },
+    {
+      "step": 2,
+      "name": "Formato Aplicado",
+      "description": "Definir formato do campeonato (fases, grupos, mata-mata)",
+      "status": "current",
+      "isRequired": true,
+      "actionRequired": "Aplicar um formato template à liga"
+    },
+    {
+      "step": 3,
+      "name": "Regras de Disciplina",
+      "description": "Configurar cartões e suspensões (opcional)",
+      "status": "blocked",
+      "isRequired": false
+    },
+    {
+      "step": 4,
+      "name": "Times Cadastrados",
+      "description": "Cadastrar pelo menos 16 times na liga",
+      "status": "blocked",
+      "isRequired": true
+    },
+    {
+      "step": 5,
+      "name": "Classificação Inicializada",
+      "description": "Inicializar tabelas de classificação por fase",
+      "status": "blocked",
+      "isRequired": true
+    },
+    {
+      "step": 6,
+      "name": "Calendário de Jogos",
+      "description": "Gerar calendário de partidas",
+      "status": "blocked",
+      "isRequired": true
+    },
+    {
+      "step": 7,
+      "name": "Liga Pronta",
+      "description": "Liga configurada e pronta para iniciar",
+      "status": "pending",
+      "isRequired": true
+    }
+  ],
+  "nextAction": {
+    "step": 2,
+    "title": "Formato Aplicado",
+    "description": "Aplicar um formato template à liga",
+    "endpoint": "POST /api/leagues/{leagueId}/apply-format/{formatId}"
+  }
+}
+```
+
+**Estados dos Steps:**
+- `completed`: Passo concluído
+- `current`: Passo atual (próximo a ser feito)
+- `pending`: Passo pendente (aguardando passos anteriores)
+- `blocked`: Passo bloqueado (depende de passos anteriores incompletos)
 
 ### 4.4 Aplicar Formato
 

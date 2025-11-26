@@ -21,6 +21,7 @@ import {
   makeUpdateLeagueController,
   makeUpdateTiebreakRulesOrderController,
 } from '../../main/factories/make-league-controllers.js';
+import { makeGetLeagueSetupProgressController } from '../../main/factories/make-league-setup-progress-controller.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
 import { requireRole } from '../middlewares/rbac.middleware.js';
 import { AccessRole } from '../../domain/constants/access-roles.js';
@@ -182,6 +183,16 @@ leaguesRouter.get(
   requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
   async (req, res) => {
     const controller = makeGetLeagueSettingsController();
+    return controller.handleExpress(req, res);
+  },
+);
+
+// Obter progresso de setup da liga (requer LEAGUE_MANAGER ou ADMIN)
+leaguesRouter.get(
+  '/:id/setup-progress',
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    const controller = makeGetLeagueSetupProgressController();
     return controller.handleExpress(req, res);
   },
 );
