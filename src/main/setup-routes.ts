@@ -49,12 +49,13 @@ export function setupRoutes(app: Express) {
   );
 
   // Enriquece OpenAPI com documentação RBAC
-  const enrichedOpenapi = {
+  const existingSchemas = (openapi.components?.schemas || {}) as Record<string, any>;
+  const enrichedOpenapi: any = {
     ...openapi,
     components: {
-      ...openapi.components,
+      ...(openapi.components || {}),
       schemas: {
-        ...(openapi.components?.schemas || {}),
+        ...existingSchemas,
         ...rbacComponents.schemas,
       },
     },
