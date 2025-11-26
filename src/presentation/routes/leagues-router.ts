@@ -203,8 +203,8 @@ leaguesRouter.get('/:id', async (req, res) => {
   return controller.handleExpress(req, res);
 });
 
-// Listar times da liga (público)
-leaguesRouter.get('/:id/teams', async (req, res) => {
+// Listar times da liga (requer autenticação)
+leaguesRouter.get('/:id/teams', jwtAuth, async (req, res) => {
   const controller = makeListLeagueTeamsController();
   return controller.handleExpress(req, res);
 });
