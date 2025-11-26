@@ -27,8 +27,8 @@ export const sendToTopicSchema = z.object({
   topic: z.string().min(1, 'Tópico é obrigatório'),
   title: z.string().min(1, 'Título é obrigatório'),
   body: z.string().min(1, 'Mensagem é obrigatória'),
-  data: z.record(z.string()).optional(),
-  imageUrl: z.string().url().optional(),
+  data: z.record(z.string(), z.string()).optional(),
+  imageUrl: z.string().url({ message: 'URL inválida' }).optional(),
 });
 
 export type SendToTopicInput = z.infer<typeof sendToTopicSchema>;
