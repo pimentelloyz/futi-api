@@ -1,6 +1,7 @@
 export type MatchFormat = 'FUTSAL' | 'FUT7' | 'FUT11';
 
 export interface CreateLeagueInput {
+  userId: string;
   name: string;
   slug: string;
   description?: string | null;

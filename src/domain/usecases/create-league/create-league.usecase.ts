@@ -1,9 +1,14 @@
 import { ILeagueRepository } from '../../repositories/league.repository.interface.js';
+import { PrismaAccessMembershipRepository } from '../../../infra/repositories/prisma-access-membership-repository.js';
+import { AccessRole } from '../../constants/access-roles.js';
 
 import { CreateLeagueInput, CreateLeagueOutput } from './create-league.dto.js';
 
 export class CreateLeagueUseCase {
-  constructor(private readonly leagueRepository: ILeagueRepository) {}
+  constructor(
+    private readonly leagueRepository: ILeagueRepository,
+    private readonly accessRepository: PrismaAccessMembershipRepository = new PrismaAccessMembershipRepository(),
+  ) {}
 
   async execute(input: CreateLeagueInput): Promise<CreateLeagueOutput> {
     // Check if slug already exists

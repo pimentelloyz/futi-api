@@ -21,12 +21,20 @@ describe('CreateLeagueUseCase', () => {
       findByIdWithDetails: vi.fn(),
     } as unknown as ILeagueRepository;
 
-    useCase = new CreateLeagueUseCase(mockLeagueRepository);
+    const mockAccessRepository = {
+      grant: vi.fn(),
+      revoke: vi.fn(),
+      hasRole: vi.fn(),
+      listByUser: vi.fn(),
+    } as any;
+
+    useCase = new CreateLeagueUseCase(mockLeagueRepository, mockAccessRepository);
   });
 
   describe('execute', () => {
     it('should create a league with FUT11 format by default', async () => {
       const input = {
+        userId: "user-123",
         name: 'Liga Teste',
         slug: 'liga-teste',
         description: 'Uma liga de teste',
@@ -77,6 +85,7 @@ describe('CreateLeagueUseCase', () => {
 
     it('should create a league with FUTSAL format', async () => {
       const input = {
+        userId: "user-123",
         name: 'Liga Futsal',
         slug: 'liga-futsal',
         matchFormat: 'FUTSAL' as const,
@@ -113,6 +122,7 @@ describe('CreateLeagueUseCase', () => {
 
     it('should create a league with FUT7 format', async () => {
       const input = {
+        userId: "user-123",
         name: 'Liga FUT7',
         slug: 'liga-fut7',
         matchFormat: 'FUT7' as const,
@@ -149,6 +159,7 @@ describe('CreateLeagueUseCase', () => {
 
     it('should throw error when slug already exists', async () => {
       const input = {
+        userId: "user-123",
         name: 'Liga Teste',
         slug: 'liga-existente',
       };
@@ -180,6 +191,7 @@ describe('CreateLeagueUseCase', () => {
       const endAt = new Date('2024-12-31');
 
       const input = {
+        userId: "user-123",
         name: 'Liga Completa',
         slug: 'liga-completa',
         description: 'Liga com todos os campos',
