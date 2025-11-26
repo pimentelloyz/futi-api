@@ -18,10 +18,15 @@ export class AcceptInvitationCodeUseCase {
     if (!player) {
       // Auto-criar perfil de jogador para FANs aceitando convite
       // Nome padrão será atualizado pelo usuário depois
-      player = await this.playerRepository.addForUser(input.userId, {
+      const created = await this.playerRepository.addForUser(input.userId, {
         name: 'Jogador',
         isActive: true,
       });
+      // Buscar o jogador completo recém-criado
+      player = await this.playerRepository.findByUserId(input.userId);
+      if (!player) {
+        throw new Error('PLAYER_CREATION_FAILED');
+      }
     }
 
     // 2. Find and validate invitation code

@@ -8,6 +8,8 @@ export interface IPlayerRepository {
     isActive: boolean;
   } | null>;
 
+  addForUser(userId: string, data: { name: string; isActive?: boolean; positionSlug?: string | null; number?: number | null; photo?: string | null; teamIds?: string[] }): Promise<{ id: string }>;
+
   getTeamIds(playerId: string): Promise<string[]>;
 
   linkToTeam(playerId: string, teamId: string, assignedBy: string): Promise<void>;
