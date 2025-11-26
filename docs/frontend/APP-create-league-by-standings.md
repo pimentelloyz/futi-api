@@ -20,7 +20,8 @@ Fonte da verdade de contratos: `src/main/docs/openapi.ts` (OpenAPI 3.1). Confirm
 ## 2) RBAC e Autorização
 
 - Todas as rotas relevantes exigem `Authorization: Bearer <token>`.
-- Criar/editar/deletar liga: ADMIN.
+- Criar liga: ADMIN ou FAN (automaticamente recebe LEAGUE_MANAGER).
+- Editar/deletar liga: ADMIN ou LEAGUE_MANAGER.
 - Aplicar formato, inicializar/recalcular standings, processar resultados: ADMIN ou LEAGUE_MANAGER.
 - Exibir standings: autenticado.
 - Na UI, esconda/desabilite ações administrativas para usuários sem os papéis necessários.
@@ -195,7 +196,7 @@ Pré-requisito (obter `formatId`):
 
 - Tela 1: Formulário de criação de liga
   - Inputs: nome, slug, descrição, isPublic, isActive, datas; upload ícone/banner (opcional)
-  - CTA: Criar Liga (ADMIN)
+  - CTA: Criar Liga (ADMIN ou FAN - automaticamente torna-se LEAGUE_MANAGER da liga criada)
 - Tela 2: Ações administrativas da liga
   - Seletor de Formato (lista de formatos existentes)
   - Botão "Aplicar Formato" (ADMIN/LEAGUE_MANAGER)
@@ -308,10 +309,11 @@ final items = (res.data as List).map((e) => Standing.fromJson(e)).toList();
 
 ## 10) Checklist de Aceite
 
-- [ ] Usuário ADMIN consegue criar liga e ver confirmação (201)
+- [ ] Usuário ADMIN ou FAN consegue criar liga e ver confirmação (201)
+- [ ] Criador da liga recebe automaticamente o papel LEAGUE_MANAGER
 - [ ] Usuário ADMIN/LEAGUE_MANAGER consegue aplicar formato à liga
 - [ ] Usuário ADMIN/LEAGUE_MANAGER consegue inicializar standings por fase (e grupo, se houver)
-- [ ] Tabela de standings renderiza conforme `GET /phases/{phaseId}/standings`
+- [ ] Tabela de standings renderiza conforme `GET /api/phases/{phaseId}/standings`
 - [ ] Ações administrativas invisíveis/indisponíveis a quem não tem permissão
 - [ ] Erros 401/403/404/409/500 tratados com feedback apropriado
 
