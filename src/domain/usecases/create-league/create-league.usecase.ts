@@ -29,6 +29,14 @@ export class CreateLeagueUseCase {
       matchFormat: input.matchFormat || 'FUT11',
     });
 
+    // Criar acesso de LEAGUE_MANAGER para o usuário que criou a liga
+    await this.accessRepository.grant(
+      input.userId,
+      AccessRole.LEAGUE_MANAGER,
+      null,
+      league.id,
+    );
+
     return {
       id: league.id,
       name: league.name,
