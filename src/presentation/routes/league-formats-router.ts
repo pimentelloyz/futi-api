@@ -33,21 +33,21 @@ export const leagueFormatsRouter = Router();
 // ============================================================================
 
 // Rotas públicas (não requerem autenticação)
-leagueFormatsRouter.get('/api/formats', listFormats);
-leagueFormatsRouter.get('/api/formats/:id', getFormat);
-leagueFormatsRouter.get('/api/formats/slug/:slug', getFormatBySlug);
+leagueFormatsRouter.get('/formats', listFormats);
+leagueFormatsRouter.get('/formats/:id', getFormat);
+leagueFormatsRouter.get('/formats/slug/:slug', getFormatBySlug);
 
 // Rotas protegidas (requerem autenticação)
 leagueFormatsRouter.use(jwtAuth);
 
 // Gerenciar formatos (apenas ADMIN)
-leagueFormatsRouter.post('/api/formats', requireRole([AccessRole.ADMIN]), createFormat);
-leagueFormatsRouter.patch('/api/formats/:id', requireRole([AccessRole.ADMIN]), updateFormat);
-leagueFormatsRouter.delete('/api/formats/:id', requireRole([AccessRole.ADMIN]), deleteFormat);
+leagueFormatsRouter.post('/formats', requireRole([AccessRole.ADMIN]), createFormat);
+leagueFormatsRouter.patch('/formats/:id', requireRole([AccessRole.ADMIN]), updateFormat);
+leagueFormatsRouter.delete('/formats/:id', requireRole([AccessRole.ADMIN]), deleteFormat);
 
 // Aplicar formato a uma liga (ADMIN ou LEAGUE_MANAGER)
 leagueFormatsRouter.post(
-  '/api/leagues/:leagueId/apply-format/:formatId',
+  '/leagues/:leagueId/apply-format/:formatId',
   requireRole([AccessRole.ADMIN, AccessRole.LEAGUE_MANAGER]),
   applyFormatToLeague,
 );
@@ -57,24 +57,24 @@ leagueFormatsRouter.post(
 // ============================================================================
 
 // Obter regras de disciplina (usuário autenticado)
-leagueFormatsRouter.get('/api/leagues/:leagueId/discipline-rules', getRules);
+leagueFormatsRouter.get('/leagues/:leagueId/discipline-rules', getRules);
 
 // Criar/atualizar regras (ADMIN ou LEAGUE_MANAGER)
 leagueFormatsRouter.post(
-  '/api/leagues/:leagueId/discipline-rules',
+  '/leagues/:leagueId/discipline-rules',
   requireRole([AccessRole.ADMIN, AccessRole.LEAGUE_MANAGER]),
   createOrUpdateRules,
 );
 
 // Verificar suspensão de jogador (usuário autenticado)
 leagueFormatsRouter.get(
-  '/api/leagues/:leagueId/players/:playerId/suspension-check',
+  '/leagues/:leagueId/players/:playerId/suspension-check',
   checkPlayerSuspension,
 );
 
 // Resetar cartões amarelos (ADMIN ou LEAGUE_MANAGER)
 leagueFormatsRouter.post(
-  '/api/leagues/:leagueId/phases/:phaseOrder/reset-yellow-cards',
+  '/leagues/:leagueId/phases/:phaseOrder/reset-yellow-cards',
   requireRole([AccessRole.ADMIN, AccessRole.LEAGUE_MANAGER]),
   resetYellowCards,
 );
@@ -84,32 +84,32 @@ leagueFormatsRouter.post(
 // ============================================================================
 
 // Obter classificação (usuário autenticado)
-leagueFormatsRouter.get('/api/phases/:phaseId/standings', getStandings);
+leagueFormatsRouter.get('/phases/:phaseId/standings', getStandings);
 
 // Inicializar classificação (ADMIN ou LEAGUE_MANAGER)
 leagueFormatsRouter.post(
-  '/api/phases/:phaseId/standings/initialize',
+  '/phases/:phaseId/standings/initialize',
   requireRole([AccessRole.ADMIN, AccessRole.LEAGUE_MANAGER]),
   initializeStandings,
 );
 
 // Processar resultado de partida (ADMIN ou LEAGUE_MANAGER)
 leagueFormatsRouter.post(
-  '/api/phases/:phaseId/standings/process-match',
+  '/phases/:phaseId/standings/process-match',
   requireRole([AccessRole.ADMIN, AccessRole.LEAGUE_MANAGER]),
   processMatchResult,
 );
 
 // Recalcular posições (ADMIN ou LEAGUE_MANAGER)
 leagueFormatsRouter.post(
-  '/api/phases/:phaseId/standings/recalculate',
+  '/phases/:phaseId/standings/recalculate',
   requireRole([AccessRole.ADMIN, AccessRole.LEAGUE_MANAGER]),
   recalculatePositions,
 );
 
 // Deletar classificação (ADMIN)
 leagueFormatsRouter.delete(
-  '/api/phases/:phaseId/standings',
+  '/phases/:phaseId/standings',
   requireRole([AccessRole.ADMIN]),
   deleteStandings,
 );
