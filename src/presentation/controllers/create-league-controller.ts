@@ -35,7 +35,15 @@ export class CreateLeagueController implements Controller {
         };
       }
 
+      if (!request.user?.id) {
+        return {
+          statusCode: 401,
+          body: { message: 'Unauthorized' },
+        };
+      }
+
       const result = await this.createLeagueUseCase.execute({
+        userId: request.user.id,
         name,
         slug,
         description,
