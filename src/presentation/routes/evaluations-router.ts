@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 
 import { jwtAuth } from '../middlewares/jwt-auth.js';
+import { makeGetPendingEvaluationsController } from '../../main/factories/make-get-pending-evaluations-controller.js';
 import { PrismaMatchPlayerEvaluationRepository } from '../../infra/repositories/prisma-match-player-evaluation-repository.js';
 import { prisma } from '../../infra/prisma/client.js';
 import { ERROR_CODES } from '../../domain/constants.js';
@@ -13,44 +14,7 @@ evaluationsRouter.use(jwtAuth);
 // List pending assignments for current player
 // GET /api/evaluations/pending
 // Response: { items: [{ id, matchId, targetPlayerId, targetName? }] }
-evaluationsRouter.get('/pending', async (req, res) => {
-  try {
-    const meUser = req.user as { id: string } | undefined;
-    if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
-    const mePlayer = await prisma.player.findUnique({
-      where: { userId: meUser.id },
-      select: { id: true },
-    });
-    if (!mePlayer) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
-
-    const assignments = await prisma.matchPlayerEvaluationAssignment.findMany({
-      where: { evaluatorPlayerId: mePlayer.id, completedAt: null },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true, matchId: true, targetPlayerId: true },
-    });
-
-    const targetIds = Array.from(new Set(assignments.map((a) => a.targetPlayerId)));
-    const targets = targetIds.length
-      ? await prisma.player.findMany({
-          where: { id: { in: targetIds } },
-          select: { id: true, name: true },
-        })
-      : [];
-    const nameById = new Map(targets.map((t) => [t.id, t.name]));
-
-    return res.json({
-      items: assignments.map((a) => ({
-        id: a.id,
-        matchId: a.matchId,
-        targetPlayerId: a.targetPlayerId,
-        targetName: nameById.get(a.targetPlayerId),
-      })),
-    });
-  } catch (e) {
-    console.error('[list_pending_evaluations_error]', (e as Error).message);
-    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
-  }
-});
+evaluationsRouter.get('/pending', makeGetPendingEvaluationsController().handleExpress);
 
 // Get active form and criteria for an assignment (to list questions)
 // GET /api/evaluations/:assignmentId/form
