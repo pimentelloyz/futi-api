@@ -66,6 +66,12 @@ leagueFormatsRouter.post(
   createOrUpdateRules,
 );
 
+leagueFormatsRouter.patch(
+  '/leagues/:leagueId/discipline-rules',
+  requireRole([AccessRole.ADMIN, AccessRole.LEAGUE_MANAGER]),
+  createOrUpdateRules,
+);
+
 // Verificar suspensão de jogador (usuário autenticado)
 leagueFormatsRouter.get(
   '/leagues/:leagueId/players/:playerId/suspension-check',
