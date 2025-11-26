@@ -5,6 +5,8 @@ import multer from 'multer';
 import { z } from 'zod';
 
 import { makeAddPlayerController } from '../../main/factories/make-add-player-controller.js';
+import { makeCheckPlayerExistsController } from '../../main/factories/make-check-player-exists-controller.js';
+import { makeUpdateMyPlayerController } from '../../main/factories/make-update-my-player-controller.js';
 import { GetMyPlayerController } from '../controllers/get-my-player-controller.js';
 import { CreateMyPlayerController } from '../controllers/create-my-player-controller.js';
 import { HttpRequest } from '../protocols/http.js';
@@ -119,128 +121,10 @@ playersRouter.get('/me', async (req, res) => {
 });
 
 // Retorna 200 se o usuário autenticado possuir Player vinculado; caso contrário, 404
-playersRouter.get('/me/exists', async (req, res) => {
-  const meUser = req.user as { id: string } | undefined;
-  if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
-  const has = await prisma.player.findUnique({
-    where: { userId: meUser.id },
-    select: { id: true },
-  });
-  if (!has) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
-  return res.status(200).send();
-});
+playersRouter.get('/me/exists', makeCheckPlayerExistsController().handleExpress);
 
 // Atualiza meu perfil de jogador
-const updateMeSchema = z
-  .object({
-    name: z.string().min(1).max(100).optional(),
-    positionSlug: z.string().min(1).max(20).nullable().optional(),
-    number: z.number().int().min(0).max(99).nullable().optional(),
-  })
-  .refine((data) => Object.keys(data).length > 0, {
-    message: 'at least one field must be provided',
-    path: [],
-  });
-
-playersRouter.patch('/me', async (req, res) => {
-  try {
-    // aceitar alias 'numero' além de 'number'
-    const raw = req.body as {
-      name?: unknown;
-      positionSlug?: unknown;
-      number?: unknown;
-      numero?: unknown;
-    };
-    const incoming = {
-      name: typeof raw?.name === 'string' ? raw.name : undefined,
-      positionSlug:
-        raw?.positionSlug === null
-          ? null
-          : typeof raw?.positionSlug === 'string'
-            ? raw.positionSlug
-            : undefined,
-      number:
-        raw?.number === null || raw?.numero === null
-          ? null
-          : typeof raw?.number === 'number'
-            ? raw.number
-            : typeof raw?.numero === 'number'
-              ? raw.numero
-              : typeof raw?.number === 'string' && raw.number.trim() !== ''
-                ? Number.parseInt(raw.number, 10)
-                : typeof raw?.numero === 'string' && raw.numero.trim() !== ''
-                  ? Number.parseInt(raw.numero, 10)
-                  : undefined,
-    } as { name?: string; positionSlug?: string | null; number?: number | null };
-
-    const parsed = updateMeSchema.safeParse(incoming);
-    if (!parsed.success) return res.status(400).json({ error: ERROR_CODES.INVALID_REQUEST });
-    const meUser = req.user as { id: string } | undefined;
-    if (!meUser) return res.status(401).json({ error: ERROR_CODES.UNAUTHORIZED });
-    const player = await prisma.player.findUnique({
-      where: { userId: meUser.id },
-      select: { id: true },
-    });
-    if (!player) return res.status(404).json({ error: ERROR_CODES.PLAYER_NOT_FOUND });
-    const data: { name?: string; positionSlug?: string | null; number?: number | null } = {};
-    if (parsed.data.name !== undefined) data.name = parsed.data.name;
-    if (parsed.data.positionSlug !== undefined) data.positionSlug = parsed.data.positionSlug;
-    if (parsed.data.number !== undefined) data.number = parsed.data.number;
-    let updated: {
-      id: string;
-      name: string;
-      photo: string | null;
-      positionSlug: string | null;
-      number: number | null;
-      isActive: boolean;
-      position: { slug: string; name: string; description: string | null } | null;
-    };
-    try {
-      updated = await prisma.player.update({
-        where: { id: player.id },
-        data,
-        select: {
-          id: true,
-          name: true,
-          photo: true,
-          positionSlug: true,
-          number: true,
-          isActive: true,
-          position: { select: { slug: true, name: true, description: true } },
-        },
-      });
-    } catch (e) {
-      const msg = (e as Error).message || '';
-      // Mapeia violação de FK de positionSlug (posição inexistente)
-      if (msg.toLowerCase().includes('foreign key') || msg.toLowerCase().includes('relation')) {
-        return res
-          .status(400)
-          .json({ error: ERROR_CODES.INVALID_REQUEST, message: 'invalid positionSlug' });
-      }
-      throw e;
-    }
-    // Recarrega do banco para garantir consistência (alguns clients podem não refletir update imediato)
-    try {
-      const reloaded = await prisma.player.findUnique({
-        where: { id: player.id },
-        select: {
-          id: true,
-          name: true,
-          photo: true,
-          positionSlug: true,
-          number: true,
-          isActive: true,
-          position: { select: { slug: true, name: true, description: true } },
-        },
-      });
-      if (reloaded) return res.status(200).json(reloaded);
-    } catch {}
-    return res.status(200).json(updated);
-  } catch (e) {
-    console.error('[player_me_update_error]', (e as Error).message);
-    return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
-  }
-});
+playersRouter.patch('/me', makeUpdateMyPlayerController().handleExpress);
 
 playersRouter.post('/me', async (req, res) => {
   const controller = new CreateMyPlayerController();

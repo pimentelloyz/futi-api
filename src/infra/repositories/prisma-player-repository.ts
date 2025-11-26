@@ -148,4 +148,35 @@ export class PrismaPlayerRepository implements PlayerRepository, IPlayerReposito
     });
     return rows;
   }
+
+  async update(
+    playerId: string,
+    data: {
+      name?: string;
+      positionSlug?: string | null;
+      number?: number | null;
+    },
+  ): Promise<{
+    id: string;
+    name: string;
+    photo: string | null;
+    positionSlug: string | null;
+    number: number | null;
+    isActive: boolean;
+    position: { slug: string; name: string; description: string | null } | null;
+  }> {
+    return this.prisma.player.update({
+      where: { id: playerId },
+      data,
+      select: {
+        id: true,
+        name: true,
+        photo: true,
+        positionSlug: true,
+        number: true,
+        isActive: true,
+        position: { select: { slug: true, name: true, description: true } },
+      },
+    });
+  }
 }
