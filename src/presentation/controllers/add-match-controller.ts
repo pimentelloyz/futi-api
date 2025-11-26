@@ -11,7 +11,8 @@ const schema = z
     awayTeamId: z.string().min(1),
     scheduledAt: z
       .union([z.string().datetime(), z.date()])
-      .transform((v) => (v instanceof Date ? v : new Date(v))),
+      .transform((v) => (v instanceof Date ? v : new Date(v)))
+      .default(() => new Date()),
     status: z
       .enum([
         MATCH_STATUS.SCHEDULED,
