@@ -40,6 +40,22 @@ Os seguintes routers **NÃO estão usando controllers** e possuem lógica de neg
 
 ---
 
+## ✅ ROUTERS EM BOA FORMA (Sem Refatoração Necessária)
+
+### auth-router.ts
+- ✅ Todos os controllers usam arquitetura limpa
+- ✅ Cobertura E2E completa em `auth.full.e2e.test.ts`, `auth.exchange.player.e2e.test.ts`, e `auth.exchange.admin.e2e.test.ts`
+- ✅ Fluxos testados: Exchange Firebase Token → Access Token + Refresh Token, Refresh via Cookie, Logout, Logout All
+- **Controllers Testados:**
+  - `RefreshAccessTokenController` - refresh de tokens
+  - `LogoutController` - logout individual com revogação de token
+  - `LogoutAllController` - logout de todos os tokens do usuário
+  - `ExchangeFirebaseTokenController` - troca de token Firebase por access + refresh tokens
+- **Decisão:** Manter testes E2E. Não criar testes unitários porque controllers instanciam dependências internamente (não usa DI).
+- **Impacto:** ✅ Arquitetura e testes em excelente estado
+
+---
+
 ## ⚠️ PROBLEMAS DE PERFORMANCE
 
 ### 2. N+1 Query Problems

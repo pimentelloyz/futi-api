@@ -14,12 +14,18 @@
 - **Testes unitários:** 0
 - **Cobertura de testes:** ~15%
 
-### Atual
-- **players-router.ts:** 500 linhas (-117 linhas, -19%)
-- **Rotas refatoradas:** 2 de 10+
-- **Testes unitários criados:** 10 (3 + 7)
-- **Total de testes no projeto:** 133 (123 passando)
-- **Arquivos criados:** 10 novos arquivos
+### Atual (Fase 5 Completa - Team Overview Optimization)
+- **players-router.ts:** 152 linhas (-465 linhas, **-75% do original 617**)
+- **evaluations-router.ts:** 119 linhas (-37 linhas, -24%)
+- **Rotas refatoradas:** 6 rotas (5 players + 1 evaluations)
+- **Testes unitários criados:** 27 (3 + 7 + 5 + 5 + 7)
+- **Total de testes no projeto:** 150 (46 unit tests passando, E2E com problemas pré-existentes)
+- **Arquivos criados:** 26 novos arquivos
+- **Otimizações:** 
+  - 1 N+1 query eliminado (evaluations)
+  - Queries paralelas com Promise.all (team overview)
+  - Refatoração completa de upload
+- **Routers com boa arquitetura validados:** 3 (invitation-codes, access, auth)
 
 ---
 
@@ -119,6 +125,138 @@
 - `invitation-codes-router.ts` - ✅ Já usa controllers (8 rotas), faltam apenas testes
 - `access-router.ts` - ✅ Já usa controllers (3 rotas), faltam apenas testes
 - Ambos estão com arquitetura correta, apenas precisam de cobertura de testes
+
+---
+
+## 🎯 Fase 4 - Refatoração de Upload de Fotos
+
+### 1. Upload de Foto para Player Existente (POST /:id/photo)
+**Status:** ✅ Completo
+
+**Arquivos Criados:**
+- `src/domain/usecases/upload-player-photo/upload-player-photo.dto.ts`
+- `src/domain/usecases/upload-player-photo/upload-player-photo.usecase.ts`
+- `src/domain/usecases/upload-player-photo/upload-player-photo.usecase.test.ts`
+- `src/presentation/controllers/upload-player-photo-controller.ts`
+- `src/main/factories/make-upload-player-photo-controller.ts`
+
+**Testes Criados:** 5
+- ✅ should upload photo successfully
+- ✅ should throw UnsupportedMediaTypeError when file type is invalid
+- ✅ should throw PlayerNotFoundError when player does not exist
+- ✅ should validate file before checking player existence
+- ✅ should use player name in upload
+
+**Redução:** ~40 linhas inline → 7 linhas com controller
+
+**Melhorias:**
+- ✅ Validação de tipo de arquivo (PNG, JPEG, WEBP)
+- ✅ Upload para Firebase Storage
+- ✅ Atualização automática do campo `photo` no banco
+- ✅ Tratamento de erros específicos (404, 415, 500)
+
+---
+
+### 2. Criação de Player com Upload Opcional (POST /)
+**Status:** ✅ Completo
+
+**Arquivos Criados:**
+- `src/presentation/middlewares/process-player-photo-upload.ts`
+
+**Middleware Criado:** `processOptionalPlayerPhoto`
+- Processa upload opcional via multipart/form-data
+- Faz upload para Firebase antes de criar player
+- Normaliza body multipart para formato esperado pelo controller
+- Trata erros de upload (415, 500)
+
+**Redução:** ~70 linhas inline → 5 linhas (middleware + controller)
+
+**Melhorias:**
+- ✅ Lógica de upload centralizada e reutilizável
+- ✅ Suporte a multipart opcional (JSON ou multipart)
+- ✅ Normalização automática de campos (number string → int, isActive string → boolean)
+- ✅ Parsing de teamIds como array ou CSV
+- ✅ Tratamento centralizado de erros Firebase
+
+---
+
+## 🎯 Fase 5 - Otimização de Team Overview
+
+### GET /me/team/overview
+**Status:** ✅ Completo
+
+**Arquivos Criados:**
+- `src/domain/usecases/get-my-team-overview/get-my-team-overview.dto.ts`
+- `src/domain/usecases/get-my-team-overview/get-my-team-overview.usecase.ts`
+- `src/domain/usecases/get-my-team-overview/get-my-team-overview.usecase.test.ts`
+- `src/presentation/controllers/get-my-team-overview-controller.ts`
+- `src/main/factories/make-get-my-team-overview-controller.ts`
+
+**Testes Criados:** 7
+- ✅ should return team overview with all data
+- ✅ should throw NoTeamFoundError when user has no teams
+- ✅ should throw TeamNotFoundError when team is inactive
+- ✅ should find teams via PlayersOnTeams when no membership exists
+- ✅ should use provided teamId when specified
+- ✅ should include evaluation banner when player has pending evaluations
+- ✅ should not include evaluation banner when no pending evaluations
+
+**Redução:** ~150 linhas inline → 7 linhas com controller
+
+**Otimizações Implementadas:**
+- ✅ Queries paralelas com `Promise.all` para partidas recentes e próxima partida
+- ✅ Extração de lógica de evaluation banner para método privado
+- ✅ Busca otimizada de times (AccessMembership primeiro, fallback para PlayersOnTeams)
+- ✅ Validação centralizada de team inactive
+- ✅ Seleção inteligente de time (teamId fornecido ou primeiro da lista)
+
+**Complexidade Reduzida:**
+- Antes: ~150 linhas com múltiplas queries sequenciais
+- Depois: 7 linhas no router + use case testável e otimizado
+
+**Performance Gain:**
+- Queries de partidas executadas em paralelo (Promise.all)
+- Redução de tempo de resposta para buscar matches
+
+---
+
+## 🎯 Fase 3 - Análise de Testes de Autenticação
+
+### Status dos Controllers de Autenticação
+**Conclusão:** ✅ Controllers já têm cobertura E2E completa - **Nenhuma ação necessária**
+
+**Controllers Analisados:**
+- `RefreshAccessTokenController` - ✅ Testado em auth.full.e2e.test.ts
+- `LogoutController` - ✅ Testado em auth.full.e2e.test.ts
+- `LogoutAllController` - ✅ Testado em auth.full.e2e.test.ts
+- `ExchangeFirebaseTokenController` - ✅ Testado em auth.exchange.player.e2e.test.ts e auth.exchange.admin.e2e.test.ts
+
+**Fluxos E2E Testados:**
+1. ✅ Exchange de token Firebase → Access Token + Refresh Token
+2. ✅ Refresh de token usando cookie (validação de cookie security settings)
+3. ✅ Logout com revogação de token e clear cookie
+4. ✅ Logout All com revogação de todos os tokens do usuário
+5. ✅ Validação de tokens inválidos/expirados
+
+**Descoberta Importante:**
+Tentativa de criar testes unitários falhou porque os controllers instanciam dependências internamente:
+```typescript
+// Exemplo de RefreshAccessTokenController.handle():
+const repo = new PrismaRefreshTokenRepository();
+const usecase = new RefreshAccessTokenUseCase(repo);
+const result = await usecase.refresh(incomingRefresh);
+```
+
+**Decisão Final:** Manter apenas testes E2E existentes porque:
+1. ✅ Cobertura E2E completa dos fluxos críticos de autenticação
+2. ✅ Testes validam integração real (mais valor que unit tests isolados)
+3. ❌ Controllers não usam Dependency Injection (dificulta mocking)
+4. ❌ Refatorar para DI não está no escopo atual (quebra compatibilidade)
+5. ✅ Security-critical paths já validados (cookie security, token rotation, revocation)
+
+**Tempo Gasto:** ~2 horas (análise + tentativa de unit tests + decisão)
+
+**Resultado:** Fase 3 completada com validação de que não há trabalho necessário ✅
 
 ---
 

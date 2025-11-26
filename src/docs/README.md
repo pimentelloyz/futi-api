@@ -1,12 +1,21 @@
-# Documentação das Features
+# futi-api
 
-Este diretório reúne uma visão prática das funcionalidades expostas pela API.
-Para o contrato completo e atualizado, consulte também a especificação OpenAPI em `/docs` (UI) e `/docs.json` (JSON).
+API Node.js + TypeScript do projeto futi (Express + Prisma + PostgreSQL/Supabase + Firebase Admin).
 
-- [Autenticação e Sessões](./auth.md)
-- [Controle de Acesso](./access.md)
-- [Usuário](./users.md)
-- [Jogadores](./players.md)
-- [Times](./teams.md)
-- [Partidas](./matches.md)
-- [Testes](./testing.md)
+## Documentação
+
+- OpenAPI/Swagger: servido em `/api-docs` quando a API está rodando
+
+## Deploy
+
+- Guia Cloud Run: veja `README_DEPLOY_CLOUD_RUN.md`
+- Contexto do projeto (deploy/CI/CD/secrets): `docs/PROJECT_CONTEXT.md`
+
+## Desenvolvimento
+
+- Scripts: `npm run dev`, `npm run build`, `npm test`
+- Linter/Format: `npm run lint`, `npm run format`
+
+## Licença
+
+MIT
