@@ -32,7 +32,7 @@ export class CreateLeagueUseCase {
     // Criar acesso de LEAGUE_MANAGER para o usuário que criou a liga
     await this.accessRepository.grant(
       input.userId,
-      AccessRole.LEAGUE_MANAGER,
+      'LEAGUE_MANAGER',
       null,
       league.id,
     );

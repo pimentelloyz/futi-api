@@ -1,4 +1,4 @@
-export type AccessRole = 'ADMIN' | 'MANAGER' | 'ASSISTANT' | 'PLAYER';
+export type AccessRole = 'MASTER' | 'ADMIN' | 'MANAGER' | 'ASSISTANT' | 'PLAYER' | 'LEAGUE_MANAGER' | 'MATCH_MANAGER' | 'REFEREE_COMMISSION' | 'FAN';
 
 export interface AccessMembership {
   id: string;
