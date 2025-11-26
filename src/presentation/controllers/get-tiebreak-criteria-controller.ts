@@ -11,24 +11,29 @@ export class GetTiebreakCriteriaController {
       const userId = req.user?.id;
 
       if (!leagueId) {
-        return res.status(400).json({ message: 'League ID is required' });
+        res.status(400).json({ message: 'League ID is required' });
+        return;
       }
 
       if (!userId) {
-        return res.status(401).json({ message: 'User not authenticated' });
+        res.status(401).json({ message: 'User not authenticated' });
+        return;
       }
 
       const result = await this.useCase.execute({ leagueId, phaseId, userId });
       res.json(result);
     } catch (error: any) {
       if (error.message === 'league_not_found') {
-        return res.status(404).json({ message: 'League not found' });
+        res.status(404).json({ message: 'League not found' });
+        return;
       }
       if (error.message === 'phase_not_found') {
-        return res.status(404).json({ message: 'Phase not found' });
+        res.status(404).json({ message: 'Phase not found' });
+        return;
       }
       if (error.message === 'unauthorized') {
-        return res.status(403).json({ message: 'You do not have permission to view this league' });
+        res.status(403).json({ message: 'You do not have permission to view this league' });
+        return;
       }
       res.status(500).json({ message: 'Internal server error' });
     }
