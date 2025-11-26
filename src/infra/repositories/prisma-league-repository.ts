@@ -146,7 +146,7 @@ export class PrismaLeagueRepository implements ILeagueRepository {
         accessMemberships: {
           where: {
             userId,
-            ...(role && { role }),
+            ...(role && { role: role as any }),
           },
           select: {
             role: true,
