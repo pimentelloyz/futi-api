@@ -12,11 +12,11 @@
 Os seguintes routers **NÃO estão usando controllers** e possuem lógica de negócio diretamente nas rotas:
 
 #### **evaluations-router.ts** (156 linhas)
-- ❌ Lógica de negócio nas rotas `GET /pending`, `GET /:assignmentId/form`, `POST /submit`
-- ❌ Queries Prisma diretas no router
-- ❌ Sem camada de repository
-- ❌ Sem testes unitários
-- **Impacto:** Alto - dificulta testes, manutenção e reutilização
+- ✅ `GET /pending` - REFATORADO: controller + use case + testes (5 testes unitários) + N+1 otimizado
+- ❌ `GET /:assignmentId/form` - lógica inline (pendente)
+- ❌ `POST /submit` - lógica inline (pendente)
+- ❌ Sem camada de repository completa
+- **Impacto:** Alto → Médio (1 de 3 rotas refatoradas, N+1 query eliminado)
 
 #### **players-router.ts** (500 linhas - reduzido de 617)
 - ✅ `GET /me/exists` - REFATORADO: controller + use case + testes (3 testes unitários)
@@ -29,15 +29,14 @@ Os seguintes routers **NÃO estão usando controllers** e possuem lógica de neg
 - **Impacto:** Crítico → Médio (2 de 10+ rotas refatoradas, redução de 19% no tamanho)
 
 #### **invitation-codes-router.ts**
-- ❌ Todas as 8 rotas com lógica inline
-- ❌ Queries Prisma diretas
-- ❌ Sem controllers
-- **Impacto:** Médio - lógica simples mas sem testes
+- ✅ Todas as 8 rotas já usam controllers via factories
+- ❌ Sem testes unitários para os use cases
+- **Impacto:** Baixo - estrutura correta, faltam apenas testes
 
 #### **access-router.ts**
-- ❌ 3 rotas com lógica inline (`POST /grant`, `POST /revoke`, `GET /me`)
-- ❌ Queries diretas
-- **Impacto:** Médio
+- ✅ Todas as 3 rotas já usam controllers
+- ❌ Sem testes unitários para os controllers
+- **Impacto:** Baixo - estrutura correta, faltam apenas testes
 
 ---
 
@@ -46,8 +45,11 @@ Os seguintes routers **NÃO estão usando controllers** e possuem lógica de neg
 ### 2. N+1 Query Problems
 
 #### **evaluations-router.ts - GET /pending**
+✅ **RESOLVIDO** - Implementado join otimizado usando relação `target` do Prisma
+
+**Antes (N+1 query):**
 ```typescript
-// ❌ PROBLEMA: N+1 query
+// ❌ PROBLEMA: 2+ queries (1 para assignments + 1 para players)
 const assignments = await prisma.matchPlayerEvaluationAssignment.findMany({
   where: { evaluatorPlayerId: mePlayer.id, completedAt: null },
   select: { id: true, matchId: true, targetPlayerId: true },
@@ -60,20 +62,23 @@ const targets = await prisma.player.findMany({
 });
 ```
 
-**Solução:**
+**Depois (Query Otimizada):**
 ```typescript
+// ✅ SOLUÇÃO: Join único via relação Prisma
 const assignments = await prisma.matchPlayerEvaluationAssignment.findMany({
   where: { evaluatorPlayerId: mePlayer.id, completedAt: null },
   select: {
     id: true,
     matchId: true,
     targetPlayerId: true,
-    targetPlayer: {  // ✅ Join único
+    target: {  // ✅ Join único
       select: { id: true, name: true }
     }
   },
 });
 ```
+
+**Ganho de Performance:** 50% menos queries (2 → 1 query no banco)
 
 #### **players-router.ts - GET /me/team/overview**
 ```typescript

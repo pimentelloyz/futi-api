@@ -77,6 +77,51 @@
 
 ---
 
+## ✅ Fase 2 - Trabalho Concluído
+
+### 1. Otimização N+1 Query - evaluations-router.ts GET /pending
+**Status:** ✅ Completo
+
+**Problema Identificado:**
+- Query inicial buscava assignments
+- Segunda query buscava todos os players target (N+1)
+- Performance degradada com muitos assignments
+
+**Solução Implementada:**
+- Usado join do Prisma via relação `target`
+- Query única com `select` incluindo relação
+- Eliminado loop de busca de players
+
+**Arquivos Criados:**
+- `src/domain/usecases/get-pending-evaluations/get-pending-evaluations.dto.ts`
+- `src/domain/usecases/get-pending-evaluations/get-pending-evaluations.usecase.ts`
+- `src/domain/usecases/get-pending-evaluations/get-pending-evaluations.usecase.test.ts`
+- `src/presentation/controllers/get-pending-evaluations-controller.ts`
+- `src/main/factories/make-get-pending-evaluations-controller.ts`
+
+**Testes Criados:** 5
+- ✅ should return pending evaluations with target player names
+- ✅ should return empty array when no pending evaluations
+- ✅ should throw PlayerNotFoundError when user has no player
+- ✅ should call findMany with correct filters
+- ✅ should use optimized query with join (no N+1)
+
+**Performance Gain:** ~50% menos queries (2 queries → 1 query)
+
+**Router Simplificado:** ~30 linhas inline → 1 linha com controller
+
+---
+
+### 2. Validação de Routers
+**Status:** ✅ Completo
+
+**Descobertas:**
+- `invitation-codes-router.ts` - ✅ Já usa controllers (8 rotas), faltam apenas testes
+- `access-router.ts` - ✅ Já usa controllers (3 rotas), faltam apenas testes
+- Ambos estão com arquitetura correta, apenas precisam de cobertura de testes
+
+---
+
 ## 🎯 Próximas Rotas (Prioridade)
 
 ### 3. POST /me (Alta Prioridade)
@@ -164,10 +209,12 @@
 - Criar 50+ testes unitários
 - Aumentar cobertura de 15% → 30%
 
-### Progresso
-- ✅ 2 de 10+ rotas completas (20%)
-- ✅ 10 de 50+ testes criados (20%)
-- ✅ 117 de 517 linhas removidas (23%)
+### Progresso Fase 1 + 2
+- ✅ 3 rotas de players-router.ts completas (2/10+)
+- ✅ 1 rota de evaluations-router.ts completa + N+1 otimizado
+- ✅ 15 testes unitários criados (10 players + 5 evaluations)
+- ✅ ~117 linhas removidas de players-router.ts
+- ✅ ~30 linhas removidas de evaluations-router.ts
 
 ### Tempo Estimado Restante
 - **8 rotas restantes:** ~15-20 horas
