@@ -12,6 +12,12 @@ export interface PlayerLite {
   isActive: boolean;
 }
 
+export interface TeamInfo {
+  id: string;
+  name: string;
+  icon: string | null;
+}
+
 export interface MatchSummary {
   id: string;
   scheduledAt: Date;
@@ -21,11 +27,24 @@ export interface MatchSummary {
   awayTeamId: string;
   homeScore: number;
   awayScore: number;
+  homeTeam?: TeamInfo;
+  awayTeam?: TeamInfo;
 }
 
 export interface EvaluationBanner {
   match: MatchSummary;
   expiresAt: string;
+}
+
+export interface UpcomingMatch {
+  id: string;
+  scheduledAt: Date;
+  venue: string | null;
+  homeTeamId: string;
+  awayTeamId: string;
+  homeTeam: TeamInfo;
+  awayTeam: TeamInfo;
+  status: string;
 }
 
 export interface GetMyTeamOverviewOutput {
@@ -38,12 +57,7 @@ export interface GetMyTeamOverviewOutput {
   };
   players: PlayerLite[];
   recentMatches: MatchSummary[];
-  next_game: {
-    id: string;
-    scheduledAt: Date;
-    venue: string | null;
-    homeTeamId: string;
-    awayTeamId: string;
-  } | null;
+  upcomingMatches: UpcomingMatch[];
+  next_game: UpcomingMatch | null;
   evaluationBanner: EvaluationBanner | null;
 }

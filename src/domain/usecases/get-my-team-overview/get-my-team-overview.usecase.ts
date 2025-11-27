@@ -72,11 +72,15 @@ export class GetMyTeamOverviewUseCase {
       select: { ...PLAYER_LITE_SELECT, photo: true },
     });
 
-    // 6. Buscar partidas recentes e próxima partida em paralelo
+    // 6. Buscar partidas recentes, próximas partidas e próxima partida em paralelo
     const now = new Date();
-    const [recentMatches, nextMatch] = await Promise.all([
+    const [recentMatches, upcomingMatches] = await Promise.all([
+      // Partidas passadas/em andamento (com placares e times)
       this.prisma.match.findMany({
-        where: { OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }] },
+        where: {
+          OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
+          scheduledAt: { lt: now },
+        },
         orderBy: { scheduledAt: 'desc' },
         take: 5,
         select: {
@@ -88,18 +92,41 @@ export class GetMyTeamOverviewUseCase {
           awayTeamId: true,
           homeScore: true,
           awayScore: true,
+          homeTeam: {
+            select: { id: true, name: true, icon: true },
+          },
+          awayTeam: {
+            select: { id: true, name: true, icon: true },
+          },
         },
       }),
-      this.prisma.match.findFirst({
+      // Próximas partidas futuras (com times completos)
+      this.prisma.match.findMany({
         where: {
           status: 'SCHEDULED',
           scheduledAt: { gte: now },
           OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
         },
         orderBy: { scheduledAt: 'asc' },
-        select: { id: true, scheduledAt: true, venue: true, homeTeamId: true, awayTeamId: true },
+        take: 10,
+        select: {
+          id: true,
+          scheduledAt: true,
+          venue: true,
+          homeTeamId: true,
+          awayTeamId: true,
+          status: true,
+          homeTeam: {
+            select: { id: true, name: true, icon: true },
+          },
+          awayTeam: {
+            select: { id: true, name: true, icon: true },
+          },
+        },
       }),
     ]);
+
+    const nextMatch = upcomingMatches[0] || null;
 
     // 7. Buscar evaluation banner (se usuário é jogador)
     const evaluationBanner = await this.getEvaluationBanner(input.userId, team.id, now);
@@ -120,8 +147,38 @@ export class GetMyTeamOverviewUseCase {
         number: p.number,
         isActive: p.isActive,
       })),
-      recentMatches: recentMatches,
-      next_game: nextMatch,
+      recentMatches: recentMatches.map((m) => ({
+        id: m.id,
+        scheduledAt: m.scheduledAt,
+        status: m.status,
+        venue: m.venue,
+        homeTeamId: m.homeTeamId,
+        awayTeamId: m.awayTeamId,
+        homeScore: m.homeScore,
+        awayScore: m.awayScore,
+        homeTeam: m.homeTeam,
+        awayTeam: m.awayTeam,
+      })),
+      upcomingMatches: upcomingMatches.map((m) => ({
+        id: m.id,
+        scheduledAt: m.scheduledAt,
+        venue: m.venue,
+        homeTeamId: m.homeTeamId,
+        awayTeamId: m.awayTeamId,
+        status: m.status,
+        homeTeam: m.homeTeam,
+        awayTeam: m.awayTeam,
+      })),
+      next_game: nextMatch ? {
+        id: nextMatch.id,
+        scheduledAt: nextMatch.scheduledAt,
+        venue: nextMatch.venue,
+        homeTeamId: nextMatch.homeTeamId,
+        awayTeamId: nextMatch.awayTeamId,
+        status: nextMatch.status,
+        homeTeam: nextMatch.homeTeam,
+        awayTeam: nextMatch.awayTeam,
+      } : null,
       evaluationBanner,
     };
   }
