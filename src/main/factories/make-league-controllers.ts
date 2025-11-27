@@ -4,6 +4,7 @@ import { CreateGroupController } from '../../presentation/controllers/create-gro
 import { CreateLeagueController } from '../../presentation/controllers/create-league-controller.js';
 import { DeleteLeagueController } from '../../presentation/controllers/delete-league-controller.js';
 import { GenerateFixturesController } from '../../presentation/controllers/generate-fixtures-controller.js';
+import { GenerateGroupsController } from '../../presentation/controllers/generate-groups-controller.js';
 import { GetLeagueController } from '../../presentation/controllers/get-league-controller.js';
 import { GetLeagueSettingsController } from '../../presentation/controllers/get-league-settings-controller.js';
 import { GetMyLeagueDetailsController } from '../../presentation/controllers/get-my-league-details-controller.js';
@@ -21,6 +22,7 @@ import {
   makeCreateLeagueUseCase,
   makeDeleteLeagueUseCase,
   makeGenerateFixturesUseCase,
+  makeGenerateGroupsUseCase,
   makeGetLeagueUseCase,
   makeGetLeagueSettingsUseCase,
   makeGetLeagueTiebreakRulesUseCase,
@@ -90,6 +92,11 @@ export function makeAddTeamToGroupController() {
 export function makeGenerateFixturesController() {
   const useCase = makeGenerateFixturesUseCase();
   return new GenerateFixturesController(useCase);
+}
+
+export function makeGenerateGroupsController() {
+  const useCase = makeGenerateGroupsUseCase();
+  return new GenerateGroupsController(useCase);
 }
 
 export function makeGetLeagueSettingsController() {

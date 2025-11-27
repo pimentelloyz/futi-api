@@ -11,6 +11,7 @@ import {
   makeCreateLeagueController,
   makeDeleteLeagueController,
   makeGenerateFixturesController,
+  makeGenerateGroupsController,
   makeGetLeagueController,
   makeGetLeagueSettingsController,
   makeGetMyLeagueDetailsController,
@@ -257,6 +258,16 @@ leaguesRouter.post(
     const controller = new LeagueBannerUploadController();
     const response = await controller.handle({ leagueId, file: req.file });
     return res.status(response.statusCode).json(response.body);
+  },
+);
+
+// Gerar grupos automaticamente baseado no formato
+leaguesRouter.post(
+  '/:id/generate-groups',
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    const controller = makeGenerateGroupsController();
+    return controller.handleExpress(req, res);
   },
 );
 
