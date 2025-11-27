@@ -65,7 +65,7 @@ GET /api/leagues/{leagueId}/teams
 
 #### 2. Listar Convites Pendentes
 ```
-GET /api/invitation-codes/league?leagueId={leagueId}
+GET /api/invites/league?leagueId={leagueId}
 ```
 **Headers:**
 ```json
@@ -111,7 +111,7 @@ async function loadTeamsAndInvitations(leagueId: string) {
     // Buscar convites apenas se for manager/admin
     if (isLeagueManager || isAdmin) {
       const invitesResponse = await api.get(
-        `/invitation-codes/league?leagueId=${leagueId}`
+        `/invites/league?leagueId=${leagueId}`
       );
       
       // Filtrar apenas convites pendentes
@@ -130,7 +130,7 @@ async function loadTeamsAndInvitations(leagueId: string) {
 // 2. Revogar convite (apenas managers/admins)
 async function revokeInvitation(inviteId: string) {
   try {
-    await api.delete(`/invitation-codes/league/${inviteId}`);
+    await api.delete(`/invites/league/${inviteId}`);
     // Recarregar lista
     await loadTeamsAndInvitations(leagueId);
     showSuccess('Convite revogado com sucesso');

@@ -14,6 +14,8 @@ import {
 } from '../../main/factories/make-league-invitation-controllers.js';
 import { requireManager } from '../middlewares/authorize.js';
 import { jwtAuth } from '../middlewares/jwt-auth.js';
+import { requireRole } from '../middlewares/rbac.middleware.js';
+import { AccessRole } from '../../domain/constants/access-roles.js';
 import type { HttpRequest } from '../protocols/http.js';
 
 export const invitationCodesRouter = express.Router();
@@ -92,54 +94,69 @@ invitationCodesRouter.post('/accept', jwtAuth, async (req, res) => {
   }
 });
 
-// League invites management (admin/manager)
-invitationCodesRouter.post('/league', jwtAuth, requireManager(), async (req, res) => {
-  try {
-    const request: HttpRequest = {
-      body: req.body,
-      query: req.query as Record<string, unknown>,
-      params: req.params,
-      cookies: req.cookies,
-    };
-    const httpRes = await createLeagueInvite.handle(request);
-    return res.status(httpRes.statusCode).json(httpRes.body);
-  } catch (e) {
-    console.error('[league_invite_create_error]', (e as Error).message);
-    return res.status(500).json({ error: 'internal_error' });
-  }
-});
+// League invites management (admin/league_manager)
+invitationCodesRouter.post(
+  '/league',
+  jwtAuth,
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    try {
+      const request: HttpRequest = {
+        body: req.body,
+        query: req.query as Record<string, unknown>,
+        params: req.params,
+        cookies: req.cookies,
+      };
+      const httpRes = await createLeagueInvite.handle(request);
+      return res.status(httpRes.statusCode).json(httpRes.body);
+    } catch (e) {
+      console.error('[league_invite_create_error]', (e as Error).message);
+      return res.status(500).json({ error: 'internal_error' });
+    }
+  },
+);
 
-invitationCodesRouter.get('/league', jwtAuth, requireManager(), async (req, res) => {
-  try {
-    const request: HttpRequest = {
-      body: undefined,
-      query: req.query as Record<string, unknown>,
-      params: req.params,
-      cookies: req.cookies,
-    };
-    const httpRes = await listLeagueInvites.handle(request);
-    return res.status(httpRes.statusCode).json(httpRes.body);
-  } catch (e) {
-    console.error('[league_invite_list_error]', (e as Error).message);
-    return res.status(500).json({ error: 'internal_error' });
-  }
-});
+invitationCodesRouter.get(
+  '/league',
+  jwtAuth,
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    try {
+      const request: HttpRequest = {
+        body: undefined,
+        query: req.query as Record<string, unknown>,
+        params: req.params,
+        cookies: req.cookies,
+      };
+      const httpRes = await listLeagueInvites.handle(request);
+      return res.status(httpRes.statusCode).json(httpRes.body);
+    } catch (e) {
+      console.error('[league_invite_list_error]', (e as Error).message);
+      return res.status(500).json({ error: 'internal_error' });
+    }
+  },
+);
 
-invitationCodesRouter.delete('/league/:id', jwtAuth, requireManager(), async (req, res) => {
-  try {
-    const request: HttpRequest = {
-      body: undefined,
-      query: req.query as Record<string, unknown>,
-      params: req.params,
-      cookies: req.cookies,
-    };
-    const httpRes = await revokeLeagueInvite.handle(request);
-    return res.status(httpRes.statusCode).send();
-  } catch (e) {
-    console.error('[league_invite_revoke_error]', (e as Error).message);
-    return res.status(500).json({ error: 'internal_error' });
-  }
-});
+invitationCodesRouter.delete(
+  '/league/:id',
+  jwtAuth,
+  requireRole([AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    try {
+      const request: HttpRequest = {
+        body: undefined,
+        query: req.query as Record<string, unknown>,
+        params: req.params,
+        cookies: req.cookies,
+      };
+      const httpRes = await revokeLeagueInvite.handle(request);
+      return res.status(httpRes.statusCode).send();
+    } catch (e) {
+      console.error('[league_invite_revoke_error]', (e as Error).message);
+      return res.status(500).json({ error: 'internal_error' });
+    }
+  },
+);
 
 // Team manager accepts league invite
 invitationCodesRouter.post('/league/accept', jwtAuth, async (req, res) => {
