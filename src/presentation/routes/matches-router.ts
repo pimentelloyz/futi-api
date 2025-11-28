@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import { makeAddMatchController } from '../../main/factories/make-add-match-controller.js';
+import { makeCreateRecurringMatchesController } from '../../main/factories/make-create-recurring-matches-controller.js';
 import { makeListMatchesController } from '../../main/factories/make-list-matches-controller.js';
 import { makeUpdateMatchScoreController } from '../../main/factories/make-update-match-score-controller.js';
 import { makeUpdateMatchStatusController } from '../../main/factories/make-update-match-status-controller.js';
@@ -30,6 +31,16 @@ matchesRouter.post(
     const controller = makeAddMatchController();
     const response = await controller.handle({ body: req.body });
     res.status(response.statusCode).json(response.body);
+  },
+);
+
+// Criar partidas recorrentes - MANAGER, LEAGUE_MANAGER e ADMIN
+matchesRouter.post(
+  '/recurring',
+  requireRole([AccessRole.MANAGER, AccessRole.LEAGUE_MANAGER, AccessRole.ADMIN]),
+  async (req, res) => {
+    const controller = makeCreateRecurringMatchesController();
+    return controller.handleExpress(req, res);
   },
 );
 
