@@ -70,44 +70,58 @@ leaguesRouter.post('/', requireRole([AccessRole.ADMIN, AccessRole.FAN]), async (
       if (iconFile) {
         if (!allowed.has(iconFile.mimetype))
           return res.status(415).json({ error: ERROR_CODES.UNSUPPORTED_MEDIA_TYPE });
-        const ext =
-          iconFile.mimetype === 'image/png'
-            ? 'png'
-            : iconFile.mimetype === 'image/webp'
-              ? 'webp'
-              : 'jpg';
-        const objectPath = path.posix.join('leagues', 'new', `${safeSlug}_${stamp}-icon.${ext}`);
-        const gcsFile = bucket.file(objectPath);
-        await gcsFile.save(iconFile.buffer, {
-          contentType: iconFile.mimetype,
-          resumable: false,
-          metadata: { cacheControl: 'public,max-age=3600' },
-        });
         try {
-          await gcsFile.makePublic();
-        } catch {}
-        iconUrlFromUpload = `https://storage.googleapis.com/${bucket.name}/${objectPath}`;
+          const ext =
+            iconFile.mimetype === 'image/png'
+              ? 'png'
+              : iconFile.mimetype === 'image/webp'
+                ? 'webp'
+                : 'jpg';
+          const objectPath = path.posix.join('leagues', 'new', `${safeSlug}_${stamp}-icon.${ext}`);
+          const gcsFile = bucket.file(objectPath);
+          await gcsFile.save(iconFile.buffer, {
+            contentType: iconFile.mimetype,
+            resumable: false,
+            metadata: { cacheControl: 'public,max-age=3600' },
+          });
+          try {
+            await gcsFile.makePublic();
+          } catch {}
+          iconUrlFromUpload = `https://storage.googleapis.com/${bucket.name}/${objectPath}`;
+        } catch (uploadError) {
+          console.warn('[league_icon_upload_failed]', (uploadError as Error).message);
+          // Continue sem o ícone se o upload falhar
+        }
       }
       if (bannerFile) {
         if (!allowed.has(bannerFile.mimetype))
           return res.status(415).json({ error: ERROR_CODES.UNSUPPORTED_MEDIA_TYPE });
-        const ext =
-          bannerFile.mimetype === 'image/png'
-            ? 'png'
-            : bannerFile.mimetype === 'image/webp'
-              ? 'webp'
-              : 'jpg';
-        const objectPath = path.posix.join('leagues', 'new', `${safeSlug}_${stamp}-banner.${ext}`);
-        const gcsFile = bucket.file(objectPath);
-        await gcsFile.save(bannerFile.buffer, {
-          contentType: bannerFile.mimetype,
-          resumable: false,
-          metadata: { cacheControl: 'public,max-age=3600' },
-        });
         try {
-          await gcsFile.makePublic();
-        } catch {}
-        bannerUrlFromUpload = `https://storage.googleapis.com/${bucket.name}/${objectPath}`;
+          const ext =
+            bannerFile.mimetype === 'image/png'
+              ? 'png'
+              : bannerFile.mimetype === 'image/webp'
+                ? 'webp'
+                : 'jpg';
+          const objectPath = path.posix.join(
+            'leagues',
+            'new',
+            `${safeSlug}_${stamp}-banner.${ext}`,
+          );
+          const gcsFile = bucket.file(objectPath);
+          await gcsFile.save(bannerFile.buffer, {
+            contentType: bannerFile.mimetype,
+            resumable: false,
+            metadata: { cacheControl: 'public,max-age=3600' },
+          });
+          try {
+            await gcsFile.makePublic();
+          } catch {}
+          bannerUrlFromUpload = `https://storage.googleapis.com/${bucket.name}/${objectPath}`;
+        } catch (uploadError) {
+          console.warn('[league_banner_upload_failed]', (uploadError as Error).message);
+          // Continue sem o banner se o upload falhar
+        }
       }
       // Anexar URLs no body para o controller persistir (sem usar any)
       const body = req.body as Record<string, unknown>;
@@ -117,7 +131,7 @@ leaguesRouter.post('/', requireRole([AccessRole.ADMIN, AccessRole.FAN]), async (
     const controller = makeCreateLeagueController();
     return controller.handleExpress(req, res);
   } catch (e) {
-    console.error('[league_create_error]', (e as Error).message);
+    console.error('[league_create_error]', e);
     if ((e as Error).message?.toLowerCase().includes('multipart'))
       return res.status(400).json({ error: ERROR_CODES.INVALID_MULTIPART });
     return res.status(500).json({ error: ERROR_CODES.INTERNAL_ERROR });
@@ -137,7 +151,7 @@ leaguesRouter.put(
   async (req, res) => {
     const controller = makeUpdateTiebreakRulesOrderController();
     return controller.handleExpress(req, res);
-  }
+  },
 );
 
 // Listar todas as ligas (público)
