@@ -38,6 +38,16 @@ export interface ILeagueRepository {
 
   findBySlug(slug: string): Promise<League | null>;
 
+  findByIds(ids: string[]): Promise<Array<{
+    id: string;
+    name: string;
+    slug: string;
+    icon: string | null;
+    banner: string | null;
+    description: string | null;
+    isPublic: boolean;
+  }>>;
+
   list(
     filters: LeagueFilters,
     pagination: PaginationParams,

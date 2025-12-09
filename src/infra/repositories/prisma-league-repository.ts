@@ -52,6 +52,34 @@ export class PrismaLeagueRepository implements ILeagueRepository {
     return league ? this.toDomain(league) : null;
   }
 
+  async findByIds(ids: string[]): Promise<Array<{
+    id: string;
+    name: string;
+    slug: string;
+    icon: string | null;
+    banner: string | null;
+    description: string | null;
+    isPublic: boolean;
+  }>> {
+    if (ids.length === 0) return [];
+
+    const leagues = await this.prisma.league.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        icon: true,
+        banner: true,
+        description: true,
+        isPublic: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return leagues;
+  }
+
   async list(
     filters: LeagueFilters,
     pagination: PaginationParams,
