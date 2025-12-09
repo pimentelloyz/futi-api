@@ -126,6 +126,15 @@ teamsRouter.patch('/:id', requireRole([AccessRole.MANAGER, AccessRole.ADMIN]), a
   return res.status(response.statusCode).json(response.body);
 });
 
+// Listar ligas de um time
+teamsRouter.get('/:id/leagues', async (req, res) => {
+  const { makeListTeamLeaguesController } = await import(
+    '../../main/factories/make-list-team-leagues-controller.js'
+  );
+  const controller = makeListTeamLeaguesController();
+  return controller.handleExpress(req, res);
+});
+
 // Listar jogadores de um time (join explícito) - PLAYER, MANAGER, ASSISTANT, ADMIN
 teamsRouter.get(
   '/:id/players',
