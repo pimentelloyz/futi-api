@@ -30,13 +30,21 @@ export function requireRole(allowedRoles: AccessRole[]) {
 
       // Extrai contexto da requisição
       const body = (req.body ?? {}) as Record<string, unknown>;
+      
+      // Detecta leagueId: pode ser params.leagueId, params.id (se rota /leagues/:id), ou body.leagueId
+      let leagueId = (req.params?.leagueId as string | undefined) || 
+                     (typeof body.leagueId === 'string' ? body.leagueId : undefined);
+      
+      // Se rota começa com /api/leagues/:id, então params.id é o leagueId
+      if (!leagueId && req.params?.id && req.path.startsWith('/api/leagues/')) {
+        leagueId = req.params.id as string;
+      }
+      
       const context: AccessContext = {
         teamId:
           (req.params?.teamId as string | undefined) ||
           (typeof body.teamId === 'string' ? body.teamId : undefined),
-        leagueId:
-          (req.params?.leagueId as string | undefined) ||
-          (typeof body.leagueId === 'string' ? body.leagueId : undefined),
+        leagueId,
         matchId:
           (req.params?.matchId as string | undefined) ||
           (typeof body.matchId === 'string' ? body.matchId : undefined),

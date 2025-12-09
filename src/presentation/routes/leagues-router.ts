@@ -160,21 +160,11 @@ leaguesRouter.get('/', async (req, res) => {
   return controller.handleExpress(req, res);
 });
 
-// Listar minhas ligas (requer qualquer role)
-leaguesRouter.get(
-  '/me',
-  requireRole([
-    AccessRole.PLAYER,
-    AccessRole.MANAGER,
-    AccessRole.ASSISTANT,
-    AccessRole.LEAGUE_MANAGER,
-    AccessRole.ADMIN,
-  ]),
-  async (req, res) => {
-    const controller = makeListMyLeaguesController();
-    return controller.handleExpress(req, res);
-  },
-);
+// Listar minhas ligas (apenas requer autenticação, não role específica)
+leaguesRouter.get('/me', async (req, res) => {
+  const controller = makeListMyLeaguesController();
+  return controller.handleExpress(req, res);
+});
 
 // Detalhes da minha liga específica
 leaguesRouter.get(
