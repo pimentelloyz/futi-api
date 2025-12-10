@@ -51,10 +51,60 @@ matchesRouter.get('/:id/events', async (req, res) => {
   return res.status(response.statusCode).json(response.body);
 });
 
-// Criar evento de partida - MATCH_MANAGER e ADMIN
+// Criar evento de partida - MATCH_MANAGER, ADMIN ou PLAYER (se liga for CUSTOM)
 matchesRouter.post(
   '/:id/events',
-  requireRole([AccessRole.MATCH_MANAGER, AccessRole.ADMIN]),
+  async (req, res, next) => {
+    // Verificar role do usuário
+    const { RBACService } = await import('../../domain/services/rbac.service.js');
+    const rbacService = new RBACService();
+    const userId = (req.user as { id: string } | undefined)?.id;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+
+    // Extrair contexto
+    const context = {
+      matchId: req.params.id as string | undefined,
+    };
+
+    const memberships = await rbacService.getUserMemberships(userId, context);
+    const roles = memberships.map((m) => m.role);
+
+    // Se for MATCH_MANAGER ou ADMIN, permite direto
+    if (roles.includes('MATCH_MANAGER') || roles.includes('ADMIN')) {
+      return next();
+    }
+
+    // Se for PLAYER, verifica se a liga é CUSTOM
+    if (roles.includes('PLAYER')) {
+      const { prisma } = await import('../../infra/prisma/client.js');
+      const match = await prisma.match.findUnique({
+        where: { id: req.params.id },
+        include: {
+          league: {
+            include: {
+              format: true,
+            },
+          },
+        },
+      });
+
+      // Se a liga for CUSTOM, permite PLAYER registrar eventos
+      if (match?.league?.format?.type === 'CUSTOM') {
+        return next();
+      }
+    }
+
+    // Se não atende nenhuma condição, retorna 403
+    return res.status(403).json({
+      error: 'INSUFFICIENT_ROLE',
+      message: 'Only MATCH_MANAGER, ADMIN, or PLAYER (in CUSTOM leagues) can register events',
+      current: roles.join(', ') || 'FAN',
+      required: ['MATCH_MANAGER', 'ADMIN', 'PLAYER (CUSTOM leagues)'],
+    });
+  },
   async (req, res) => {
     const controller = new MatchEventCreateController();
     const response = await controller.handle({ matchId: req.params.id, body: req.body });
