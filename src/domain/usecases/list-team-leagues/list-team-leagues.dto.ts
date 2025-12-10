@@ -10,6 +10,12 @@ export interface LeagueInfo {
   banner: string | null;
   description: string | null;
   isPublic: boolean;
+  format: {
+    id: string;
+    name: string;
+    slug: string;
+    type: string;
+  } | null;
 }
 
 export interface ListTeamLeaguesOutput {

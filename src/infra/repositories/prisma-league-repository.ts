@@ -60,6 +60,12 @@ export class PrismaLeagueRepository implements ILeagueRepository {
     banner: string | null;
     description: string | null;
     isPublic: boolean;
+    format: {
+      id: string;
+      name: string;
+      slug: string;
+      type: string;
+    } | null;
   }>> {
     if (ids.length === 0) return [];
 
@@ -73,6 +79,14 @@ export class PrismaLeagueRepository implements ILeagueRepository {
         banner: true,
         description: true,
         isPublic: true,
+        format: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            type: true,
+          },
+        },
       },
       orderBy: { name: 'asc' },
     });

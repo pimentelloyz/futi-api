@@ -46,6 +46,12 @@ export interface ILeagueRepository {
     banner: string | null;
     description: string | null;
     isPublic: boolean;
+    format: {
+      id: string;
+      name: string;
+      slug: string;
+      type: string;
+    } | null;
   }>>;
 
   list(
