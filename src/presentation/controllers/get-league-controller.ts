@@ -9,16 +9,16 @@ export class GetLeagueController implements Controller {
 
   async handle(request: HttpRequest): Promise<HttpResponse> {
     try {
-      const { identifier } = request.params as { identifier?: string };
+      const { id } = request.params as { id?: string };
 
-      if (!identifier) {
+      if (!id) {
         return {
           statusCode: 400,
-          body: { message: 'identifier is required' },
+          body: { message: 'id is required' },
         };
       }
 
-      const result = await this.getLeagueUseCase.execute({ identifier });
+      const result = await this.getLeagueUseCase.execute({ identifier: id });
 
       return {
         statusCode: 200,
