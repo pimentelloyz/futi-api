@@ -1,6 +1,6 @@
 import { PrismaPlayerRepository } from '../../infra/repositories/prisma-player-repository.js';
 import { UpdateMyPlayerUseCase } from '../../domain/usecases/update-my-player/update-my-player.usecase.js';
-import { UpdateMyPlayerController } from '../../presentation/controllers/update-my-player-controller.ts';
+import { UpdateMyPlayerController } from '../../presentation/controllers/update-my-player-controller.js';
 
 export function makeUpdateMyPlayerController(): UpdateMyPlayerController {
   const playerRepository = new PrismaPlayerRepository();
